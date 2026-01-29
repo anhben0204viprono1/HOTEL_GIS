@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>HOTEL GIS</title>
+
+    <!-- Leaflet CSS -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+<header>
+    <h2>🏨 HOTEL GIS</h2>
+    <p>Tìm kiếm khách sạn & khu lưu trú theo vị trí</p>
+</header>
+
+<div class="search-box">
+    <input type="text" id="locationInput" placeholder="Nhập địa điểm (VD: Đại học Quốc Gia)">
+    <button onclick="searchLocation()">Tìm kiếm</button>
+</div>
+
+<div class="filter-box">
+    <label>
+        <input type="checkbox" checked> Khách sạn
+    </label>
+    <label>
+        <input type="checkbox" checked> Nhà nghỉ
+    </label>
+</div>
+
+<div id="map"></div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<!-- Custom JS -->
+<script src="{% static 'js/script.js' %}"></script>
+
+</body>
+</html>
