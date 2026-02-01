@@ -38,10 +38,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'gis_api',   # 👈 thêm dòng này
+    'rest_framework',
+    'corsheaders',
+
+    'gis_api',
 ]
 
+
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -50,6 +55,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
 
 ROOT_URLCONF = 'hotel_gis.urls'
 
@@ -76,8 +82,12 @@ WSGI_APPLICATION = 'hotel_gis.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'QLKS',
+        'USER': 'postgres',
+        'PASSWORD': '123',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
@@ -117,3 +127,4 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+CORS_ALLOW_ALL_ORIGINS = True
