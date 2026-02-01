@@ -1,20 +1,24 @@
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
+from django.http import JsonResponse
 from .models import Hotel
-from .serializers import HotelSerializer
 
-@api_view(['GET'])
 def search_hotels(request):
-    city = request.GET.get('city')
-    district = request.GET.get('district')
+    keyword = request.GET.get("q", "")
 
-    hotels = Hotel.objects.filter(is_active=True)
+    hotels = Hotel.objects.filter(
+        name__icontains=keyword,
+        is_active=True
+    )
 
-    if city:
-        hotels = hotels.filter(city__icontains=city)
+    data = [
+        {
+            "id": h.hotel_id,
+            "name": h.name,
+            "address": h.address,
+            "lat": float(h.latitude),
+            "lng": float(h.longitude),
+            "star": float(h.star_rating) if h.star_rating else None,
+        }
+        for h in hotels
+    ]
 
-    if district:
-        hotels = hotels.filter(district__icontains=district)
-
-    serializer = HotelSerializer(hotels, many=True)
-    return Response(serializer.data)
+    return JsonResponse(data, safe=False)
