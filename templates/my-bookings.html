@@ -27,7 +27,12 @@
             <li><a href="/">Trang chủ</a></li>
             <li><a href="/search">Tìm kiếm</a></li>
             <li><a href="/my-bookings" class="active">Đơn đặt phòng</a></li>
-            <li><a href="#" class="btn-login">Đăng nhập</a></li>
+            {% if request.user.is_authenticated %}
+              <li class="greeting">Xin chào, {{ request.user.first_name|default:request.user.username }}</li>
+              <li><a href="/logout/">Đăng xuất</a></li>
+            {% else %}
+              <li><a href="/login/" class="btn-login">Đăng nhập</a></li>
+            {% endif %}
           </ul>
         </nav>
       </div>
@@ -72,14 +77,92 @@
           <i class="fas fa-search"></i>
         </div>
 
-        <!-- Bookings List -->
-        <div id="bookingsList" class="bookings-list">
-          <!-- Loading State -->
-          <div class="loading-bookings">
-            <i class="fas fa-spinner fa-spin"></i>
-            <p>Đang tải đơn đặt phòng...</p>
+<div class="bookings-list">
+  {% if bookings %}
+    {% for b in bookings %}
+      <div class="booking-card">
+        <div class="booking-card-header">
+          <span class="booking-id">#BK{{ b.booking_id }}</span>
+          <span class="status-badge {{ b.status|lower }}">
+            {{ b.get_status_display }}
+          </span>
+        </div>
+
+        <div class="booking-card-body">
+          <div class="hotel-info">
+            <img
+              src="/static/images/hotels/{{ b.hotel.hotel_id }}.jpg"
+              alt="{{ b.hotel.name }}"
+            />
+            <div class="hotel-details">
+              <h3>{{ b.hotel.name }}</h3>
+              <p class="address">
+                <i class="fas fa-map-marker-alt"></i>
+                {{ b.hotel.address }}
+              </p>
+              <p class="room-type">
+                <i class="fas fa-door-open"></i>
+                {{ b.room.room_type.type_name }}
+              </p>
+            </div>
+          </div>
+
+          <div class="booking-dates">
+            <div class="date-info">
+              <label>Nhận phòng</label>
+              <div class="date">
+                <i class="fas fa-calendar-check"></i>
+                {{ b.checkin_date|date:"d/m/Y" }} • 14:00
+              </div>
+            </div>
+
+            <div class="nights-badge">
+              {{ b.checkout_date|timeuntil:b.checkin_date }}
+            </div>
+
+            <div class="date-info">
+              <label>Trả phòng</label>
+              <div class="date">
+                <i class="fas fa-calendar-times"></i>
+                {{ b.checkout_date|date:"d/m/Y" }} • 12:00
+              </div>
+            </div>
+          </div>
+
+          <div class="booking-meta">
+            <div class="meta-item">
+              <i class="fas fa-users"></i>
+              <span>{{ b.guests }} khách</span>
+            </div>
+            <div class="meta-item">
+              <i class="fas fa-money-bill-wave"></i>
+              <span class="price">
+                {{ b.total_price|floatformat:0 }} đ
+              </span>
+            </div>
           </div>
         </div>
+
+        <div class="booking-card-footer">
+          {% if b.status == "CONFIRMED" %}
+            <a href="#" class="btn btn-sm btn-danger">
+              <i class="fas fa-times"></i> Hủy
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state">
+      <i class="fas fa-inbox"></i>
+      <h3>Chưa có đơn đặt phòng nào</h3>
+      <a href="/search" class="btn btn-primary">
+        <i class="fas fa-search"></i> Tìm khách sạn
+      </a>
+    </div>
+  {% endif %}
+</div>
+
 
         <!-- Empty State -->
         <div id="emptyState" class="empty-state" style="display: none">
@@ -583,10 +666,10 @@
           booking.roomNumber;
         document.getElementById("modalCheckin").textContent = formatDate(
           booking.checkin,
-        );
+        ) + " • 14:00";
         document.getElementById("modalCheckout").textContent = formatDate(
           booking.checkout,
-        );
+        ) + " • 12:00";
         document.getElementById("modalGuests").textContent =
           `${booking.guests} người`;
         document.getElementById("modalBookingDate").textContent = formatDate(

@@ -1,0 +1,17 @@
+<h2>Chọn phương thức thanh toán</h2>
+
+<form method="POST" action="{% url 'payment' %}">
+  {% csrf_token %}
+
+  <label>
+    <input type="radio" name="payment_method" value="cash" required>
+    Thanh toán khi nhận phòng
+  </label><br>
+
+  <label>
+    <input type="radio" name="payment_method" value="banking">
+    Chuyển khoản
+  </label><br><br>
+
+  <button type="submit">Thanh toán</button>
+</form>

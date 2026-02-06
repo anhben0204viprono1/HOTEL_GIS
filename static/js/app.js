@@ -136,17 +136,17 @@ const api = {
   },
 
   // Get hotel details
-  getHotelDetails: async (hotelId) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/hotels/${hotelId}`);
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("Error getting hotel details:", error);
-      utils.showToast("Có lỗi xảy ra khi tải thông tin khách sạn", "danger");
-      throw error;
-    }
-  },
+  // getHotelDetails: async (hotelId) => {
+   // try {
+   //   const response = await fetch(`${API_BASE_URL}/hotels/${hotelId}`);
+  //    const data = await response.json();
+  //    return data;
+  //  } catch (error) {
+//console.error("Error getting hotel details:", error);
+  //    utils.showToast("Có lỗi xảy ra khi tải thông tin khách sạn", "danger");
+  //    throw error;
+ //  }
+  // },
 
   // Create booking
   createBooking: async (bookingData) => {

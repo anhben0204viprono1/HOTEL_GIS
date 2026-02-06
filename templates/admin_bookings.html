@@ -1,0 +1,238 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Booking - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #2c3e50; }
+        .admin-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .admin-header { text-align: center; margin-bottom: 40px; border-bottom: 3px solid #3498db; padding-bottom: 20px; }
+        .admin-header h1 { font-size: 2.5em; color: #2c3e50; margin: 0; }
+        .admin-subtitle { color: #7f8c8d; margin: 10px 0 0 0; }
+        .status-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 30px; }
+        .stat-card { background: white; border: 2px solid #ecf0f1; border-radius: 10px; padding: 20px; text-align: center; transition: all 0.3s ease; }
+        .stat-card:hover { border-color: #3498db; box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2); }
+        .stat-card h3 { font-size: 0.9em; color: #7f8c8d; margin: 0 0 10px 0; text-transform: uppercase; }
+        .stat-number { font-size: 2.5em; font-weight: bold; color: #3498db; margin: 10px 0; }
+        .stat-link { display: inline-block; margin-top: 10px; padding: 8px 15px; background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-size: 0.85em; transition: background 0.3s ease; }
+        .stat-link:hover { background: #2980b9; }
+        .filter-section { background: white; border-radius: 10px; padding: 20px; margin-bottom: 30px; }
+        .filter-section h3 { margin: 0 0 15px 0; color: #2c3e50; }
+        .filter-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+        .filter-btn { padding: 8px 16px; background: #ecf0f1; color: #2c3e50; text-decoration: none; border-radius: 20px; transition: all 0.3s ease; border: 2px solid transparent; }
+        .filter-btn:hover, .filter-btn.active { background: #3498db; color: white; border-color: #2980b9; }
+        .bookings-table-section { background: white; border-radius: 10px; padding: 20px; overflow-x: auto; }
+        .bookings-table { width: 100%; border-collapse: collapse; }
+        .bookings-table thead { background: #34495e; color: white; }
+        .bookings-table th { padding: 15px; text-align: left; font-weight: 600; border-bottom: 2px solid #2c3e50; }
+        .bookings-table td { padding: 12px 15px; border-bottom: 1px solid #ecf0f1; }
+        .bookings-table tbody tr:hover { background: #f5f5f5; }
+        .bookings-table tr.status-pending { border-left: 4px solid #f39c12; }
+        .bookings-table tr.status-approved { border-left: 4px solid #27ae60; }
+        .bookings-table tr.status-rejected { border-left: 4px solid #e74c3c; }
+        .bookings-table tr.status-confirmed { border-left: 4px solid #3498db; }
+        .bookings-table tr.status-cancelled { border-left: 4px solid #95a5a6; }
+        .status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-weight: 600; font-size: 0.85em; }
+        .status-badge.status-pending { background: #fff3cd; color: #856404; }
+        .status-badge.status-approved { background: #d4edda; color: #155724; }
+        .status-badge.status-rejected { background: #f8d7da; color: #721c24; }
+        .status-badge.status-confirmed { background: #d1ecf1; color: #0c5460; }
+        .status-badge.status-cancelled { background: #e2e3e5; color: #383d41; }
+        .actions { text-align: center; }
+        .btn-view, .btn-approve, .btn-reject { padding: 6px 12px; margin: 0 3px; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85em; text-decoration: none; display: inline-block; transition: all 0.3s ease; }
+        .btn-view { background: #3498db; color: white; }
+        .btn-view:hover { background: #2980b9; }
+        .btn-approve { background: #27ae60; color: white; }
+        .btn-approve:hover { background: #229954; }
+        .btn-reject { background: #e74c3c; color: white; }
+        .btn-reject:hover { background: #c0392b; }
+        .no-bookings { text-align: center; padding: 40px; color: #7f8c8d; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); }
+        .modal-content { background-color: white; margin: 10% auto; padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3); }
+        .modal-close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .modal-close:hover { color: #000; }
+        .modal-content h2 { margin-top: 0; color: #2c3e50; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 600; }
+        .form-group textarea { width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 5px; font-family: Arial, sans-serif; font-size: 1em; min-height: 100px; resize: vertical; }
+        .form-group textarea:focus { outline: none; border-color: #3498db; box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); }
+        .btn-primary, .btn-secondary { padding: 10px 20px; margin-right: 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; transition: all 0.3s ease; }
+        .btn-primary { background: #27ae60; color: white; }
+        .btn-primary:hover { background: #229954; }
+        .btn-secondary { background: #95a5a6; color: white; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        @media (max-width: 768px) {
+            .admin-header h1 { font-size: 1.8em; }
+            .status-stats { grid-template-columns: repeat(2, 1fr); }
+            .bookings-table { font-size: 0.9em; }
+            .bookings-table th, .bookings-table td { padding: 8px 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h1>🏨 Quản Lý Booking</h1>
+            <p class="admin-subtitle">Duyệt và quản lý các booking từ khách hàng</p>
+        </div>
+
+        <div class="status-stats">
+            <div class="stat-card">
+                <h3>Chờ Duyệt</h3>
+                <p class="stat-number">{{ status_stats.PENDING }}</p>
+                <a href="?status=PENDING" class="stat-link">Xem</a>
+            </div>
+            <div class="stat-card">
+                <h3>Đã Duyệt</h3>
+                <p class="stat-number">{{ status_stats.APPROVED }}</p>
+                <a href="?status=APPROVED" class="stat-link">Xem</a>
+            </div>
+            <div class="stat-card">
+                <h3>Bị Từ Chối</h3>
+                <p class="stat-number">{{ status_stats.REJECTED }}</p>
+                <a href="?status=REJECTED" class="stat-link">Xem</a>
+            </div>
+            <div class="stat-card">
+                <h3>Xác Nhận</h3>
+                <p class="stat-number">{{ status_stats.CONFIRMED }}</p>
+                <a href="?status=CONFIRMED" class="stat-link">Xem</a>
+            </div>
+            <div class="stat-card">
+                <h3>Huỷ</h3>
+                <p class="stat-number">{{ status_stats.CANCELLED }}</p>
+                <a href="?status=CANCELLED" class="stat-link">Xem</a>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <h3>Bộ Lọc</h3>
+            <div class="filter-buttons">
+                <a href="." class="filter-btn {% if not status_filter %}active{% endif %}">Tất Cả</a>
+                <a href="?status=PENDING" class="filter-btn {% if status_filter == 'PENDING' %}active{% endif %}">Chờ Duyệt</a>
+                <a href="?status=APPROVED" class="filter-btn {% if status_filter == 'APPROVED' %}active{% endif %}">Đã Duyệt</a>
+                <a href="?status=REJECTED" class="filter-btn {% if status_filter == 'REJECTED' %}active{% endif %}">Bị Từ Chối</a>
+                <a href="?status=CONFIRMED" class="filter-btn {% if status_filter == 'CONFIRMED' %}active{% endif %}">Xác Nhận</a>
+                <a href="?status=CANCELLED" class="filter-btn {% if status_filter == 'CANCELLED' %}active{% endif %}">Huỷ</a>
+            </div>
+        </div>
+
+        <div class="bookings-table-section">
+            {% if bookings %}
+                <table class="bookings-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Khách Sạn</th>
+                            <th>Phòng</th>
+                            <th>Khách</th>
+                            <th>Ngày Nhận</th>
+                            <th>Ngày Trả</th>
+                            <th>Giá</th>
+                            <th>Trạng Thái</th>
+                            <th>Ngày Booking</th>
+                            <th>Thao Tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in bookings %}
+                            <tr class="status-{{ booking.status | lower }}">
+                                <td>#{{ booking.booking_id }}</td>
+                                <td>{{ booking.hotel.name }}</td>
+                                <td>{{ booking.room.room_number }}</td>
+                                <td>{% if booking.user %}{{ booking.user.username }}{% else %}<em>Anonymous</em>{% endif %}</td>
+                                <td>{{ booking.checkin_date | date:"d/m/Y" }}</td>
+                                <td>{{ booking.checkout_date | date:"d/m/Y" }}</td>
+                                <td>{{ booking.total_price | floatformat:0 }}đ</td>
+                                <td><span class="status-badge status-{{ booking.status | lower }}">{% if booking.status == 'PENDING' %}Chờ Duyệt{% elif booking.status == 'APPROVED' %}Đã Duyệt{% elif booking.status == 'REJECTED' %}Bị Từ Chối{% elif booking.status == 'CONFIRMED' %}Xác Nhận{% elif booking.status == 'CANCELLED' %}Huỷ{% else %}{{ booking.status }}{% endif %}</span></td>
+                                <td>{{ booking.created_date | date:"d/m/Y H:i" }}</td>
+                                <td class="actions">
+                                    <a href="/" class="btn-view">Chi Tiết</a>
+                                    {% if booking.status == 'PENDING' %}
+                                        <button class="btn-approve" onclick="approveBooking({{ booking.booking_id }})">Duyệt</button>
+                                        <button class="btn-reject" onclick="openRejectModal({{ booking.booking_id }})">Từ Chối</button>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="no-bookings"><p>Không có booking nào</p></div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="rejectModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeRejectModal()">&times;</span>
+            <h2>Từ Chối Booking</h2>
+            <form onsubmit="submitReject(event)">
+                <input type="hidden" id="rejectBookingId" value="">
+                <div class="form-group">
+                    <label for="rejectNotes">Lý Do Từ Chối:</label>
+                    <textarea id="rejectNotes" required placeholder="Nhập lý do từ chối..."></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Từ Chối</button>
+                <button type="button" class="btn-secondary" onclick="closeRejectModal()">Huỷ</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function approveBooking(bookingId) {
+            if (!confirm("Xác nhận duyệt booking này?")) return;
+            fetch("/admin/approve-booking/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+                body: JSON.stringify({ booking_id: bookingId, notes: "Approved by admin" })
+            }).then(r => r.json()).then(d => {
+                if (d.success) { alert("✓ Booking được duyệt thành công"); location.reload(); }
+                else { alert("✗ Lỗi: " + d.error); }
+            }).catch(e => alert("Lỗi: " + e));
+        }
+        function openRejectModal(bookingId) {
+            document.getElementById("rejectBookingId").value = bookingId;
+            document.getElementById("rejectNotes").value = "";
+            document.getElementById("rejectModal").style.display = "block";
+        }
+        function closeRejectModal() {
+            document.getElementById("rejectModal").style.display = "none";
+        }
+        function submitReject(event) {
+            event.preventDefault();
+            const bookingId = document.getElementById("rejectBookingId").value;
+            const notes = document.getElementById("rejectNotes").value.trim();
+            if (!notes) { alert("Vui lòng nhập lý do từ chối"); return; }
+            fetch("/admin/reject-booking/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+                body: JSON.stringify({ booking_id: bookingId, notes: notes })
+            }).then(r => r.json()).then(d => {
+                if (d.success) { alert("✓ Booking đã bị từ chối"); location.reload(); }
+                else { alert("✗ Lỗi: " + d.error); }
+            }).catch(e => alert("Lỗi: " + e));
+        }
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        window.onclick = function(event) {
+            const modal = document.getElementById("rejectModal");
+            if (event.target == modal) { modal.style.display = "none"; }
+        }
+    </script>
+</body>
+</html>

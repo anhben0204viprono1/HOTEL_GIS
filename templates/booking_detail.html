@@ -1,0 +1,273 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi Tiết Booking #{{ booking.booking_id }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f7fa; color: #2c3e50; }
+        .booking-detail-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 3px solid #3498db; padding-bottom: 20px; }
+        .detail-header h1 { font-size: 2em; color: #2c3e50; margin: 0; }
+        .btn-back { padding: 10px 20px; background: #95a5a6; color: white; text-decoration: none; border-radius: 5px; transition: background 0.3s ease; }
+        .btn-back:hover { background: #7f8c8d; }
+        .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .card { background: white; border: 1px solid #ecf0f1; border-radius: 10px; padding: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05); }
+        .card h2 { margin: 0 0 20px 0; color: #2c3e50; font-size: 1.3em; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; }
+        .info-group { margin-bottom: 15px; }
+        .info-group label { display: block; font-weight: 600; color: #7f8c8d; font-size: 0.9em; text-transform: uppercase; margin-bottom: 5px; }
+        .info-group p { margin: 0; color: #2c3e50; font-size: 1.1em; }
+        .status-display { padding: 20px; border-radius: 8px; text-align: center; font-size: 1.5em; font-weight: bold; }
+        .status-display.status-pending { background: #fff3cd; color: #856404; }
+        .status-display.status-approved { background: #d4edda; color: #155724; }
+        .status-display.status-rejected { background: #f8d7da; color: #721c24; }
+        .status-display.status-confirmed { background: #d1ecf1; color: #0c5460; }
+        .status-display.status-cancelled { background: #e2e3e5; color: #383d41; }
+        .price-info { background: #f8f9fa; padding: 15px; border-radius: 8px; }
+        .price-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ecf0f1; color: #2c3e50; }
+        .price-row.total { border-bottom: none; border-top: 2px solid #3498db; padding-top: 15px; font-size: 1.2em; }
+        .price-row strong { color: #3498db; font-weight: 700; }
+        .admin-actions { display: flex; gap: 15px; justify-content: center; margin-top: 30px; }
+        .btn-approve, .btn-reject { padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 1.1em; font-weight: 600; transition: all 0.3s ease; }
+        .btn-approve { background: #27ae60; color: white; }
+        .btn-approve:hover { background: #229954; box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3); }
+        .btn-reject { background: #e74c3c; color: white; }
+        .btn-reject:hover { background: #c0392b; box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3); }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); }
+        .modal-content { background-color: white; margin: 10% auto; padding: 30px; border-radius: 10px; width: 90%; max-width: 500px; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3); }
+        .modal-close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .modal-close:hover { color: #000; }
+        .modal-content h2 { margin-top: 0; color: #2c3e50; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #2c3e50; font-weight: 600; }
+        .form-group textarea { width: 100%; padding: 10px; border: 1px solid #bdc3c7; border-radius: 5px; font-family: Arial, sans-serif; font-size: 1em; min-height: 100px; resize: vertical; }
+        .form-group textarea:focus { outline: none; border-color: #3498db; box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); }
+        .btn-primary, .btn-secondary { padding: 10px 20px; margin-right: 10px; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; transition: all 0.3s ease; }
+        .btn-primary { background: #27ae60; color: white; }
+        .btn-primary:hover { background: #229954; }
+        .btn-secondary { background: #95a5a6; color: white; }
+        .btn-secondary:hover { background: #7f8c8d; }
+        @media (max-width: 768px) {
+            .detail-header { flex-direction: column; gap: 15px; }
+            .detail-grid { grid-template-columns: 1fr; }
+            .detail-header h1 { font-size: 1.5em; }
+            .admin-actions { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="booking-detail-container">
+        <div class="detail-header">
+            <h1>Chi Tiết Booking #{{ booking.booking_id }}</h1>
+            <a href="/admin/bookings/" class="btn-back">← Quay Lại</a>
+        </div>
+
+        <div class="detail-grid">
+            <div class="card">
+                <h2>Trạng Thái</h2>
+                <div class="status-display status-{{ booking.status | lower }}">
+                    {% if booking.status == 'PENDING' %}<span style="margin-right: 10px;">⏳</span> Chờ Duyệt
+                    {% elif booking.status == 'APPROVED' %}<span style="margin-right: 10px;">✓</span> Đã Duyệt
+                    {% elif booking.status == 'REJECTED' %}<span style="margin-right: 10px;">✗</span> Bị Từ Chối
+                    {% elif booking.status == 'CONFIRMED' %}<span style="margin-right: 10px;">✓✓</span> Xác Nhận
+                    {% elif booking.status == 'CANCELLED' %}<span style="margin-right: 10px;">⊘</span> Huỷ
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🏨 Khách Sạn</h2>
+                <div class="info-group">
+                    <label>Tên Khách Sạn:</label>
+                    <p>{{ booking.hotel.name }}</p>
+                </div>
+                <div class="info-group">
+                    <label>Địa Chỉ:</label>
+                    <p>{{ booking.hotel.address }}, {{ booking.hotel.district }}, {{ booking.hotel.city }}</p>
+                </div>
+                <div class="info-group">
+                    <label>Xếp Hạng:</label>
+                    <p>⭐ {{ booking.hotel.star_rating }}/5</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🛏️ Phòng</h2>
+                <div class="info-group">
+                    <label>Số Phòng:</label>
+                    <p>{{ booking.room.room_number }}</p>
+                </div>
+                <div class="info-group">
+                    <label>Loại Phòng:</label>
+                    <p>{{ booking.room.room_type.type_name }}</p>
+                </div>
+                <div class="info-group">
+                    <label>Sức Chứa:</label>
+                    <p>{{ booking.room.room_type.max_guests }} khách</p>
+                </div>
+                <div class="info-group">
+                    <label>Tầng:</label>
+                    <p>{{ booking.room.floor }}</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📅 Ngày Booking</h2>
+                <div class="info-group">
+                    <label>Ngày Nhận Phòng:</label>
+                    <p>{{ booking.checkin_date | date:"d/m/Y" }} • 14:00</p>
+                </div>
+                <div class="info-group">
+                    <label>Ngày Trả Phòng:</label>
+                    <p>{{ booking.checkout_date | date:"d/m/Y" }} • 12:00</p>
+                </div>
+                <div class="info-group">
+                    <label>Số Khách:</label>
+                    <p>{{ booking.guests }} khách</p>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>💰 Giá Cả</h2>
+                <div class="price-info">
+                    <div class="price-row">
+                        <span>Giá Phòng/Đêm:</span>
+                        <strong>{{ booking.room.room_type.base_price | floatformat:0 }}đ</strong>
+                    </div>
+                    <div class="price-row total">
+                        <span>Tổng Giá:</span>
+                        <strong>{{ booking.total_price | floatformat:0 }}đ</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>👤 Khác Hàng</h2>
+                {% if booking.user %}
+                    <div class="info-group">
+                        <label>Tên:</label>
+                        <p>{{ booking.user.first_name }} {{ booking.user.last_name }}</p>
+                    </div>
+                    <div class="info-group">
+                        <label>Email:</label>
+                        <p>{{ booking.user.email }}</p>
+                    </div>
+                    <div class="info-group">
+                        <label>Tên Đăng Nhập:</label>
+                        <p>{{ booking.user.username }}</p>
+                    </div>
+                {% else %}
+                    <div class="info-group">
+                        <p><em>Booking ẩn danh (không có tài khoản)</em></p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="card">
+                <h2>📋 Thông Tin Khác</h2>
+                <div class="info-group">
+                    <label>Ngày Tạo:</label>
+                    <p>{{ booking.created_date | date:"d/m/Y H:i" }}</p>
+                </div>
+                {% if booking.reviewed_date %}
+                    <div class="info-group">
+                        <label>Ngày Duyệt:</label>
+                        <p>{{ booking.reviewed_date | date:"d/m/Y H:i" }}</p>
+                    </div>
+                {% endif %}
+                {% if booking.reviewed_by %}
+                    <div class="info-group">
+                        <label>Duyệt Bởi:</label>
+                        <p>{{ booking.reviewed_by.username }}</p>
+                    </div>
+                {% endif %}
+                {% if booking.review_notes %}
+                    <div class="info-group">
+                        <label>Ghi Chú:</label>
+                        <p>{{ booking.review_notes }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if request.user.is_staff and booking.status == 'PENDING' %}
+            <div class="admin-actions">
+                <button onclick="approveBooking({{ booking.booking_id }})" class="btn-approve">✓ Duyệt Booking</button>
+                <button onclick="openRejectModal({{ booking.booking_id }})" class="btn-reject">✗ Từ Chối Booking</button>
+            </div>
+        {% endif %}
+    </div>
+
+    <div id="rejectModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeRejectModal()">&times;</span>
+            <h2>Từ Chối Booking</h2>
+            <form onsubmit="submitReject(event)">
+                <input type="hidden" id="rejectBookingId" value="">
+                <div class="form-group">
+                    <label for="rejectNotes">Lý Do Từ Chối:</label>
+                    <textarea id="rejectNotes" required placeholder="Nhập lý do từ chối..."></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Từ Chối</button>
+                <button type="button" class="btn-secondary" onclick="closeRejectModal()">Huỷ</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function approveBooking(bookingId) {
+            if (!confirm("Xác nhận duyệt booking này?")) return;
+            fetch("/admin/approve-booking/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+                body: JSON.stringify({ booking_id: bookingId, notes: "Approved by admin" })
+            }).then(r => r.json()).then(d => {
+                if (d.success) { alert("✓ Booking được duyệt thành công"); location.reload(); }
+                else { alert("✗ Lỗi: " + d.error); }
+            }).catch(e => alert("Lỗi: " + e));
+        }
+        function openRejectModal(bookingId) {
+            document.getElementById("rejectBookingId").value = bookingId;
+            document.getElementById("rejectNotes").value = "";
+            document.getElementById("rejectModal").style.display = "block";
+        }
+        function closeRejectModal() {
+            document.getElementById("rejectModal").style.display = "none";
+        }
+        function submitReject(event) {
+            event.preventDefault();
+            const bookingId = document.getElementById("rejectBookingId").value;
+            const notes = document.getElementById("rejectNotes").value.trim();
+            if (!notes) { alert("Vui lòng nhập lý do từ chối"); return; }
+            fetch("/admin/reject-booking/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+                body: JSON.stringify({ booking_id: bookingId, notes: notes })
+            }).then(r => r.json()).then(d => {
+                if (d.success) { alert("✓ Booking đã bị từ chối"); location.reload(); }
+                else { alert("✗ Lỗi: " + d.error); }
+            }).catch(e => alert("Lỗi: " + e));
+        }
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        window.onclick = function(event) {
+            const modal = document.getElementById("rejectModal");
+            if (event.target == modal) { modal.style.display = "none"; }
+        }
+    </script>
+</body>
+</html>
