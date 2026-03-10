@@ -1,0 +1,48 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+  /* ── Map picker styling ─────────────────────────────── */
+  .map-picker-wrapper {
+    border: 1px solid #dee2e6;
+    border-radius: 10px;
+    padding: 16px;
+    background: #fafafa;
+    margin-top: 6px;
+  }
+  .field-coordinates .help {
+    display: none; /* hide default help, widget has its own */
+  }
+
+  /* ── Fieldset headers ───────────────────────────────── */
+  .module h2 {
+    font-size: 14px !important;
+    letter-spacing: 0.5px;
+  }
+
+  /* ── Coord display badges ───────────────────────────── */
+  .map-coord-display span[id^="display_"] {
+    font-family: monospace;
+  }
+
+  /* ── Mini map container ─────────────────────────────── */
+  [id^="mini_map_"] {
+    transition: opacity .3s;
+  }
+
+  /* ── Tighten inline tables ──────────────────────────── */
+  .inline-group .tabular td,
+  .inline-group .tabular th {
+    padding: 6px 8px !important;
+    font-size: 13px !important;
+  }
+</style>
+{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+{% endblock %}

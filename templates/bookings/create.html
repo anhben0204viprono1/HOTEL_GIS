@@ -43,7 +43,7 @@
 
 {% block extra_js %}
 <script>
-const pricePerNight = {{ room_type.price_per_night }};
+const pricePerNight = "{{ room_type.price_per_night }}";
 const ciInput = document.querySelector('[name="check_in"]');
 const coInput = document.querySelector('[name="check_out"]');
 

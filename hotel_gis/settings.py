@@ -33,6 +33,8 @@ ROOT_URLCONF = 'hotel_gis.urls'
 
 TEMPLATES = [{
     'BACKEND': 'django.template.backends.django.DjangoTemplates',
+    # Thư mục templates/ ở gốc project — phải đứng TRƯỚC app dirs
+    # để admin override (templates/admin/hotels/hotel_change_form.html) hoạt động
     'DIRS': [BASE_DIR / 'templates'],
     'APP_DIRS': True,
     'OPTIONS': {'context_processors': [
