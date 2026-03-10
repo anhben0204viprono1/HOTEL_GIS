@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block title %}Đặt phòng #{{ booking.id }}{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:600px;">
+  <div class="bg-white rounded-3 shadow-sm overflow-hidden">
+    <div class="text-center p-5" style="background:linear-gradient(135deg,#0D0D0D,#2a2a2a);color:#fff;">
+      <div style="font-size:3rem;">🎉</div>
+      <h3 style="font-family:'Cormorant Garamond',serif;color:#C9A84C;">Đặt phòng thành công!</h3>
+      <p class="text-white-50">Mã đặt phòng: <strong style="color:#fff;">#{{ booking.id }}</strong></p>
+    </div>
+    <div class="p-4">
+      <table class="table table-borderless">
+        <tr><th style="color:#C9A84C;font-size:11px;letter-spacing:1px;text-transform:uppercase;width:35%;">Khách sạn</th><td>{{ booking.room_type.hotel.name }}</td></tr>
+        <tr><th style="color:#C9A84C;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Loại phòng</th><td>{{ booking.room_type.name }}</td></tr>
+        <tr><th style="color:#C9A84C;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Check-in</th><td>{{ booking.check_in|date:"d/m/Y" }}</td></tr>
+        <tr><th style="color:#C9A84C;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Check-out</th><td>{{ booking.check_out|date:"d/m/Y" }}</td></tr>
+        <tr><th style="color:#C9A84C;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Số đêm</th><td>{{ booking.nights }} đêm</td></tr>
+        <tr><th style="color:#C9A84C;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Số khách</th><td>{{ booking.guests }} người</td></tr>
+        <tr><th style="color:#C9A84C;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Trạng thái</th>
+            <td><span class="badge bg-warning text-dark">{{ booking.get_status_display }}</span></td></tr>
+        <tr><th style="color:#C9A84C;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Tổng tiền</th>
+            <td><strong style="color:#C9A84C;font-size:1.1rem;">{{ booking.total_price|floatformat:0 }} ₫</strong></td></tr>
+        {% if booking.special_requests %}
+        <tr><th style="color:#C9A84C;font-size:11px;letter-spacing:1px;text-transform:uppercase;">Yêu cầu</th><td>{{ booking.special_requests }}</td></tr>
+        {% endif %}
+      </table>
+      <div class="d-flex gap-2 mt-3">
+        <a href="{% url 'accounts:profile' %}" class="btn btn-gold flex-grow-1">Xem tất cả đặt phòng</a>
+        <a href="/" class="btn btn-outline-secondary">Trang chủ</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

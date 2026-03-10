@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Đặt phòng — {{ room_type.name }}{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:680px;">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/" style="color:#C9A84C;">Trang chủ</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'hotels:detail' hotel.slug %}" style="color:#C9A84C;">{{ hotel.name }}</a></li>
+      <li class="breadcrumb-item active">Đặt phòng</li>
+    </ol>
+  </nav>
+
+  <div class="bg-white rounded-3 shadow-sm overflow-hidden">
+    <div class="p-4 text-white" style="background:linear-gradient(135deg,#0D0D0D,#2a2a2a);">
+      <p style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#C9A84C;">Xác nhận đặt phòng</p>
+      <h3 style="font-family:'Cormorant Garamond',serif;">{{ hotel.name }}</h3>
+      <p class="mb-0 text-white-50">{{ room_type.name }} · {{ room_type.price_per_night|floatformat:0 }} ₫/đêm · Tối đa {{ room_type.capacity }} khách</p>
+    </div>
+    <div class="p-4">
+      <form method="post">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="mb-4">
+            <label class="form-label" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<div class="text-danger" style="font-size:12px;">{{ field.errors.0 }}</div>{% endif %}
+          </div>
+        {% endfor %}
+        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+
+        <div class="alert alert-warning" id="pricePreview" style="display:none;">
+          <strong>💰 Tổng tiền ước tính:</strong> <span id="previewAmount"></span>
+        </div>
+
+        <button type="submit" class="btn btn-gold w-100 py-3" style="font-size:14px;letter-spacing:2px;">
+          ✅ Xác nhận đặt phòng
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const pricePerNight = {{ room_type.price_per_night }};
+const ciInput = document.querySelector('[name="check_in"]');
+const coInput = document.querySelector('[name="check_out"]');
+
+function updatePreview() {
+  if (!ciInput.value || !coInput.value) return;
+  const nights = Math.round((new Date(coInput.value) - new Date(ciInput.value)) / 86400000);
+  if (nights > 0) {
+    document.getElementById('pricePreview').style.display = 'block';
+    document.getElementById('previewAmount').textContent =
+      `${nights} đêm × ${pricePerNight.toLocaleString('vi')} ₫ = ${(nights * pricePerNight).toLocaleString('vi')} ₫`;
+  }
+}
+ciInput.addEventListener('change', updatePreview);
+coInput.addEventListener('change', updatePreview);
+</script>
+{% endblock %}

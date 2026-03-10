@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Hồ sơ — Hotel GIS{% endblock %}
+{% block content %}
+<div class="container py-5">
+  <div class="row">
+    <div class="col-lg-4 mb-4">
+      <div class="bg-white rounded-3 shadow-sm p-4 text-center">
+        <div style="width:80px;height:80px;background:#C9A84C;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 16px;">👤</div>
+        <h4 style="font-family:'Cormorant Garamond',serif;">{{ user.get_full_name|default:user.username }}</h4>
+        <p class="text-muted" style="font-size:13px;">{{ user.email }}</p>
+        <p class="text-muted" style="font-size:12px;">Tham gia: {{ user.date_joined|date:"d/m/Y" }}</p>
+        <hr>
+        <a href="{% url 'accounts:logout' %}" class="btn btn-outline-danger btn-sm w-100">Đăng xuất</a>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      <h4 class="mb-4" style="font-family:'Cormorant Garamond',serif;">Lịch sử đặt phòng</h4>
+      {% for b in bookings %}
+        <div class="bg-white rounded-3 shadow-sm p-4 mb-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <h6 class="fw-semibold mb-1">{{ b.room_type.hotel.name }}</h6>
+              <p class="text-muted mb-1" style="font-size:13px;">🛏️ {{ b.room_type.name }}</p>
+              <p class="mb-1" style="font-size:13px;">📅 {{ b.check_in|date:"d/m/Y" }} → {{ b.check_out|date:"d/m/Y" }} ({{ b.nights }} đêm)</p>
+              <p class="mb-0" style="font-size:13px;color:#C9A84C;font-weight:600;">{{ b.total_price|floatformat:0 }} ₫</p>
+            </div>
+            <div class="text-end">
+              <span class="badge {% if b.status == 'confirmed' %}bg-success{% elif b.status == 'pending' %}bg-warning text-dark{% elif b.status == 'cancelled' %}bg-danger{% else %}bg-secondary{% endif %} mb-2">
+                {{ b.get_status_display }}
+              </span><br>
+              <a href="{% url 'bookings:detail' b.pk %}" class="btn btn-sm btn-outline-secondary me-1">Chi tiết</a>
+              {% if b.status == 'pending' or b.status == 'confirmed' %}
+                <a href="{% url 'bookings:cancel' b.pk %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Hủy đặt phòng này?')">Hủy</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="bg-white rounded-3 shadow-sm p-5 text-center text-muted">
+          <div style="font-size:3rem;">🛎️</div>
+          <p>Bạn chưa có đặt phòng nào.</p>
+          <a href="/" class="btn btn-gold">Khám phá khách sạn</a>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

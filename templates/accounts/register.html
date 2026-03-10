@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Đăng ký — Hotel GIS{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:520px;">
+  <div class="bg-white rounded-3 shadow-sm p-5">
+    <h2 style="font-family:'Cormorant Garamond',serif;" class="mb-1">Tạo tài khoản</h2>
+    <p class="text-muted mb-4" style="font-size:13px;">Đăng ký để đặt phòng và quản lý hành trình của bạn</p>
+    <form method="post">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<div class="text-danger" style="font-size:12px;">{{ field.errors.0 }}</div>{% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-gold w-100 py-2 mt-2">Đăng ký</button>
+    </form>
+    <p class="text-center mt-3" style="font-size:13px;">Đã có tài khoản? <a href="{% url 'accounts:login' %}" style="color:#C9A84C;">Đăng nhập</a></p>
+  </div>
+</div>
+{% endblock %}
