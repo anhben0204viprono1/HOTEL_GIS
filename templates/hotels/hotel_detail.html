@@ -106,8 +106,8 @@
 
 {% block extra_js %}
 <script>
-const hotelLat = Number("{{ hotel.latitude }}");
-const hotelLng = Number("{{ hotel.longitude }}");
+const hotelLat = parseFloat("{{ hotel.latitude|default:'0' }}");
+const hotelLng = parseFloat("{{ hotel.longitude|default:'0' }}");
 const hotelName = "{{ hotel.name }}";
 let map, userMarker, routingControl, userLat = null, userLng = null;
 
@@ -116,8 +116,12 @@ L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap'
 }).addTo(map);
 const hotelIcon = L.divIcon({
-  html:`<div style="background:#C9A84C;color:#0D0D0D;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.3);">🏨 ${hotelName.length > 15 ? hotelName.substring(0,15)+'…' : hotelName}</div>`,
-  className:'', iconAnchor:[0,0]
+  html:`<div style="background:#C9A84C;color:#0D0D0D;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.3);">
+  🏨 ${hotelName.length > 15 ? hotelName.substring(0,15)+'…' : hotelName}
+  </div>`,
+  className:'',
+  iconSize:[120,30],
+  iconAnchor:[60,15]   // 🎯 tâm của icon
 });
 L.marker([hotelLat, hotelLng], {icon: hotelIcon}).addTo(map)
   .bindPopup(`<strong>${hotelName}</strong><br>{{ hotel.address }}`).openPopup();
@@ -128,7 +132,7 @@ function locateUser() {
     return;
   }
 
-  document.getElementById('mapStatus').textContent = '⏳ Đang định vị...';
+  if (mapStatus) mapStatus.textContent = '⏳ Đang định vị...';
 
   navigator.geolocation.getCurrentPosition(
     function (pos) {
@@ -157,10 +161,10 @@ function locateUser() {
 
       map.setView([userLat, userLng], 15);
 
-      document.getElementById('mapStatus').textContent = '✅ Đã xác định vị trí';
+      if (mapStatus) mapStatus.textContent = '✅ Đã xác định vị trí';
 
       setTimeout(() => {
-        document.getElementById('mapStatus').textContent = '';
+        if (mapStatus) mapStatus.textContent = '';
       }, 3000);
     },
 
@@ -172,12 +176,12 @@ function locateUser() {
       if (error.code === 2) msg = "❌ Không tìm thấy vị trí";
       if (error.code === 3) msg = "❌ Hết thời gian định vị";
 
-      document.getElementById('mapStatus').textContent = msg;
+      if (mapStatus) mapStatus.textContent = msg;
 
       console.log("Geolocation error:", error);
 
       setTimeout(() => {
-        document.getElementById('mapStatus').textContent = '';
+        if (mapStatus) mapStatus.textContent = '';
       }, 4000);
     },
 

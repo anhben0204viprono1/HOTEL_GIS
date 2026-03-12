@@ -1,147 +1,170 @@
+"""
+Seed dữ liệu mẫu — dựa theo INSERT trong SQL schema thực tế.
+Chạy: python manage.py seed_hotels
+"""
 from django.core.management.base import BaseCommand
-from hotels.models import Hotel, HotelCategory, RoomType, Amenity
+from hotels.models import Hotel, Amenity, RoomType, RoomAmenity, Room
+from django.utils.text import slugify
+from decimal import Decimal
 
+AMENITIES_DATA = [
+    ('WiFi miễn phí',     'other',         'Kết nối WiFi tốc độ cao'),
+    ('TV màn hình phẳng', 'entertainment', 'TV LED 40 inch trở lên'),
+    ('Điều hòa',          'climate',       'Điều hòa 2 chiều'),
+    ('Minibar',           'kitchen',       'Tủ lạnh minibar'),
+    ('Máy pha cà phê',    'kitchen',       'Máy pha cà phê Nespresso'),
+    ('Bồn tắm',           'bathroom',      'Bồn tắm nằm'),
+    ('Vòi hoa sen',       'bathroom',      'Vòi sen tăng áp'),
+    ('Két sắt',           'bedroom',       'Két sắt điện tử'),
+    ('Ban công',          'other',         'Ban công riêng'),
+    ('Netflix',           'entertainment', 'Tài khoản Netflix'),
+]
 
 HOTELS_DATA = [
     {
-        "name": "Grand Saigon Palace",
-        "slug": "grand-saigon-palace",
-        "address": "12 Lê Lợi, Quận 1",
-        "city": "Hồ Chí Minh",
-        "lat": 10.7769, "lng": 106.7009,
-        "stars": 5, "price": 4800000,
-        "desc": "Khách sạn sang trọng bậc nhất trung tâm Sài Gòn, tầm nhìn toàn cảnh thành phố.",
-        "phone": "028 3823 4999",
-        "amenities": ["wifi", "pool", "gym", "spa", "restaurant", "parking", "bar", "breakfast"],
-        "rooms": [
-            {"name": "Deluxe Room", "price": 2400000, "capacity": 2, "total": 20},
-            {"name": "Premier Suite", "price": 4800000, "capacity": 3, "total": 10},
-            {"name": "Presidential Suite", "price": 9600000, "capacity": 4, "total": 3},
+        'name': 'The Reverie Saigon',
+        'address': '22-36 Nguyễn Huệ, Bến Nghé, Quận 1, TP.HCM',
+        'city': 'Hồ Chí Minh',
+        'lat': '10.77378600', 'lng': '106.70454926',
+        'phone': '02838236688', 'email': 'info@thereveriesaigon.com',
+        'star_rating': 5,
+        'desc': 'Khách sạn sang trọng tại trung tâm TP.HCM',
+        'website': 'https://www.thereveriesaigon.com',
+        'rooms': [
+            {'name':'Deluxe Room','bed':'double','capacity':2,'area':35,'price':3200000,'count':20},
+            {'name':'Premier Suite','bed':'king','capacity':3,'area':65,'price':6500000,'count':8},
+            {'name':'Presidential Suite','bed':'king','capacity':4,'area':120,'price':15000000,'count':2},
         ]
     },
     {
-        "name": "Riverside Boutique Hotel",
-        "slug": "riverside-boutique-hotel",
-        "address": "45 Bến Bạch Đằng, Quận 1",
-        "city": "Hồ Chí Minh",
-        "lat": 10.7755, "lng": 106.7053,
-        "stars": 4, "price": 2200000,
-        "desc": "Khách sạn boutique bên sông Sài Gòn, phong cách Đông Dương hiện đại.",
-        "phone": "028 3910 5000",
-        "amenities": ["wifi", "restaurant", "bar", "breakfast", "laundry"],
-        "rooms": [
-            {"name": "Standard Room", "price": 1500000, "capacity": 2, "total": 30},
-            {"name": "River View Room", "price": 2200000, "capacity": 2, "total": 15},
-            {"name": "Penthouse Suite", "price": 5500000, "capacity": 4, "total": 2},
+        'name': 'Rex Hotel',
+        'address': '141 Nguyễn Huệ, Bến Nghé, Quận 1, TP.HCM',
+        'city': 'Hồ Chí Minh',
+        'lat': '10.77586934', 'lng': '106.70126429',
+        'phone': '02838222222', 'email': 'info@rexhotel.com',
+        'star_rating': 4,
+        'desc': 'Khách sạn biểu tượng lịch sử Sài Gòn',
+        'website': 'https://www.rexhotel.com',
+        'rooms': [
+            {'name':'Standard Room','bed':'twin','capacity':2,'area':28,'price':1800000,'count':30},
+            {'name':'Superior Room','bed':'double','capacity':2,'area':35,'price':2400000,'count':20},
+            {'name':'Junior Suite','bed':'king','capacity':3,'area':55,'price':4500000,'count':6},
         ]
     },
     {
-        "name": "Danang Beachfront Resort",
-        "slug": "danang-beachfront-resort",
-        "address": "122 Võ Nguyên Giáp, Ngũ Hành Sơn",
-        "city": "Đà Nẵng",
-        "lat": 16.0016, "lng": 108.2463,
-        "stars": 5, "price": 3500000,
-        "desc": "Resort 5 sao trên bãi biển Mỹ Khê đẹp nhất Đà Nẵng, trải nghiệm nghỉ dưỡng đẳng cấp.",
-        "phone": "0236 396 8888",
-        "amenities": ["wifi", "pool", "gym", "spa", "restaurant", "beach", "bar", "airport", "breakfast"],
-        "rooms": [
-            {"name": "Garden View Room", "price": 2200000, "capacity": 2, "total": 40},
-            {"name": "Ocean View Room", "price": 3500000, "capacity": 2, "total": 25},
-            {"name": "Beach Villa", "price": 8000000, "capacity": 4, "total": 8},
+        'name': 'Park Hyatt Saigon',
+        'address': '2 Công Trường Lam Sơn, Bến Nghé, Quận 1, TP.HCM',
+        'city': 'Hồ Chí Minh',
+        'lat': '10.77776170', 'lng': '106.70338423',
+        'phone': '02838233333', 'email': 'info@parkhyattsaigon.com',
+        'star_rating': 5,
+        'desc': 'Khách sạn cao cấp 5 sao giữa trung tâm Sài Gòn',
+        'website': 'https://www.parkhyattsaigon.com',
+        'rooms': [
+            {'name':'Park Room','bed':'double','capacity':2,'area':40,'price':4200000,'count':25},
+            {'name':'Park Suite','bed':'king','capacity':3,'area':80,'price':8500000,'count':8},
         ]
     },
     {
-        "name": "Hoi An Ancient House Hotel",
-        "slug": "hoi-an-ancient-house",
-        "address": "18 Trần Phú, Phố Cổ",
-        "city": "Hội An",
-        "lat": 15.8801, "lng": 108.3380,
-        "stars": 4, "price": 1800000,
-        "desc": "Khách sạn nằm giữa lòng phố cổ Hội An di sản UNESCO, kiến trúc truyền thống.",
-        "phone": "0235 386 1445",
-        "amenities": ["wifi", "pool", "restaurant", "breakfast", "laundry", "spa"],
-        "rooms": [
-            {"name": "Heritage Room", "price": 1200000, "capacity": 2, "total": 20},
-            {"name": "Deluxe Garden", "price": 1800000, "capacity": 2, "total": 10},
-            {"name": "Ancient House Suite", "price": 3500000, "capacity": 3, "total": 4},
+        'name': 'Mai House Saigon',
+        'address': '1-3-5 Ngô Thời Nhiệm, Phường 6, Quận 3, TP.HCM',
+        'city': 'Hồ Chí Minh',
+        'lat': '10.78209958', 'lng': '106.69159148',
+        'phone': '02838355555', 'email': 'info@maihousesaigon.com',
+        'star_rating': 4,
+        'desc': 'Khách sạn boutique phong cách Đông Dương hiện đại',
+        'website': 'https://www.maihousesaigon.com',
+        'rooms': [
+            {'name':'Classic Room','bed':'double','capacity':2,'area':30,'price':2100000,'count':15},
+            {'name':'Deluxe Room','bed':'king','capacity':2,'area':42,'price':2800000,'count':10},
         ]
     },
     {
-        "name": "Hanoi Imperial Hotel",
-        "slug": "hanoi-imperial-hotel",
-        "address": "56 Hàng Bài, Hoàn Kiếm",
-        "city": "Hà Nội",
-        "lat": 21.0285, "lng": 105.8542,
-        "stars": 5, "price": 5200000,
-        "desc": "Khách sạn hạng sang trung tâm Hà Nội, phong cách kiến trúc Pháp cổ điển.",
-        "phone": "024 3936 6888",
-        "amenities": ["wifi", "gym", "spa", "restaurant", "parking", "bar", "ac", "breakfast", "laundry"],
-        "rooms": [
-            {"name": "Classic Room", "price": 2800000, "capacity": 2, "total": 35},
-            {"name": "Deluxe Suite", "price": 5200000, "capacity": 3, "total": 12},
-            {"name": "Royal Suite", "price": 12000000, "capacity": 4, "total": 2},
+        'name': 'Vinpearl Landmark 81',
+        'address': '720A Điện Biên Phủ, Phường 22, Bình Thạnh, TP.HCM',
+        'city': 'Hồ Chí Minh',
+        'lat': '10.79523603', 'lng': '106.72188840',
+        'phone': '02838433333', 'email': 'info@vinpearllandmark81.com',
+        'star_rating': 5,
+        'desc': 'Khách sạn trên tòa nhà cao nhất Việt Nam',
+        'website': 'https://www.vinpearl.com',
+        'rooms': [
+            {'name':'Sky Room','bed':'king','capacity':2,'area':45,'price':5500000,'count':30},
+            {'name':'Sky Suite','bed':'king','capacity':3,'area':90,'price':12000000,'count':10},
         ]
     },
     {
-        "name": "Nha Trang Ocean Star",
-        "slug": "nha-trang-ocean-star",
-        "address": "38 Trần Phú, Lộc Thọ",
-        "city": "Nha Trang",
-        "lat": 12.2388, "lng": 109.1967,
-        "stars": 4, "price": 2100000,
-        "desc": "Khách sạn view biển Nha Trang xanh ngắt, sát bãi biển đẹp nhất miền Trung.",
-        "phone": "0258 352 8888",
-        "amenities": ["wifi", "pool", "restaurant", "beach", "bar", "breakfast", "parking"],
-        "rooms": [
-            {"name": "Standard Sea View", "price": 1600000, "capacity": 2, "total": 30},
-            {"name": "Deluxe Balcony", "price": 2100000, "capacity": 2, "total": 20},
-            {"name": "Ocean Suite", "price": 4500000, "capacity": 4, "total": 5},
+        'name': 'Holiday Inn & Suites',
+        'address': '18E Cộng Hòa, Tân Bình, TP.HCM',
+        'city': 'Hồ Chí Minh',
+        'lat': '10.80165237', 'lng': '106.65506175',
+        'phone': '02838466666', 'email': 'info@holidayinnandsuites.com',
+        'star_rating': 4,
+        'desc': 'Khách sạn hiện đại gần sân bay Tân Sơn Nhất',
+        'website': 'https://www.ihg.com',
+        'rooms': [
+            {'name':'Standard Room','bed':'twin','capacity':2,'area':28,'price':1600000,'count':40},
+            {'name':'Suite','bed':'king','capacity':4,'area':60,'price':3200000,'count':10},
         ]
     },
 ]
 
 
 class Command(BaseCommand):
-    help = "Tạo dữ liệu mẫu khách sạn"
+    help = 'Tạo dữ liệu mẫu khách sạn theo schema mới'
 
     def handle(self, *args, **kwargs):
-        cat, _ = HotelCategory.objects.get_or_create(name="Resort & Spa")
-        cat2, _ = HotelCategory.objects.get_or_create(name="Boutique Hotel")
-        cat3, _ = HotelCategory.objects.get_or_create(name="Business Hotel")
+        self.stdout.write('📦 Tạo tiện ích...')
+        amenity_objs = []
+        for name, cat, desc in AMENITIES_DATA:
+            a, _ = Amenity.objects.get_or_create(name=name, defaults={'category':cat,'description':desc})
+            amenity_objs.append(a)
 
-        cats = [cat, cat, cat2, cat2, cat3, cat]
-
-        for i, data in enumerate(HOTELS_DATA):
+        self.stdout.write('🏨 Tạo khách sạn...')
+        for data in HOTELS_DATA:
             hotel, created = Hotel.objects.get_or_create(
-                slug=data['slug'],
+                slug=slugify(data['name']),
                 defaults={
                     'name': data['name'],
-                    'category': cats[i],
-                    'address': data['address'],
-                    'city': data['city'],
-                    'latitude': data['lat'],
-                    'longitude': data['lng'],
-                    'stars': data['stars'],
-                    'price_per_night': data['price'],
+                    'address':     data['address'],
+                    'city':        data['city'],
+                    'latitude':    data['lat'],
+                    'longitude':   data['lng'],
+                    'phone':       data['phone'],
+                    'email':       data['email'],
+                    'star_rating': data['star_rating'],
                     'description': data['desc'],
-                    'phone': data['phone'],
+                    'website':     data['website'],
                 }
             )
-            if created:
-                for icon in data['amenities']:
-                    Amenity.objects.get_or_create(hotel=hotel, icon=icon)
-                for r in data['rooms']:
-                    RoomType.objects.get_or_create(
-                        hotel=hotel, name=r['name'],
-                        defaults={
-                            'price_per_night': r['price'],
-                            'capacity': r['capacity'],
-                            'total_rooms': r['total']
-                        }
-                    )
-                self.stdout.write(self.style.SUCCESS(f"✅ Tạo: {hotel.name}"))
-            else:
-                self.stdout.write(f"⏭ Đã tồn tại: {hotel.name}")
+            if not created:
+                self.stdout.write(f'  ⏭ Đã tồn tại: {hotel.name}')
+                continue
 
-        self.stdout.write(self.style.SUCCESS("\n🎉 Seed hoàn tất! 6 khách sạn đã được tạo."))
+            # Tạo RoomType + Room thực tế
+            for i, r in enumerate(data['rooms']):
+                rt = RoomType.objects.create(
+                    hotel=hotel,
+                    name=r['name'],
+                    bed_type=r['bed'],
+                    max_occupancy=r['capacity'],
+                    area_sqm=r['area'],
+                    price_per_night=r['price'],
+                )
+                # Gắn một số tiện ích mẫu
+                for a in amenity_objs[:5]:
+                    RoomAmenity.objects.get_or_create(room_type=rt, amenity=a)
+
+                # Tạo phòng thực tế
+                for j in range(1, r['count'] + 1):
+                    floor  = (j // 10) + 1
+                    number = f'{floor}{j:02d}'
+                    Room.objects.get_or_create(
+                        hotel=hotel,
+                        room_number=number,
+                        defaults={'room_type': rt, 'floor': floor, 'status': 'available'}
+                    )
+
+            self.stdout.write(self.style.SUCCESS(f'  ✅ {hotel.name}'))
+
+        self.stdout.write(self.style.SUCCESS('\n🎉 Seed hoàn tất!'))
