@@ -152,11 +152,20 @@
           📍 Vị trí khách sạn
         </h6>
 
-        <div id="map-detail"></div>
+        <div id="map-detail"
+             data-lat="{{ hotel_lat|stringformat:'f' }}"
+             data-lng="{{ hotel_lng|stringformat:'f' }}"
+             data-name="{{ hotel.name|escapejs }}"
+             data-addr="{{ hotel.address|escapejs }}"></div>
 
         <div class="mt-3 d-grid gap-2">
           <button class="btn btn-gold btn-sm" id="btn-locate" onclick="locateUser()">
             📍 Xác định vị trí của tôi
+          </button>
+          <!-- Nhập tọa độ thủ công — dùng khi GPS máy tính không chính xác -->
+          <button class="btn btn-outline-secondary btn-sm" onclick="toggleManualInput()"
+                  id="btn-manual" style="font-size:12px;">
+            ✏️ Nhập tọa độ thủ công
           </button>
           <button class="btn btn-outline-secondary btn-sm" id="btn-route" onclick="findRoute()">
             🗺 Tìm đường đến đây
@@ -164,6 +173,41 @@
           <button class="btn btn-outline-danger btn-sm" onclick="clearRoute()">
             ✕ Xóa đường đi
           </button>
+        </div>
+
+        <!-- Panel nhập tọa độ thủ công -->
+        <div id="manualInputPanel" style="display:none;background:#f8f7f4;border-radius:10px;padding:12px;margin-top:8px;border:1px solid #e5e1d8;">
+          <p style="font-size:11px;color:#888;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">
+            Nhập tọa độ vị trí của bạn
+          </p>
+          <div class="row g-2">
+            <div class="col-6">
+              <label style="font-size:10px;color:#888;">Vĩ độ (Lat)</label>
+              <input type="number" id="manualLat" class="form-control form-control-sm"
+                     placeholder="VD: 21.0285" step="0.0001"
+                     style="font-family:monospace;font-size:13px;">
+            </div>
+            <div class="col-6">
+              <label style="font-size:10px;color:#888;">Kinh độ (Lng)</label>
+              <input type="number" id="manualLng" class="form-control form-control-sm"
+                     placeholder="VD: 105.8542" step="0.0001"
+                     style="font-family:monospace;font-size:13px;">
+            </div>
+          </div>
+          <div class="mt-2 d-flex gap-2">
+            <button class="btn btn-sm btn-gold flex-grow-1" onclick="applyManualCoord()">
+              ✅ Xác nhận
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="useHanoiPreset()" style="font-size:11px;">
+              🏙 Hà Nội
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="useHCMPreset()" style="font-size:11px;">
+              🌆 HCM
+            </button>
+          </div>
+          <p style="font-size:10px;color:#aaa;margin-top:6px;margin-bottom:0;">
+            💡 Google Maps: click chuột phải vào vị trí → copy tọa độ
+          </p>
         </div>
 
         <div id="routeInfo" class="mt-2 text-center d-none"></div>
@@ -182,11 +226,12 @@
 
 {% block extra_js %}
 <script>
-// ── Tọa độ khách sạn — lấy từ context Django (float, không qua DecimalField)
-const HOTEL_LAT = parseFloat("{{ hotel_lat|default:'0' }}");
-const HOTEL_LNG = parseFloat("{{ hotel_lng|default:'0' }}");
-const HOTEL_NAME = "{{ hotel.name|escapejs }}";
-const HOTEL_ADDR = "{{ hotel.address|escapejs }}";
+// ── Tọa độ lấy từ data attribute của #map-detail (tránh lỗi locale dấu phẩy)
+const _mapEl     = document.getElementById('map-detail');
+const HOTEL_LAT  = parseFloat(_mapEl.dataset.lat);
+const HOTEL_LNG  = parseFloat(_mapEl.dataset.lng);
+const HOTEL_NAME = _mapEl.dataset.name;
+const HOTEL_ADDR = _mapEl.dataset.addr;
 
 // ── Biến trạng thái
 let detailMap     = null;
@@ -344,6 +389,61 @@ function showInfo(html) {
 function hideInfo() {
   document.getElementById('routeInfo').classList.add('d-none');
 }
+// ── Hàm: Toggle panel nhập tọa độ thủ công
+function toggleManualInput() {
+  const panel = document.getElementById('manualInputPanel');
+  const btn   = document.getElementById('btn-manual');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? '✏️ Nhập tọa độ thủ công' : '✕ Đóng';
+}
+
+// ── Hàm: Áp dụng tọa độ đã nhập
+function applyManualCoord() {
+  const lat = parseFloat(document.getElementById('manualLat').value);
+  const lng = parseFloat(document.getElementById('manualLng').value);
+
+  if (isNaN(lat) || isNaN(lng)) {
+    showInfo('❌ Tọa độ không hợp lệ. Vui lòng nhập đúng định dạng số.');
+    return;
+  }
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+    showInfo('❌ Tọa độ nằm ngoài phạm vi cho phép.');
+    return;
+  }
+
+  userLat = lat;
+  userLng = lng;
+
+  if (userMarker) detailMap.removeLayer(userMarker);
+
+  const userIcon = L.divIcon({
+    html: `<div style="background:#2563eb;color:#fff;width:34px;height:34px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;font-size:17px;
+      border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);">📍</div>`,
+    className: '', iconSize: [34,34], iconAnchor: [17,17],
+  });
+
+  userMarker = L.marker([userLat, userLng], { icon: userIcon })
+    .addTo(detailMap)
+    .bindPopup(`📍 Vị trí của bạn<br><code style="font-size:11px;">${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E</code>`)
+    .openPopup();
+
+  const dist = haversine(userLat, userLng, HOTEL_LAT, HOTEL_LNG);
+  const distTxt = dist < 1 ? Math.round(dist*1000)+' m' : dist.toFixed(1)+' km';
+  showInfo(`✅ Bạn cách <strong>${HOTEL_NAME}</strong> khoảng <strong>${distTxt}</strong>`);
+
+  detailMap.fitBounds([[userLat, userLng], [HOTEL_LAT, HOTEL_LNG]], { padding: [50, 50] });
+
+  // Đóng panel
+  document.getElementById('manualInputPanel').style.display = 'none';
+  document.getElementById('btn-manual').textContent = '✏️ Nhập tọa độ thủ công';
+}
+
+// ── Preset tọa độ thành phố
+function useHanoiPreset()  { document.getElementById('manualLat').value = '21.0285'; document.getElementById('manualLng').value = '105.8542'; }
+function useHCMPreset()    { document.getElementById('manualLat').value = '10.7769'; document.getElementById('manualLng').value = '106.7009'; }
+
 function haversine(la1, lo1, la2, lo2) {
   const R = 6371, r = Math.PI / 180;
   const dLa = (la2 - la1) * r, dLo = (lo2 - lo1) * r;
