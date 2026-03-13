@@ -3,52 +3,97 @@
 
 {% block extra_css %}
 <style>
-  #map-detail { height: 380px; border-radius:12px; }
-  .amenity-badge { display:inline-block; background:#fff3cd; color:#856404; padding:5px 12px; border-radius:20px; font-size:12px; margin:3px; }
+  #map-detail {
+    height: 360px;
+    border-radius: 12px;
+    overflow: hidden;
+    z-index: 1;
+  }
+  .amenity-badge {
+    display: inline-block;
+    background: #fff3cd; color: #856404;
+    padding: 5px 12px; border-radius: 20px;
+    font-size: 12px; margin: 3px;
+  }
   .hero-detail {
     background: linear-gradient(to right, rgba(13,13,13,.9), rgba(13,13,13,.3)),
       url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1200&q=80') center/cover;
-    min-height: 280px; display:flex; align-items:flex-end;
+    min-height: 280px; display: flex; align-items: flex-end;
   }
+  #routeInfo { font-size: 13px; color: #444; padding: 8px 12px; background: #f8f7f4; border-radius: 8px; }
 </style>
 {% endblock %}
 
 {% block content %}
 
+{% if hotel.image %}
+<style>
+  .hero-detail {
+    background-image: linear-gradient(to right,rgba(13,13,13,.85),rgba(13,13,13,.3)),
+      url('{{ hotel.image.url }}') !important;
+    background-size: cover !important;
+    background-position: center !important;
+  }
+</style>
+{% endif %}
+
 <div class="hero-detail text-white px-0">
-  {% if hotel.image %}
-  <style>.hero-detail{background-image:linear-gradient(to right,rgba(13,13,13,.85),rgba(13,13,13,.3)),url('{{ hotel.image.url }}') !important;}</style>
-  {% endif %}
   <div class="container pb-4">
     <nav aria-label="breadcrumb">
       <ol class="breadcrumb mb-2">
         <li class="breadcrumb-item"><a href="/" style="color:#C9A84C;">Trang chủ</a></li>
-        <li class="breadcrumb-item active text-white">{{ hotel.name }}</li>
+        <li class="breadcrumb-item active text-white-50">{{ hotel.name }}</li>
       </ol>
     </nav>
-    <h1 style="font-family:'Cormorant Garamond',serif;font-size:clamp(1.8rem,4vw,3rem);font-weight:300;">{{ hotel.name }}</h1>
+    <h1 style="font-family:'Cormorant Garamond',serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:300;">
+      {{ hotel.name }}
+    </h1>
     <p class="mb-1">
-      {% for i in hotel.star_range %}<span style="color:#C9A84C;">★</span>{% endfor %}
+      {% for i in hotel.star_range %}
+        <span style="color:#C9A84C;">★</span>
+      {% endfor %}
       <span class="ms-2 text-white-50" style="font-size:13px;">📍 {{ hotel.address }}, {{ hotel.city }}</span>
     </p>
-    <p style="font-size:1.3rem;color:#C9A84C;font-weight:500;">{{ hotel.price_per_night|floatformat:0 }} ₫<span style="font-size:12px;color:#aaa;font-weight:300;">/đêm</span></p>
+    {% if cheapest %}
+    <p style="font-size:1.2rem;color:#C9A84C;font-weight:500;">
+      từ {{ cheapest.price_per_night|floatformat:0 }} ₫
+      <span style="font-size:12px;color:#aaa;font-weight:300;">/đêm</span>
+    </p>
+    {% endif %}
   </div>
 </div>
 
 <div class="container my-5">
   <div class="row g-4">
+
+    <!-- Cột trái: mô tả + tiện ích + loại phòng -->
     <div class="col-lg-7">
+
       <div class="bg-white p-4 rounded-3 shadow-sm mb-4">
         <h4 style="font-family:'Cormorant Garamond',serif;">Mô tả</h4>
-        <p class="text-muted">{{ hotel.description }}</p>
-        {% if hotel.phone %}<p class="mb-1"><strong>📞</strong> {{ hotel.phone }}</p>{% endif %}
-        {% if hotel.email %}<p class="mb-1"><strong>✉️</strong> {{ hotel.email }}</p>{% endif %}
+        <p class="text-muted">{{ hotel.description|default:"Chưa có mô tả." }}</p>
+        <hr class="my-2">
+        <div class="row g-2" style="font-size:13px;">
+          {% if hotel.phone %}
+          <div class="col-sm-6">📞 <a href="tel:{{ hotel.phone }}" style="color:inherit;">{{ hotel.phone }}</a></div>
+          {% endif %}
+          {% if hotel.email %}
+          <div class="col-sm-6">✉️ <a href="mailto:{{ hotel.email }}" style="color:inherit;">{{ hotel.email }}</a></div>
+          {% endif %}
+          {% if hotel.website %}
+          <div class="col-sm-6">🌐 <a href="{{ hotel.website }}" target="_blank" style="color:#C9A84C;">Website</a></div>
+          {% endif %}
+          <div class="col-sm-6">🕐 Nhận phòng: <strong>{{ hotel.check_in_time|time:"H:i" }}</strong></div>
+          <div class="col-sm-6">🕛 Trả phòng: <strong>{{ hotel.check_out_time|time:"H:i" }}</strong></div>
+        </div>
       </div>
 
       {% if amenities %}
       <div class="bg-white p-4 rounded-3 shadow-sm mb-4">
         <h5 class="mb-3" style="font-family:'Cormorant Garamond',serif;">Tiện nghi</h5>
-        {% for a in amenities %}<span class="amenity-badge">{{ a }}</span>{% endfor %}
+        {% for a in amenities %}
+          <span class="amenity-badge">{{ a.name }}</span>
+        {% endfor %}
       </div>
       {% endif %}
 
@@ -58,168 +103,253 @@
         <div class="row g-0">
           <div class="col-4">
             {% if room.image %}
-              <img src="{{ room.image.url }}" class="img-fluid h-100" style="object-fit:cover;min-height:120px;">
+              <img src="{{ room.image.url }}" class="img-fluid h-100" style="object-fit:cover;min-height:130px;">
             {% else %}
-              <div class="d-flex align-items-center justify-content-center bg-light h-100" style="min-height:120px;font-size:2rem;">🛏️</div>
+              <div class="d-flex align-items-center justify-content-center bg-light h-100"
+                   style="min-height:130px;font-size:2.5rem;">🛏️</div>
             {% endif %}
           </div>
           <div class="col-8 p-3">
-            <h6 class="fw-semibold">{{ room.name }}</h6>
-            <p class="text-muted mb-1" style="font-size:12px;">👥 Tối đa {{ room.capacity }} khách &nbsp;|&nbsp; 🏠 {{ room.total_rooms }} phòng</p>
-            {% if room.description %}<p style="font-size:12px;color:#666;">{{ room.description|truncatechars:80 }}</p>{% endif %}
+            <h6 class="fw-semibold mb-1">{{ room.name }}</h6>
+            <p class="text-muted mb-1" style="font-size:12px;">
+              👥 Tối đa {{ room.max_occupancy }} khách
+              {% if room.area_sqm %}&nbsp;|&nbsp; 📐 {{ room.area_sqm }}m²{% endif %}
+              {% if room.bed_type %}&nbsp;|&nbsp; 🛏 {{ room.get_bed_type_display }}{% endif %}
+            </p>
+            <p class="mb-1" style="font-size:11px;color:#888;">
+              ✅ {{ room.available_rooms_count }} phòng còn trống
+            </p>
+            {% if room.description %}
+              <p style="font-size:12px;color:#666;">{{ room.description|truncatechars:80 }}</p>
+            {% endif %}
             <div class="d-flex justify-content-between align-items-center mt-2">
-              <span style="color:#C9A84C;font-weight:600;">{{ room.price_per_night|floatformat:0 }} ₫/đêm</span>
+              <span style="color:#C9A84C;font-weight:600;">
+                {{ room.price_per_night|floatformat:0 }} ₫/đêm
+              </span>
               {% if user.is_authenticated %}
-                <a href="{% url 'bookings:create' room.id %}" class="btn btn-sm btn-gold">Đặt ngay</a>
+                {% if room.available_rooms_count > 0 %}
+                  <a href="{% url 'bookings:create' room.id %}" class="btn btn-sm btn-gold">Đặt ngay</a>
+                {% else %}
+                  <span class="btn btn-sm btn-secondary disabled" style="opacity:.6;">Hết phòng</span>
+                {% endif %}
               {% else %}
-                <a href="{% url 'accounts:login' %}?next={% url 'hotels:detail' hotel.slug %}" class="btn btn-sm btn-outline-secondary">Đăng nhập để đặt</a>
+                <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-sm btn-outline-secondary">Đăng nhập để đặt</a>
               {% endif %}
             </div>
           </div>
         </div>
       </div>
       {% empty %}
-        <p class="text-muted">Chưa có thông tin loại phòng.</p>
+        <div class="alert alert-light text-muted">Chưa có thông tin loại phòng.</div>
       {% endfor %}
+
     </div>
 
+    <!-- Cột phải: bản đồ -->
     <div class="col-lg-5">
       <div class="bg-white p-3 rounded-3 shadow-sm sticky-top" style="top:80px;">
-        <h6 class="mb-2" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">📍 Vị trí khách sạn</h6>
+        <h6 class="mb-2" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">
+          📍 Vị trí khách sạn
+        </h6>
+
         <div id="map-detail"></div>
+
         <div class="mt-3 d-grid gap-2">
-          <button class="btn btn-gold btn-sm" onclick="locateUser()">📍 Xác định vị trí của tôi</button>
-          <button class="btn btn-outline-secondary btn-sm" onclick="findRoute()">🗺 Tìm đường đến đây</button>
-          <button class="btn btn-outline-secondary btn-sm" onclick="clearRoute()">✕ Xóa đường đi</button>
+          <button class="btn btn-gold btn-sm" id="btn-locate" onclick="locateUser()">
+            📍 Xác định vị trí của tôi
+          </button>
+          <button class="btn btn-outline-secondary btn-sm" id="btn-route" onclick="findRoute()">
+            🗺 Tìm đường đến đây
+          </button>
+          <button class="btn btn-outline-danger btn-sm" onclick="clearRoute()">
+            ✕ Xóa đường đi
+          </button>
         </div>
-        <div id="routeInfo" class="mt-2 text-center" style="font-size:12px;color:#666;display:none;"></div>
-        <hr>
+
+        <div id="routeInfo" class="mt-2 text-center d-none"></div>
+
+        <hr class="my-2">
         <div class="text-center" style="font-size:12px;color:#888;">
-          <div>🌐 {{ hotel.latitude|floatformat:4 }}°N, {{ hotel.longitude|floatformat:4 }}°E</div>
+          <div>🌐 {{ hotel_lat|floatformat:6 }}°N, {{ hotel_lng|floatformat:6 }}°E</div>
           <div class="mt-1">{{ hotel.address }}, {{ hotel.city }}</div>
         </div>
       </div>
     </div>
+
   </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const hotelLat = parseFloat("{{ hotel.latitude|default:'0' }}");
-const hotelLng = parseFloat("{{ hotel.longitude|default:'0' }}");
-const hotelName = "{{ hotel.name }}";
-let map, userMarker, routingControl, userLat = null, userLng = null;
+// ── Tọa độ khách sạn — lấy từ context Django (float, không qua DecimalField)
+const HOTEL_LAT = parseFloat("{{ hotel_lat|default:'0' }}");
+const HOTEL_LNG = parseFloat("{{ hotel_lng|default:'0' }}");
+const HOTEL_NAME = "{{ hotel.name|escapejs }}";
+const HOTEL_ADDR = "{{ hotel.address|escapejs }}";
 
-map = L.map('map-detail').setView([hotelLat, hotelLng], 15);
-L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
-  attribution: '&copy; OpenStreetMap'
-}).addTo(map);
-const hotelIcon = L.divIcon({
-  html:`<div style="background:#C9A84C;color:#0D0D0D;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.3);">
-  🏨 ${hotelName.length > 15 ? hotelName.substring(0,15)+'…' : hotelName}
-  </div>`,
-  className:'',
-  iconSize:[120,30],
-  iconAnchor:[60,15]   // 🎯 tâm của icon
-});
-L.marker([hotelLat, hotelLng], {icon: hotelIcon}).addTo(map)
-  .bindPopup(`<strong>${hotelName}</strong><br>{{ hotel.address }}`).openPopup();
+// ── Biến trạng thái
+let detailMap     = null;
+let userMarker    = null;
+let routingCtrl   = null;
+let userLat       = null;
+let userLng       = null;
 
+// ── Khởi tạo bản đồ
+(function initMap() {
+  detailMap = L.map('map-detail').setView([HOTEL_LAT, HOTEL_LNG], 15);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>'
+  }).addTo(detailMap);
+
+  // Marker khách sạn
+  const hotelIcon = L.divIcon({
+    html: `<div style="
+      background:#C9A84C;color:#0D0D0D;
+      padding:5px 11px;border-radius:20px;
+      font-size:11px;font-weight:600;white-space:nowrap;
+      box-shadow:0 2px 10px rgba(0,0,0,.35);
+      border:1.5px solid #0D0D0D;">
+      🏨 ${HOTEL_NAME.length > 18 ? HOTEL_NAME.substring(0,18)+'…' : HOTEL_NAME}
+    </div>`,
+    className: '',
+    iconAnchor: [0, 0],
+  });
+
+  L.marker([HOTEL_LAT, HOTEL_LNG], { icon: hotelIcon })
+    .addTo(detailMap)
+    .bindPopup(`<strong>${HOTEL_NAME}</strong><br>${HOTEL_ADDR}`)
+    .openPopup();
+})();
+
+// ── Hàm: Xác định vị trí người dùng
 function locateUser() {
   if (!navigator.geolocation) {
-    alert('Trình duyệt không hỗ trợ GPS');
+    showInfo('❌ Trình duyệt không hỗ trợ GPS');
     return;
   }
-
-  if (mapStatus) mapStatus.textContent = '⏳ Đang định vị...';
+  const btn = document.getElementById('btn-locate');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang định vị...';
+  showInfo('⏳ Đang xác định vị trí...');
 
   navigator.geolocation.getCurrentPosition(
-    function (pos) {
-
+    function(pos) {
       userLat = pos.coords.latitude;
       userLng = pos.coords.longitude;
+      btn.disabled = false;
+      btn.textContent = '📍 Xác định vị trí của tôi';
 
-      console.log("User location:", userLat, userLng); // debug
+      // Xóa marker cũ nếu có
+      if (userMarker) detailMap.removeLayer(userMarker);
 
-      if (userMarker) {
-        map.removeLayer(userMarker);
-      }
+      const userIcon = L.divIcon({
+        html: `<div style="
+          background:#2563eb;color:#fff;
+          width:34px;height:34px;border-radius:50%;
+          display:flex;align-items:center;justify-content:center;
+          font-size:17px;border:3px solid #fff;
+          box-shadow:0 2px 8px rgba(0,0,0,.3);">📍</div>`,
+        className: '',
+        iconSize: [34,34],
+        iconAnchor: [17,17],
+      });
 
-      userMarker = L.marker([userLat, userLng], {
-        icon: L.divIcon({
-          html: `<div style="background:#4A90D9;color:#fff;width:32px;height:32px;border-radius:50%;
-          display:flex;align-items:center;justify-content:center;font-size:16px;
-          border:3px solid #fff;box-shadow:0 0 0 3px rgba(74,144,217,.3);">📍</div>`,
-          className: '',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16]
-        })
-      }).addTo(map)
-        .bindPopup('📍 Vị trí của bạn<br>' + userLat.toFixed(5) + ', ' + userLng.toFixed(5))
+      userMarker = L.marker([userLat, userLng], { icon: userIcon })
+        .addTo(detailMap)
+        .bindPopup('📍 Vị trí của bạn')
         .openPopup();
 
-      map.setView([userLat, userLng], 15);
+      const dist = haversine(userLat, userLng, HOTEL_LAT, HOTEL_LNG);
+      const distTxt = dist < 1
+        ? Math.round(dist * 1000) + ' m'
+        : dist.toFixed(1) + ' km';
 
-      if (mapStatus) mapStatus.textContent = '✅ Đã xác định vị trí';
-
-      setTimeout(() => {
-        if (mapStatus) mapStatus.textContent = '';
-      }, 3000);
+      showInfo(`✅ Bạn cách <strong>${HOTEL_NAME}</strong> khoảng <strong>${distTxt}</strong>`);
+      detailMap.fitBounds([[userLat, userLng], [HOTEL_LAT, HOTEL_LNG]], { padding: [50, 50] });
     },
-
-    function (error) {
-
-      let msg = "❌ Không thể định vị";
-
-      if (error.code === 1) msg = "❌ Bạn đã chặn quyền vị trí";
-      if (error.code === 2) msg = "❌ Không tìm thấy vị trí";
-      if (error.code === 3) msg = "❌ Hết thời gian định vị";
-
-      if (mapStatus) mapStatus.textContent = msg;
-
-      console.log("Geolocation error:", error);
-
-      setTimeout(() => {
-        if (mapStatus) mapStatus.textContent = '';
-      }, 4000);
+    function(err) {
+      btn.disabled = false;
+      btn.textContent = '📍 Xác định vị trí của tôi';
+      showInfo('❌ Không thể lấy vị trí. Hãy cấp quyền GPS cho trình duyệt.');
     },
-
-    {
-      enableHighAccuracy: true,
-      timeout: 20000,
-      maximumAge: 0
-    }
+    { enableHighAccuracy: true, timeout: 15000 }
   );
 }
+
+// ── Hàm: Tìm đường đến khách sạn
 function findRoute() {
-  if (!userLat) { locateUser(); return; }
-  if (routingControl) map.removeControl(routingControl);
-  routingControl = L.Routing.control({
-    waypoints: [L.latLng(userLat, userLng), L.latLng(hotelLat, hotelLng)],
-    lineOptions: {styles: [{color:'#C9A84C', weight:5, opacity:.9}]},
-    createMarker: () => null, addWaypoints: false, show: false,
-  }).addTo(map);
-  routingControl.on('routesfound', e => {
-    const s = e.routes[0].summary;
-    document.getElementById('routeInfo').textContent =
-      `🗺 ${(s.totalDistance/1000).toFixed(1)} km · ~${Math.round(s.totalTime/60)} phút`;
+  if (!userLat || !userLng) {
+    // Chưa định vị → định vị trước rồi tự động tìm đường
+    navigator.geolocation.getCurrentPosition(
+      function(pos) {
+        userLat = pos.coords.latitude;
+        userLng = pos.coords.longitude;
+        drawRoute();
+      },
+      function() { showInfo('❌ Cần cấp quyền GPS để tìm đường.'); },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+    showInfo('⏳ Đang lấy vị trí để tìm đường...');
+    return;
+  }
+  drawRoute();
+}
+
+function drawRoute() {
+  if (routingCtrl) detailMap.removeControl(routingCtrl);
+
+  routingCtrl = L.Routing.control({
+    waypoints: [
+      L.latLng(userLat, userLng),
+      L.latLng(HOTEL_LAT, HOTEL_LNG)
+    ],
+    lineOptions: {
+      styles: [{ color: '#C9A84C', weight: 5, opacity: 0.9 }]
+    },
+    createMarker: function() { return null; },   // tắt marker mặc định
+    addWaypoints: false,
+    show: false,                                  // tắt panel chỉ đường dài
+    routeWhileDragging: false,
+  }).addTo(detailMap);
+
+  routingCtrl.on('routesfound', function(e) {
+    const s   = e.routes[0].summary;
+    const km  = (s.totalDistance / 1000).toFixed(1);
+    const min = Math.round(s.totalTime / 60);
+    showInfo(`🗺 Khoảng cách: <strong>${km} km</strong> · Thời gian di chuyển: <strong>~${min} phút</strong>`);
+  });
+
+  routingCtrl.on('routingerror', function() {
+    showInfo('❌ Không tìm được đường đi. Vui lòng thử lại.');
   });
 }
 
+// ── Hàm: Xóa đường đi
 function clearRoute() {
-  if (routingControl) { map.removeControl(routingControl); routingControl = null; }
-  if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
+  if (routingCtrl) { detailMap.removeControl(routingCtrl); routingCtrl = null; }
+  if (userMarker)  { detailMap.removeLayer(userMarker);  userMarker  = null; }
   userLat = null; userLng = null;
-  document.getElementById('routeInfo').style.display = 'none';
-  map.setView([hotelLat, hotelLng], 15);
+  hideInfo();
+  detailMap.setView([HOTEL_LAT, HOTEL_LNG], 15);
 }
 
-function calcDist(la1, lo1, la2, lo2) {
-  const R = 6371, d2r = Math.PI/180;
-  const dLat = (la2-la1)*d2r, dLng = (lo2-lo1)*d2r;
-  const a = Math.sin(dLat/2)**2 + Math.cos(la1*d2r)*Math.cos(la2*d2r)*Math.sin(dLng/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+// ── Helpers
+function showInfo(html) {
+  const el = document.getElementById('routeInfo');
+  el.innerHTML = html;
+  el.classList.remove('d-none');
+}
+function hideInfo() {
+  document.getElementById('routeInfo').classList.add('d-none');
+}
+function haversine(la1, lo1, la2, lo2) {
+  const R = 6371, r = Math.PI / 180;
+  const dLa = (la2 - la1) * r, dLo = (lo2 - lo1) * r;
+  const a = Math.sin(dLa/2)**2
+          + Math.cos(la1*r) * Math.cos(la2*r) * Math.sin(dLo/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 </script>
 {% endblock %}

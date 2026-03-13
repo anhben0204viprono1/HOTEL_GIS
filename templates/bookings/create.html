@@ -1,41 +1,237 @@
 {% extends 'base.html' %}
-{% block title %}Đặt phòng — {{ room_type.name }}{% endblock %}
+{% block title %}Đặt phòng — {{ room_type.name }} | {{ hotel.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .booking-header {
+    background: linear-gradient(135deg, #0D0D0D 0%, #1a1a2e 100%);
+  }
+  .info-row {
+    display: flex; justify-content: space-between;
+    padding: 10px 0; border-bottom: 1px solid #f0ede8;
+    font-size: 14px;
+  }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { color: #888; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .price-preview {
+    background: linear-gradient(135deg, #fff9ec, #fff3cd);
+    border: 1.5px solid #C9A84C;
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: none;
+  }
+  .step-badge {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #C9A84C; color: #0D0D0D;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; margin-right: 8px;
+  }
+  .form-control:focus { border-color: #C9A84C; box-shadow: 0 0 0 3px rgba(201,168,76,.15); }
+  .amenity-chip {
+    display: inline-block; font-size: 11px;
+    background: #f8f7f4; border: 1px solid #e5e1d8;
+    border-radius: 20px; padding: 3px 10px; margin: 2px;
+    color: #666;
+  }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-5" style="max-width:680px;">
+<div class="container py-5" style="max-width:960px;">
+
+  <!-- Breadcrumb -->
   <nav aria-label="breadcrumb" class="mb-4">
     <ol class="breadcrumb">
       <li class="breadcrumb-item"><a href="/" style="color:#C9A84C;">Trang chủ</a></li>
-      <li class="breadcrumb-item"><a href="{% url 'hotels:detail' hotel.slug %}" style="color:#C9A84C;">{{ hotel.name }}</a></li>
-      <li class="breadcrumb-item active">Đặt phòng</li>
+      <li class="breadcrumb-item">
+        <a href="{% url 'hotels:detail' hotel.slug %}" style="color:#C9A84C;">{{ hotel.name }}</a>
+      </li>
+      <li class="breadcrumb-item active text-muted">Đặt phòng</li>
     </ol>
   </nav>
 
-  <div class="bg-white rounded-3 shadow-sm overflow-hidden">
-    <div class="p-4 text-white" style="background:linear-gradient(135deg,#0D0D0D,#2a2a2a);">
-      <p style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#C9A84C;">Xác nhận đặt phòng</p>
-      <h3 style="font-family:'Cormorant Garamond',serif;">{{ hotel.name }}</h3>
-      <p class="mb-0 text-white-50">{{ room_type.name }} · {{ room_type.price_per_night|floatformat:0 }} ₫/đêm · Tối đa {{ room_type.capacity }} khách</p>
-    </div>
-    <div class="p-4">
-      <form method="post">
-        {% csrf_token %}
-        {% for field in form %}
-          <div class="mb-4">
-            <label class="form-label" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}<div class="text-danger" style="font-size:12px;">{{ field.errors.0 }}</div>{% endif %}
-          </div>
-        {% endfor %}
-        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="row g-4">
 
-        <div class="alert alert-warning" id="pricePreview" style="display:none;">
-          <strong>💰 Tổng tiền ước tính:</strong> <span id="previewAmount"></span>
+    <!-- ── CỘT TRÁI: Form đặt phòng ── -->
+    <div class="col-lg-7">
+      <div class="bg-white rounded-3 shadow-sm overflow-hidden">
+
+        <!-- Header -->
+        <div class="booking-header text-white p-4">
+          <p style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#C9A84C;margin-bottom:6px;">
+            XÁC NHẬN ĐẶT PHÒNG
+          </p>
+          <h3 style="font-family:'Cormorant Garamond',serif;font-weight:400;margin-bottom:4px;">
+            {{ hotel.name }}
+          </h3>
+          <p class="mb-0" style="color:rgba(255,255,255,.6);font-size:13px;">
+            {{ room_type.name }}
+            {% if room_type.bed_type %} · {{ room_type.get_bed_type_display }}{% endif %}
+            {% if room_type.area_sqm %} · {{ room_type.area_sqm }}m²{% endif %}
+          </p>
         </div>
 
-        <button type="submit" class="btn btn-gold w-100 py-3" style="font-size:14px;letter-spacing:2px;">
-          ✅ Xác nhận đặt phòng
-        </button>
-      </form>
+        <!-- Form -->
+        <div class="p-4">
+
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger rounded-3 mb-4">
+              {% for e in form.non_field_errors %}{{ e }}{% endfor %}
+            </div>
+          {% endif %}
+
+          <form method="post" id="bookingForm">
+            {% csrf_token %}
+
+            <!-- Bước 1: Ngày -->
+            <div class="mb-4">
+              <p class="fw-semibold mb-3" style="font-size:13px;">
+                <span class="step-badge">1</span>Chọn ngày
+              </p>
+              <div class="row g-3">
+                <div class="col-6">
+                  <label class="info-label d-block mb-1">{{ form.check_in.label }}</label>
+                  {{ form.check_in }}
+                  {% if form.check_in.errors %}
+                    <div class="text-danger mt-1" style="font-size:12px;">{{ form.check_in.errors.0 }}</div>
+                  {% endif %}
+                </div>
+                <div class="col-6">
+                  <label class="info-label d-block mb-1">{{ form.check_out.label }}</label>
+                  {{ form.check_out }}
+                  {% if form.check_out.errors %}
+                    <div class="text-danger mt-1" style="font-size:12px;">{{ form.check_out.errors.0 }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview giá (hiện khi chọn ngày) -->
+            <div class="price-preview mb-4" id="pricePreview">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <div style="font-size:11px;color:#856404;letter-spacing:1px;text-transform:uppercase;">Tổng tiền ước tính</div>
+                  <div id="priceBreakdown" style="font-size:13px;color:#664d03;margin-top:2px;"></div>
+                </div>
+                <div id="priceTotal" style="font-size:1.5rem;font-weight:700;color:#C9A84C;"></div>
+              </div>
+            </div>
+
+            <!-- Bước 2: Số khách -->
+            <div class="mb-4">
+              <p class="fw-semibold mb-3" style="font-size:13px;">
+                <span class="step-badge">2</span>Số khách
+                <span style="font-size:11px;color:#888;font-weight:400;">(tối đa {{ room_type.max_occupancy }} người)</span>
+              </p>
+              {{ form.num_guests }}
+              {% if form.num_guests.errors %}
+                <div class="text-danger mt-1" style="font-size:12px;">{{ form.num_guests.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Bước 3: Yêu cầu -->
+            <div class="mb-4">
+              <p class="fw-semibold mb-3" style="font-size:13px;">
+                <span class="step-badge">3</span>Yêu cầu đặc biệt
+                <span style="font-size:11px;color:#888;font-weight:400;">(không bắt buộc)</span>
+              </p>
+              {{ form.note }}
+            </div>
+
+            <!-- Nút submit -->
+            <button type="submit" class="btn btn-gold w-100 py-3" style="font-size:14px;letter-spacing:2px;border-radius:10px;">
+              ✅ Xác nhận đặt phòng
+            </button>
+
+            <p class="text-center mt-3 text-muted" style="font-size:11px;">
+              Bạn có thể hủy đặt phòng miễn phí trước khi được xác nhận
+            </p>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CỘT PHẢI: Thông tin phòng ── -->
+    <div class="col-lg-5">
+
+      <!-- Card thông tin khách sạn -->
+      <div class="bg-white rounded-3 shadow-sm overflow-hidden mb-3">
+        {% if hotel.image %}
+          <img src="{{ hotel.image.url }}" class="w-100" style="height:160px;object-fit:cover;">
+        {% else %}
+          <div class="w-100 d-flex align-items-center justify-content-center bg-dark"
+               style="height:120px;font-size:3rem;">🏨</div>
+        {% endif %}
+        <div class="p-3">
+          <h6 class="fw-semibold mb-1">{{ hotel.name }}</h6>
+          <p class="text-muted mb-1" style="font-size:12px;">
+            📍 {{ hotel.address }}, {{ hotel.city }}
+          </p>
+          <p class="mb-0" style="font-size:12px;">
+            {% for i in hotel.star_range %}
+              <span style="color:#C9A84C;">★</span>
+            {% endfor %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Card thông tin loại phòng -->
+      <div class="bg-white rounded-3 shadow-sm p-4 mb-3">
+        <p class="info-label mb-3">Chi tiết phòng</p>
+
+        <div class="info-row">
+          <span class="text-muted">Loại phòng</span>
+          <span class="fw-semibold">{{ room_type.name }}</span>
+        </div>
+        {% if room_type.bed_type %}
+        <div class="info-row">
+          <span class="text-muted">Loại giường</span>
+          <span>{{ room_type.get_bed_type_display }}</span>
+        </div>
+        {% endif %}
+        {% if room_type.area_sqm %}
+        <div class="info-row">
+          <span class="text-muted">Diện tích</span>
+          <span>{{ room_type.area_sqm }} m²</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+          <span class="text-muted">Sức chứa</span>
+          <span>{{ room_type.max_occupancy }} người</span>
+        </div>
+        <div class="info-row">
+          <span class="text-muted">Giá / đêm</span>
+          <span style="color:#C9A84C;font-weight:700;">
+            {{ room_type.price_per_night|floatformat:0 }} ₫
+          </span>
+        </div>
+        <div class="info-row">
+          <span class="text-muted">Phòng còn trống</span>
+          <span style="color:{% if available_count > 0 %}#15803d{% else %}#dc2626{% endif %};font-weight:600;">
+            {{ available_count }} phòng
+          </span>
+        </div>
+
+        {% if room_type.amenities.all %}
+          <p class="info-label mt-3 mb-2">Tiện nghi</p>
+          {% for a in room_type.amenities.all %}
+            <span class="amenity-chip">{{ a.name }}</span>
+          {% endfor %}
+        {% endif %}
+      </div>
+
+      <!-- Giờ check-in/out -->
+      <div class="bg-white rounded-3 shadow-sm p-3" style="font-size:13px;">
+        <div class="d-flex justify-content-between">
+          <span class="text-muted">🕐 Nhận phòng</span>
+          <strong>{{ hotel.check_in_time|time:"H:i" }}</strong>
+        </div>
+        <div class="d-flex justify-content-between mt-2">
+          <span class="text-muted">🕛 Trả phòng</span>
+          <strong>{{ hotel.check_out_time|time:"H:i" }}</strong>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -43,20 +239,39 @@
 
 {% block extra_js %}
 <script>
-const pricePerNight = "{{ room_type.price_per_night }}";
-const ciInput = document.querySelector('[name="check_in"]');
-const coInput = document.querySelector('[name="check_out"]');
+const PRICE_PER_NIGHT = {{ room_type.price_per_night }};
+const ciInput = document.getElementById('id_check_in');
+const coInput = document.getElementById('id_check_out');
 
 function updatePreview() {
-  if (!ciInput.value || !coInput.value) return;
-  const nights = Math.round((new Date(coInput.value) - new Date(ciInput.value)) / 86400000);
-  if (nights > 0) {
-    document.getElementById('pricePreview').style.display = 'block';
-    document.getElementById('previewAmount').textContent =
-      `${nights} đêm × ${pricePerNight.toLocaleString('vi')} ₫ = ${(nights * pricePerNight).toLocaleString('vi')} ₫`;
+  if (!ciInput.value || !coInput.value) {
+    document.getElementById('pricePreview').style.display = 'none';
+    return;
   }
+  const ci = new Date(ciInput.value);
+  const co = new Date(coInput.value);
+  const nights = Math.round((co - ci) / 86400000);
+
+  if (nights <= 0) {
+    document.getElementById('pricePreview').style.display = 'none';
+    return;
+  }
+
+  const total = nights * PRICE_PER_NIGHT;
+  document.getElementById('pricePreview').style.display = 'block';
+  document.getElementById('priceBreakdown').textContent =
+    `${nights} đêm × ${PRICE_PER_NIGHT.toLocaleString('vi-VN')} ₫`;
+  document.getElementById('priceTotal').textContent =
+    total.toLocaleString('vi-VN') + ' ₫';
+
+  // Cập nhật min của check_out
+  const nextDay = new Date(ci);
+  nextDay.setDate(nextDay.getDate() + 1);
+  coInput.min = nextDay.toISOString().split('T')[0];
 }
+
 ciInput.addEventListener('change', updatePreview);
 coInput.addEventListener('change', updatePreview);
+updatePreview();
 </script>
 {% endblock %}

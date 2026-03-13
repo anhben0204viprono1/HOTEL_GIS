@@ -13,7 +13,7 @@ def register(request):
     if form.is_valid():
         user = form.save()
         login(request, user)
-        messages.success(request, f"Chào mừng {user.first_name}! Tài khoản đã được tạo.")
+        messages.success(request, f'Chào mừng {user.first_name or user.username}! Tài khoản đã được tạo.')
         return redirect('hotels:list')
     return render(request, 'accounts/register.html', {'form': form})
 
@@ -25,18 +25,23 @@ def user_login(request):
     if request.method == 'POST' and form.is_valid():
         user = form.get_user()
         login(request, user)
-        messages.success(request, f"Xin chào {user.first_name or user.username}!")
+        messages.success(request, f'Xin chào {user.first_name or user.username}!')
         return redirect(request.GET.get('next', 'hotels:list'))
     return render(request, 'accounts/login.html', {'form': form})
 
 
 def user_logout(request):
     logout(request)
-    messages.info(request, "Bạn đã đăng xuất thành công.")
+    messages.info(request, 'Bạn đã đăng xuất thành công.')
     return redirect('hotels:list')
 
 
 @login_required
 def profile(request):
-    bookings = Booking.objects.filter(user=request.user).select_related('room_type__hotel').order_by('-created_at')
+    bookings = (
+        Booking.objects
+        .filter(user=request.user)
+        .select_related('room__room_type__hotel')
+        .order_by('-created_at')
+    )
     return render(request, 'accounts/profile.html', {'bookings': bookings})

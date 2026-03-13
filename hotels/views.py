@@ -1,134 +1,84 @@
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Q, Min
-from .models import Hotel, HotelCategory
+from .models import Hotel, RoomType, Amenity
 import json
 
 
 def hotel_list(request):
+    hotels = Hotel.objects.filter(is_active=True).prefetch_related('room_types')
 
-    hotels = (
-        Hotel.objects
-        .filter(is_active=True)
-        .prefetch_related('room_types__roomamenity_set__amenity')
-        .annotate(min_price=Min('room_types__price_per_night'))
-    )
-
-    q = request.GET.get('q', '')
-    city = request.GET.get('city', '')
-    stars = request.GET.get('stars', '')
+    q         = request.GET.get('q', '')
+    city      = request.GET.get('city', '')
+    stars     = request.GET.get('stars', '')
     max_price = request.GET.get('max_price', '')
-    category_id = request.GET.get('category', '')
 
     if q:
-        hotels = hotels.filter(
-            Q(name__icontains=q) |
-            Q(address__icontains=q) |
-            Q(city__icontains=q)
-        )
-
+        hotels = hotels.filter(Q(name__icontains=q) | Q(address__icontains=q) | Q(city__icontains=q))
     if city:
         hotels = hotels.filter(city__icontains=city)
-
     if stars:
         hotels = hotels.filter(star_rating=stars)
-
     if max_price:
-        hotels = hotels.filter(min_price__lte=max_price)
+        hotels = hotels.annotate(min_price=Min('room_types__price_per_night')) \
+                       .filter(min_price__lte=max_price)
 
-    if category_id:
-        hotels = hotels.filter(category_id=category_id)
+    # Annotate giá rẻ nhất cho mỗi hotel
+    hotels = hotels.annotate(min_price=Min('room_types__price_per_night'))
 
     features = []
-
     for h in hotels:
         features.append({
             "type": "Feature",
-            "geometry": {
-                "type": "Point",
-                "coordinates": [float(h.longitude), float(h.latitude)]
-            },
+            "geometry": {"type": "Point", "coordinates": [float(h.longitude), float(h.latitude)]},
             "properties": {
-                "id": h.id,
-                "name": h.name,
-                "stars": h.star_rating,
-                "price": str(h.min_price) if h.min_price else "0",
+                "id":      h.id,
+                "name":    h.name,
+                "stars":   h.star_rating,
+                "price":   str(h.min_price or ''),
                 "address": h.address,
-                "city": h.city,
-                "url": f"/hotels/{h.slug}/",
+                "city":    h.city,
+                "url":     f"/hotels/{h.slug}/",
             }
         })
+    geojson = json.dumps({"type": "FeatureCollection", "features": features})
 
-    geojson = json.dumps({
-        "type": "FeatureCollection",
-        "features": features
-    })
-
-    cities = (
-        Hotel.objects
-        .filter(is_active=True)
-        .values_list('city', flat=True)
-        .distinct()
-        .order_by('city')
-    )
-
-    categories = HotelCategory.objects.all()
+    cities = Hotel.objects.filter(is_active=True).values_list('city', flat=True).distinct().order_by('city')
 
     context = {
-        'hotels': hotels,
-        'geojson': geojson,
-        'cities': cities,
-        'categories': categories,
-        'filters': {
-            'q': q,
-            'city': city,
-            'stars': stars,
-            'max_price': max_price,
-            'category': category_id
-        },
-        'total': hotels.count(),
+        'hotels':   hotels,
+        'geojson':  geojson,
+        'cities':   cities,
+        'filters':  {'q': q, 'city': city, 'stars': stars, 'max_price': max_price},
+        'total':    hotels.count(),
     }
-
     return render(request, 'hotels/hotel_list.html', context)
 
+
 def hotel_detail(request, slug):
+    hotel      = get_object_or_404(Hotel, slug=slug, is_active=True)
+    room_types = hotel.room_types.filter(is_active=True).prefetch_related('amenities')
+    gallery    = hotel.images.all()
 
-    hotel = get_object_or_404(
-        Hotel.objects.prefetch_related(
-            'room_types__roomamenity_set__amenity',
-            'images'
-        ),
-        slug=slug,
-        is_active=True
-    )
-
-    room_types = hotel.room_types.all()
-
-    amenities = set()
-
+    # Gom tất cả tiện ích từ các RoomType (unique)
+    amenity_ids = set()
+    amenities_list = []
     for rt in room_types:
-        for ra in rt.roomamenity_set.all():
-            amenities.add(ra.amenity)
+        for a in rt.amenities.all():
+            if a.id not in amenity_ids:
+                amenity_ids.add(a.id)
+                amenities_list.append(a)
 
-    gallery = hotel.images.all()
-
-    hotel_geojson = json.dumps({
-        "type": "Feature",
-        "geometry": {
-            "type": "Point",
-            "coordinates": [float(hotel.longitude), float(hotel.latitude)]
-        },
-        "properties": {
-            "name": hotel.name,
-            "address": hotel.address
-        }
-    })
+    # Giá rẻ nhất
+    cheapest = room_types.order_by('price_per_night').first()
 
     context = {
-        "hotel": hotel,
-        "room_types": room_types,
-        "amenities": amenities,
-        "gallery": gallery,
-        "hotel_geojson": hotel_geojson
+        'hotel':      hotel,
+        'room_types': room_types,
+        'amenities':  amenities_list,
+        'gallery':    gallery,
+        'cheapest':   cheapest,
+        # Truyền tọa độ an toàn dạng float để JS dùng
+        'hotel_lat':  float(hotel.latitude),
+        'hotel_lng':  float(hotel.longitude),
     }
-
-    return render(request, "hotels/hotel_detail.html", context)
+    return render(request, 'hotels/hotel_detail.html', context)
