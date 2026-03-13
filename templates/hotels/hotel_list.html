@@ -79,7 +79,7 @@
       <h5 class="mb-3" style="font-family:'Cormorant Garamond',serif;">{{ total }} Khách Sạn</h5>
       <div style="max-height:520px;overflow-y:auto;padding-right:4px;">
         {% for hotel in hotels %}
-        <div class="card hotel-card mb-3 shadow-sm" data-id="{{ hotel.id }}" data-lat="{{ hotel.latitude|stringformat:'f' }}" data-lng="{{ hotel.longitude|stringformat:'f' }}" onclick="focusHotelEl(this)" style="cursor:pointer;">
+        <div class="card hotel-card mb-3 shadow-sm" onclick="focusHotel('{{ hotel.id }}', '{{ hotel.latitude|default:0 }}', '{{ hotel.longitude|default:0 }}')" style="cursor:pointer;">
           <div class="row g-0">
             <div class="col-4">
               {% if hotel.image %}
@@ -137,7 +137,7 @@
 
 {% block extra_js %}
 <script>
-const geojson = {{ geojson|safe }};
+const geojson = JSON.parse('{{ geojson|escapejs }}');
 let map, userMarker, routingControl;
 let userLat = null, userLng = null;
 const hotelMarkers = {};
@@ -167,17 +167,8 @@ geojson.features.forEach(f => {
 });
 
 function focusHotel(id, lat, lng) {
-  // lat/lng đã là số (từ GeoJSON) — dùng parseFloat để chắc chắn
-  map.setView([parseFloat(lat), parseFloat(lng)], 16);
+  map.setView([lat, lng], 16);
   if (hotelMarkers[id]) hotelMarkers[id].marker.openPopup();
-}
-
-// Wrapper cho onclick qua data attribute — tránh lỗi locale dấu phẩy
-function focusHotelEl(el) {
-  const id  = el.dataset.id;
-  const lat = parseFloat(el.dataset.lat);
-  const lng = parseFloat(el.dataset.lng);
-  focusHotel(id, lat, lng);
 }
 
 function locateUser() {
