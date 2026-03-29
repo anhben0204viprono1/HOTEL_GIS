@@ -1,0 +1,151 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Tổng quan{% endblock %}
+
+{% block extra_css %}
+<!-- CHỈ để CSS, không để JS -->
+{% endblock %}
+
+{% block content %}
+
+<!-- ── Stat Cards ── -->
+<div class="row g-3 mb-4">
+
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" style="color:#C9A84C;">{{ stats.total_hotels }}</div>
+          <div class="stat-label">Khách sạn hoạt động</div>
+        </div>
+        <div class="stat-icon" style="background:#fff9ec;">🏨</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" style="color:#10b981;">{{ stats.total_rooms }}</div>
+          <div class="stat-label">Phòng còn trống</div>
+        </div>
+        <div class="stat-icon" style="background:#f0fdf4;">🛏</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" style="color:#2563eb;">{{ stats.total_bookings }}</div>
+          <div class="stat-label">Tổng đặt phòng</div>
+          <div class="stat-sub">+{{ stats.bookings_month }} tháng này</div>
+        </div>
+        <div class="stat-icon" style="background:#eff6ff;">📅</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <div class="stat-value" style="color:#7c3aed;font-size:1.3rem;">
+            {{ stats.revenue_month|floatformat:0 }} ₫
+          </div>
+          <div class="stat-label">Doanh thu tháng này</div>
+        </div>
+        <div class="stat-icon" style="background:#f5f3ff;">💰</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Chart + Top hotels ── -->
+<div class="row g-4 mb-4">
+
+  <div class="col-lg-8">
+    <div class="stat-card">
+      <div class="table-section-title mb-3">Đặt phòng 7 ngày qua</div>
+      <canvas id="bookingChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="stat-card h-100">
+      <div class="table-section-title">🏆 Khách sạn nổi bật</div>
+      {% for h in top_hotels %}
+      <div class="d-flex justify-content-between align-items-center py-2"
+     {% if not forloop.last %}
+       style="border-bottom:1px solid #f3f0eb;"
+     {% endif %}>
+          <div style="font-size:13px;font-weight:500;">{{ h.name|truncatechars:22 }}</div>
+          <div style="font-size:11px;color:#888;">
+            {% for i in h.star_range %}
+              <span style="color:#C9A84C;">★</span>
+            {% endfor %}
+          </div>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:#2563eb;">
+          {{ h.booking_count }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Để JS ở đây -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const canvas = document.getElementById('bookingChart');
+
+  if (!canvas) return; // tránh null
+
+  const ctx = canvas.getContext('2d');
+
+  const labels = JSON.parse('{{ chart_labels|escapejs }}');
+  const data = JSON.parse('{{ chart_data|escapejs }}');
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Số đặt phòng',
+        data: data,
+        backgroundColor: 'rgba(201,168,76,.25)',
+        borderColor: '#C9A84C',
+        borderWidth: 2,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 },
+          grid: { color: '#f0ede8' }
+        },
+        x: {
+          grid: { display: false }
+        }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

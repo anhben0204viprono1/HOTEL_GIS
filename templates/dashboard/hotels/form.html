@@ -1,0 +1,298 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}{{ action }} khách sạn{% endblock %}
+{% block page_title %}{{ action }} khách sạn{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+  #picker-map {
+    height: 380px; border-radius: 10px;
+    border: 2px solid #e8e9ec; overflow: hidden;
+  }
+  .coord-display {
+    display: flex; gap: 10px; margin-bottom: 10px;
+  }
+  .coord-box {
+    flex: 1; background: #f8f9fb; border: 1px solid #e8e9ec;
+    border-radius: 8px; padding: 8px 14px;
+  }
+  .coord-box label { font-size: 10px; font-weight: 700; color: #aaa; letter-spacing: 1px; display: block; }
+  .coord-box span   { font-family: monospace; font-weight: 700; color: #10b981; font-size: 14px; }
+  .form-section { background: #fff; border-radius: 12px; border: 1px solid #e8e9ec; padding: 24px; margin-bottom: 20px; }
+  .form-section-title { font-size: 12px; font-weight: 700; color: #888; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid #f0ede8; }
+  .form-label { font-size: 12px; font-weight: 600; color: #555; }
+  .form-control:focus, .form-select:focus { border-color: #C9A84C; box-shadow: 0 0 0 3px rgba(201,168,76,.12); }
+  .star-select { display: flex; gap: 8px; }
+  .star-option input { display: none; }
+  .star-option label {
+    cursor: pointer; padding: 7px 16px; border-radius: 8px;
+    border: 1.5px solid #e8e9ec; font-size: 13px; font-weight: 600;
+    color: #aaa; transition: all .15s;
+  }
+  .star-option input:checked + label { border-color: #C9A84C; background: #fff9ec; color: #C9A84C; }
+  .star-option label:hover { border-color: #C9A84C; color: #C9A84C; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4>{{ action }} khách sạn</h4>
+  <a href="{% url 'dashboard:hotel_list' %}" class="btn btn-outline-secondary">← Quay lại</a>
+</div>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  <div class="row g-4">
+
+    <!-- ── Cột trái ── -->
+    <div class="col-lg-7">
+
+      <!-- Thông tin cơ bản -->
+      <div class="form-section">
+        <div class="form-section-title">📋 Thông tin cơ bản</div>
+        <div class="mb-3">
+          <label class="form-label">Tên khách sạn *</label>
+          <input type="text" name="name" class="form-control"
+                 value="{{ hotel.name|default:'' }}" required placeholder="VD: The Reverie Saigon">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Số sao</label>
+          <div class="star-select">
+            {% for i in "12345" %}
+            <div class="star-option">
+              <input type="radio" name="star_rating" id="star{{ i }}" value="{{ i }}"
+                     {% if hotel.star_rating == i|add:0 %}checked{% elif not hotel and i == '3' %}checked{% endif %}>
+              <label for="star{{ i }}">{{ i }}★</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label">Giờ nhận phòng</label>
+            <input type="time" name="check_in_time" class="form-control"
+                   value="{{ hotel.check_in_time|default:'14:00' }}">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Giờ trả phòng</label>
+            <input type="time" name="check_out_time" class="form-control"
+                   value="{{ hotel.check_out_time|default:'12:00' }}">
+          </div>
+        </div>
+        <div class="mt-3 form-check">
+          <input type="checkbox" name="is_active" id="is_active" class="form-check-input"
+                 {% if hotel.is_active or not hotel %}checked{% endif %}>
+          <label for="is_active" class="form-check-label form-label">Đang hoạt động</label>
+        </div>
+      </div>
+
+      <!-- Địa chỉ -->
+      <div class="form-section">
+        <div class="form-section-title">📍 Địa chỉ & Tọa độ</div>
+        <div class="mb-3">
+          <label class="form-label">Địa chỉ</label>
+          <input type="text" name="address" class="form-control"
+                 value="{{ hotel.address|default:'' }}" placeholder="Số nhà, đường, phường, quận">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Thành phố</label>
+          <input type="text" name="city" class="form-control"
+                 value="{{ hotel.city|default:'Hồ Chí Minh' }}">
+        </div>
+
+        <!-- Tọa độ hiển thị -->
+        <div class="coord-display">
+          <div class="coord-box">
+            <label>VĨ ĐỘ (LAT)</label>
+            <span id="disp-lat">{{ hotel.latitude|default:'—' }}</span>
+          </div>
+          <div class="coord-box">
+            <label>KINH ĐỘ (LNG)</label>
+            <span id="disp-lng">{{ hotel.longitude|default:'—' }}</span>
+          </div>
+          <button type="button" onclick="gpsLocate()"
+            style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
+            📍 GPS
+          </button>
+          <button type="button" onclick="resetCoord()"
+            style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;">
+            ✕
+          </button>
+        </div>
+
+        <!-- Input ẩn -->
+        <input type="hidden" name="latitude"  id="lat-input" value="{{ hotel.latitude|default:'' }}">
+        <input type="hidden" name="longitude" id="lng-input" value="{{ hotel.longitude|default:'' }}">
+
+        <!-- Map picker -->
+        <div id="picker-map"></div>
+        <p style="font-size:11px;color:#aaa;margin-top:6px;">
+          🖱 Click lên bản đồ để đặt vị trí · Marker có thể kéo thả · Chỉ nhận tọa độ trong Việt Nam
+        </p>
+        <div id="map-error" style="display:none;color:#ef4444;font-size:12px;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;padding:8px 12px;margin-top:6px;"></div>
+      </div>
+
+      <!-- Liên hệ -->
+      <div class="form-section">
+        <div class="form-section-title">📞 Liên hệ</div>
+        <div class="row g-3">
+          <div class="col-6">
+            <label class="form-label">Số điện thoại</label>
+            <input type="text" name="phone" class="form-control" value="{{ hotel.phone|default:'' }}">
+          </div>
+          <div class="col-6">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" value="{{ hotel.email|default:'' }}">
+          </div>
+          <div class="col-12">
+            <label class="form-label">Website</label>
+            <input type="url" name="website" class="form-control" value="{{ hotel.website|default:'' }}" placeholder="https://...">
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Cột phải ── -->
+    <div class="col-lg-5">
+
+      <!-- Mô tả -->
+      <div class="form-section">
+        <div class="form-section-title">📝 Mô tả</div>
+        <textarea name="description" class="form-control" rows="5"
+                  placeholder="Mô tả ngắn về khách sạn...">{{ hotel.description|default:'' }}</textarea>
+      </div>
+
+      <!-- Ảnh -->
+      <div class="form-section">
+        <div class="form-section-title">🖼 Ảnh đại diện</div>
+        {% if hotel.image %}
+          <img src="{{ hotel.image.url }}" class="img-fluid rounded mb-2" style="max-height:160px;object-fit:cover;width:100%;">
+          <p style="font-size:11px;color:#aaa;">Upload ảnh mới để thay thế</p>
+        {% endif %}
+        <input type="file" name="image" class="form-control" accept="image/*">
+      </div>
+
+      <!-- Submit -->
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-gold py-3" style="font-size:14px;letter-spacing:1px;border-radius:10px;">
+          ✅ {{ action }} khách sạn
+        </button>
+        <a href="{% url 'dashboard:hotel_list' %}" class="btn btn-outline-secondary">Hủy bỏ</a>
+      </div>
+
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const VN_LAT_MIN=8.18, VN_LAT_MAX=23.39, VN_LNG_MIN=102.14, VN_LNG_MAX=109.46;
+let pickerMap, pickerMarker;
+
+// ── Khởi tạo map ──
+const initLat = parseFloat(document.getElementById('lat-input').value) || 16.0;
+const initLng = parseFloat(document.getElementById('lng-input').value) || 106.0;
+const initZoom = document.getElementById('lat-input').value ? 14 : 6;
+
+pickerMap = L.map('picker-map').setView([initLat, initLng], initZoom);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap'
+}).addTo(pickerMap);
+
+// Khung VN
+L.rectangle([[VN_LAT_MIN,VN_LNG_MIN],[VN_LAT_MAX,VN_LNG_MAX]], {
+  color:'#10b981', weight:1.5, fillOpacity:.03, dashArray:'8,5'
+}).addTo(pickerMap);
+
+// Icon khách sạn
+function makeIcon() {
+  return L.divIcon({
+    html:`<div style="background:#C9A84C;color:#0D0D0D;width:38px;height:38px;
+      border-radius:50% 50% 50% 0;display:flex;align-items:center;justify-content:center;
+      font-size:20px;transform:rotate(-45deg);box-shadow:0 4px 12px rgba(0,0,0,.3);
+      border:2px solid #333;"><span style="transform:rotate(45deg)">🏨</span></div>`,
+    className:'', iconSize:[38,38], iconAnchor:[19,38], popupAnchor:[0,-38]
+  });
+}
+
+// Đặt marker sẵn nếu đang edit
+if (document.getElementById('lat-input').value) {
+  pickerMarker = L.marker([initLat, initLng], { icon: makeIcon(), draggable: true }).addTo(pickerMap);
+  bindDrag(pickerMarker);
+}
+
+// ── Hàm đặt tọa độ ──
+function setCoord(lat, lng) {
+  if (lat < VN_LAT_MIN || lat > VN_LAT_MAX || lng < VN_LNG_MIN || lng > VN_LNG_MAX) {
+    showErr(`❌ Tọa độ (${lat.toFixed(4)}, ${lng.toFixed(4)}) nằm ngoài Việt Nam!`);
+    return false;
+  }
+  const la = Math.round(lat*1e6)/1e6;
+  const lo = Math.round(lng*1e6)/1e6;
+
+  document.getElementById('lat-input').value = la;
+  document.getElementById('lng-input').value = lo;
+  document.getElementById('disp-lat').textContent = la;
+  document.getElementById('disp-lng').textContent = lo;
+  document.getElementById('map-error').style.display = 'none';
+
+  if (pickerMarker) {
+    pickerMarker.setLatLng([la, lo]);
+  } else {
+    pickerMarker = L.marker([la, lo], { icon: makeIcon(), draggable: true }).addTo(pickerMap);
+    bindDrag(pickerMarker);
+  }
+  return true;
+}
+
+function bindDrag(m) {
+  m.on('dragend', e => { const p = e.target.getLatLng(); setCoord(p.lat, p.lng); });
+}
+
+function showErr(msg) {
+  const d = document.getElementById('map-error');
+  d.textContent = msg; d.style.display = 'block';
+}
+
+// Click map
+pickerMap.on('click', e => setCoord(e.latlng.lat, e.latlng.lng));
+
+// Tọa độ chuột
+const mouseCtrl = L.control({ position: 'bottomleft' });
+mouseCtrl.onAdd = () => {
+  const d = L.DomUtil.create('div');
+  d.id = 'mouse-coord';
+  d.style.cssText = 'background:rgba(255,255,255,.9);padding:4px 10px;border-radius:5px;font-size:11px;font-family:monospace;color:#333;';
+  d.textContent = 'Di chuột lên bản đồ...';
+  return d;
+};
+mouseCtrl.addTo(pickerMap);
+pickerMap.on('mousemove', e => {
+  const d = document.getElementById('mouse-coord');
+  if (d) d.textContent = `${e.latlng.lat.toFixed(5)}°N  ${e.latlng.lng.toFixed(5)}°E`;
+});
+
+// ── GPS ──
+function gpsLocate() {
+  if (!navigator.geolocation) { showErr('Trình duyệt không hỗ trợ GPS'); return; }
+  navigator.geolocation.getCurrentPosition(
+    p => { if (setCoord(p.coords.latitude, p.coords.longitude)) pickerMap.setView([p.coords.latitude, p.coords.longitude], 16); },
+    () => showErr('Không lấy được GPS. Hãy click thẳng lên bản đồ.'),
+    { enableHighAccuracy: true, timeout: 12000 }
+  );
+}
+
+// ── Reset ──
+function resetCoord() {
+  document.getElementById('lat-input').value = '';
+  document.getElementById('lng-input').value = '';
+  document.getElementById('disp-lat').textContent = '—';
+  document.getElementById('disp-lng').textContent = '—';
+  if (pickerMarker) { pickerMap.removeLayer(pickerMarker); pickerMarker = null; }
+  document.getElementById('map-error').style.display = 'none';
+}
+</script>
+{% endblock %}

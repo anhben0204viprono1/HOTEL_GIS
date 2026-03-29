@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     'crispy_forms',
     'crispy_bootstrap5',
     'hotels',
+    'dashboard',
     'accounts',
     'bookings',
 ]
@@ -57,6 +58,7 @@ DATABASES = {
 LANGUAGE_CODE = 'vi'
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = True
+USE_L10N = False   # Tắt locale number format — tránh dấu phẩy thay dấu chấm trong JS
 USE_TZ = True
 
 STATIC_URL = '/static/'

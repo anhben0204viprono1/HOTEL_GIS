@@ -1,0 +1,108 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Khách sạn{% endblock %}
+{% block page_title %}Quản lý khách sạn{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4>🏨 Danh sách khách sạn</h4>
+  <a href="{% url 'dashboard:hotel_create' %}" class="btn btn-gold px-4">
+    + Thêm khách sạn
+  </a>
+</div>
+
+<!-- Search -->
+<form method="get" class="search-bar">
+  <input type="text" name="q" value="{{ filters.q }}" class="form-control" style="max-width:280px;" placeholder="🔍 Tìm tên, địa chỉ...">
+  <select name="city" class="form-select" style="max-width:180px;">
+    <option value="">Tất cả thành phố</option>
+    {% for c in cities %}
+      <option value="{{ c }}" {% if filters.city == c %}selected{% endif %}>{{ c }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit" class="btn btn-gold px-4">Lọc</button>
+  {% if filters.q or filters.city %}
+    <a href="{% url 'dashboard:hotel_list' %}" class="btn btn-outline-secondary">✕ Xóa</a>
+  {% endif %}
+</form>
+
+<!-- Table -->
+<div class="dash-table">
+  <table class="table table-hover mb-0">
+    <thead>
+      <tr>
+        <th style="width:40px;">#</th>
+        <th>Tên khách sạn</th>
+        <th>Thành phố</th>
+        <th>Sao</th>
+        <th>Tọa độ</th>
+        <th>Phòng</th>
+        <th>Đặt phòng</th>
+        <th>Trạng thái</th>
+        <th style="width:130px;">Thao tác</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in hotels %}
+      <tr>
+        <td style="color:#aaa;font-size:12px;">{{ h.id }}</td>
+        <td>
+          <div style="font-weight:600;font-size:13px;">{{ h.name }}</div>
+          <div style="font-size:11px;color:#aaa;">{{ h.address|truncatechars:35 }}</div>
+        </td>
+        <td style="font-size:13px;">{{ h.city }}</td>
+        <td>
+          <span style="color:#C9A84C;font-weight:700;">
+            {{ h.star_rating }}★
+          </span>
+        </td>
+        <td>
+          {% if h.latitude and h.longitude %}
+            <code style="font-size:10px;color:#10b981;">
+              {{ h.latitude|floatformat:4 }},{{ h.longitude|floatformat:4 }}
+            </code>
+          {% else %}
+            <span style="color:#ef4444;font-size:11px;">⚠ Chưa có</span>
+          {% endif %}
+        </td>
+        <td style="font-weight:600;color:#2563eb;">{{ h.room_count }}</td>
+        <td style="font-weight:600;">{{ h.booking_count }}</td>
+        <td>
+          {% if h.is_active %}
+            <span class="badge-status bs-available">Hoạt động</span>
+          {% else %}
+            <span class="badge-status bs-cancelled">Ẩn</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="d-flex gap-1">
+             <a href="{% url 'dashboard:hotel_edit' h.pk %}"
+                 class="btn btn-icon btn-outline-secondary btn-sm"
+                 title="Sửa">✏️</a>
+            <a href="{% url 'dashboard:roomtype_list' h.pk %}"
+                 class="btn btn-sm btn-gold"
+                 style="font-size:11px;padding:4px 10px;"
+                 title="Quản lý phòng">🛏 Phòng</a>
+            <form method="post" action="{% url 'dashboard:hotel_toggle' h.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-icon btn-outline-warning btn-sm"
+                      title="{% if h.is_active %}Ẩn{% else %}Kích hoạt{% endif %}">
+                {% if h.is_active %}👁{% else %}🚫{% endif %}
+              </button>
+            </form>
+            <a href="/hotels/{{ h.slug }}/" target="_blank"
+               class="btn btn-icon btn-outline-primary btn-sm" title="Xem website">🔗</a>
+            <form method="post" action="{% url 'dashboard:hotel_delete' h.pk %}" style="display:inline;"
+                  onsubmit="return confirm('Xóa khách sạn {{ h.name }}?')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-icon btn-outline-danger btn-sm" title="Xóa">🗑</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="text-center text-muted py-5">Không có khách sạn nào</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

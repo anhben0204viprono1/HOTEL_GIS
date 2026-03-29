@@ -1,0 +1,123 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Loại phòng — {{ hotel.name }}{% endblock %}
+{% block page_title %}Quản lý phòng — {{ hotel.name }}{% endblock %}
+
+{% block content %}
+
+<!-- Breadcrumb -->
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;font-size:13px;color:#888;">
+  <a href="{% url 'dashboard:hotel_list' %}" style="color:#C9A84C;text-decoration:none;">Khách sạn</a>
+  <span>›</span>
+  <span style="color:#1a1d27;font-weight:600;">{{ hotel.name }}</span>
+</div>
+
+<!-- Tab điều hướng -->
+<div style="display:flex;gap:4px;margin-bottom:24px;background:#f4f5f7;border-radius:10px;padding:4px;width:fit-content;">
+  <a href="{% url 'dashboard:roomtype_list' hotel.pk %}"
+     style="padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;
+            background:#C9A84C;color:#0f1117;">
+    🏷 Loại phòng
+  </a>
+  <a href="{% url 'dashboard:room_by_hotel' hotel.pk %}"
+     style="padding:8px 20px;border-radius:8px;font-size:13px;font-weight:500;text-decoration:none;color:#666;">
+    🛏 Phòng thực tế
+  </a>
+</div>
+
+<div class="page-header">
+  <h4>🏷 Loại phòng ({{ room_types.count }})</h4>
+  <a href="{% url 'dashboard:roomtype_create' hotel.pk %}" class="btn btn-gold px-4">
+    + Thêm loại phòng
+  </a>
+</div>
+
+{% if room_types %}
+<div class="row g-3">
+  {% for rt in room_types %}
+  <div class="col-lg-6">
+    <div style="background:#fff;border-radius:12px;border:1px solid #e8e9ec;overflow:hidden;transition:box-shadow .2s;"
+         onmouseover="this.style.boxShadow='0 4px 20px rgba(0,0,0,.08)'"
+         onmouseout="this.style.boxShadow='none'">
+
+      <!-- Header card -->
+      <div style="background:linear-gradient(135deg,#0f1117,#1a1d27);padding:16px 20px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:#fff;">{{ rt.name }}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px;">
+            {% if rt.bed_type %}{{ rt.get_bed_type_display }}{% endif %}
+            {% if rt.area_sqm %} · {{ rt.area_sqm }}m²{% endif %}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:1.1rem;font-weight:700;color:#C9A84C;">{{ rt.price_per_night|floatformat:0 }} ₫</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);">/đêm</div>
+        </div>
+      </div>
+
+      <!-- Nội dung card -->
+      <div style="padding:16px 20px;">
+        <div style="display:flex;gap:16px;margin-bottom:12px;">
+          <div style="text-align:center;">
+            <div style="font-size:1.3rem;font-weight:700;color:#10b981;">{{ rt.available_count }}</div>
+            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;">Còn trống</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.3rem;font-weight:700;color:#2563eb;">{{ rt.room_count }}</div>
+            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;">Tổng phòng</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:1.3rem;font-weight:700;color:#7c3aed;">{{ rt.max_occupancy }}</div>
+            <div style="font-size:10px;color:#888;text-transform:uppercase;letter-spacing:1px;">Sức chứa</div>
+          </div>
+          <div style="margin-left:auto;display:flex;align-items:center;">
+            {% if rt.is_active %}
+              <span style="background:#d1fae5;color:#065f46;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;">Hoạt động</span>
+            {% else %}
+              <span style="background:#fee2e2;color:#991b1b;font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;">Ẩn</span>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if rt.amenities.all %}
+        <div style="margin-bottom:12px;">
+          {% for a in rt.amenities.all %}
+            <span style="display:inline-block;background:#f8f9fb;border:1px solid #e8e9ec;border-radius:20px;
+                         font-size:10px;padding:2px 8px;margin:2px;color:#555;">{{ a.name }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Actions -->
+        <div style="display:flex;gap:8px;border-top:1px solid #f3f0eb;padding-top:12px;">
+          <a href="{% url 'dashboard:roomtype_edit' hotel.pk rt.pk %}"
+             class="btn btn-sm btn-outline-secondary flex-grow-1" style="font-size:12px;">
+            ✏️ Sửa loại phòng
+          </a>
+          <a href="{% url 'dashboard:room_create' hotel.pk %}?room_type={{ rt.pk }}"
+             class="btn btn-sm btn-gold" style="font-size:12px;padding:6px 14px;">
+            + Thêm phòng
+          </a>
+          <form method="post" action="{% url 'dashboard:roomtype_delete' hotel.pk rt.pk %}"
+                onsubmit="return confirm('Xóa loại phòng {{ rt.name }}? Chỉ xóa được nếu chưa có phòng thực tế.')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-outline-danger" style="font-size:12px;">🗑</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div style="background:#fff;border-radius:12px;border:1px solid #e8e9ec;padding:60px;text-align:center;">
+  <div style="font-size:3rem;margin-bottom:12px;">🛏</div>
+  <h5 style="color:#888;font-weight:400;">Chưa có loại phòng nào</h5>
+  <p style="color:#aaa;font-size:13px;">Thêm loại phòng để bắt đầu quản lý phòng</p>
+  <a href="{% url 'dashboard:roomtype_create' hotel.pk %}" class="btn btn-gold mt-2 px-4">
+    + Thêm loại phòng đầu tiên
+  </a>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}{{ action }}{% endblock %}
+{% block page_title %}{{ action }}{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-section { background:#fff;border-radius:12px;border:1px solid #e8e9ec;padding:24px;margin-bottom:20px; }
+  .form-section-title { font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #f0ede8; }
+  .form-label { font-size:12px;font-weight:600;color:#555; }
+  .form-control:focus,.form-select:focus { border-color:#C9A84C;box-shadow:0 0 0 3px rgba(201,168,76,.12); }
+  .room-preview { background:linear-gradient(135deg,#0f1117,#1a1d27);border-radius:12px;padding:20px;color:#fff;margin-bottom:16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;font-size:13px;color:#888;">
+  <a href="{% url 'dashboard:hotel_list' %}" style="color:#C9A84C;text-decoration:none;">Khách sạn</a>
+  <span>›</span>
+  <a href="{% url 'dashboard:room_by_hotel' hotel.pk %}" style="color:#C9A84C;text-decoration:none;">{{ hotel.name }}</a>
+  <span>›</span>
+  <span style="color:#1a1d27;font-weight:600;">{{ action }}</span>
+</div>
+
+<form method="post" style="max-width:600px;">
+  {% csrf_token %}
+
+  <!-- Preview -->
+  <div class="room-preview" id="roomPreview">
+    <div style="font-size:10px;letter-spacing:2px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px;">{{ hotel.name }}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div style="font-size:2rem;font-weight:700;color:#C9A84C;" id="previewNumber">
+          {{ room.room_number|default:'—' }}
+        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);" id="previewType">
+          {% if room %}{{ room.room_type.name }}{% else %}Chọn loại phòng{% endif %}
+        </div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:10px;color:rgba(255,255,255,.4);">Tầng</div>
+        <div style="font-size:1.5rem;font-weight:700;color:#fff;" id="previewFloor">
+          {{ room.floor|default:'—' }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-section">
+    <div class="form-section-title">🛏 Thông tin phòng</div>
+
+    <div class="row g-3 mb-3">
+      <div class="col-6">
+        <label class="form-label">Số phòng *</label>
+        <input type="text" name="room_number" id="roomNumber" class="form-control"
+               value="{{ room.room_number|default:'' }}" required
+               placeholder="VD: 101, 202A, P301"
+               oninput="document.getElementById('previewNumber').textContent=this.value||'—'">
+      </div>
+      <div class="col-6">
+        <label class="form-label">Tầng</label>
+        <input type="number" name="floor" id="floorInput" class="form-control" min="1" max="100"
+               value="{{ room.floor|default:'' }}" placeholder="VD: 1, 2, 3..."
+               oninput="document.getElementById('previewFloor').textContent=this.value||'—'">
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Loại phòng *</label>
+      <select name="room_type_id" class="form-select" required id="roomTypeSelect">
+        <option value="">-- Chọn loại phòng --</option>
+        {% for rt in room_types %}
+          <option value="{{ rt.pk }}"
+                  data-name="{{ rt.name }}"
+                  data-price="{{ rt.price_per_night|floatformat:0 }}"
+                  {% if room.room_type_id == rt.pk or request.GET.room_type == rt.pk|stringformat:"s" %}selected{% endif %}>
+            {{ rt.name }} — {{ rt.price_per_night|floatformat:0 }} ₫/đêm (chứa {{ rt.max_occupancy }} khách)
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Trạng thái</label>
+      <select name="status" class="form-select">
+        {% for val, label in status_choices %}
+          <option value="{{ val }}" {% if room.status == val or not room and val == 'available' %}selected{% endif %}>
+            {{ label }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Ghi chú nội bộ</label>
+      <textarea name="note" class="form-control" rows="2"
+                placeholder="VD: Phòng góc, view sông, cần sửa máy lạnh...">{{ room.note|default:'' }}</textarea>
+    </div>
+  </div>
+
+  <div class="d-grid gap-2">
+    <button type="submit" class="btn btn-gold py-3" style="font-size:14px;letter-spacing:1px;border-radius:10px;">
+      ✅ {{ action }}
+    </button>
+    <a href="{% url 'dashboard:room_by_hotel' hotel.pk %}" class="btn btn-outline-secondary">Hủy bỏ</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Cập nhật preview khi chọn loại phòng
+document.getElementById('roomTypeSelect').addEventListener('change', function() {
+  const opt = this.options[this.selectedIndex];
+  document.getElementById('previewType').textContent = opt.dataset.name || 'Chọn loại phòng';
+});
+// Trigger ngay khi load (trường hợp edit)
+document.getElementById('roomTypeSelect').dispatchEvent(new Event('change'));
+</script>
+{% endblock %}

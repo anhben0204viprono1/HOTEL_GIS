@@ -1,0 +1,137 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Tạo phòng hàng loạt{% endblock %}
+{% block page_title %}Tạo phòng hàng loạt{% endblock %}
+
+{% block extra_css %}
+<style>
+  .form-section { background:#fff;border-radius:12px;border:1px solid #e8e9ec;padding:24px;margin-bottom:20px; }
+  .form-section-title { font-size:11px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #f0ede8; }
+  .form-label { font-size:12px;font-weight:600;color:#555; }
+  .form-control:focus,.form-select:focus { border-color:#C9A84C;box-shadow:0 0 0 3px rgba(201,168,76,.12); }
+  .preview-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:6px;margin-top:12px;max-height:200px;overflow-y:auto; }
+  .preview-room { background:#f0fdf4;border:1.5px solid #86efac;border-radius:6px;padding:6px;text-align:center;font-size:12px;font-weight:700;color:#15803d; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:24px;font-size:13px;color:#888;">
+  <a href="{% url 'dashboard:hotel_list' %}" style="color:#C9A84C;text-decoration:none;">Khách sạn</a>
+  <span>›</span>
+  <a href="{% url 'dashboard:room_by_hotel' hotel.pk %}" style="color:#C9A84C;text-decoration:none;">{{ hotel.name }}</a>
+  <span>›</span>
+  <span style="color:#1a1d27;font-weight:600;">Tạo hàng loạt</span>
+</div>
+
+<div style="max-width:680px;">
+  <div class="form-section" style="background:linear-gradient(135deg,#fff9ec,#fffdf5);border-color:#e8d5a3;">
+    <p style="font-size:13px;color:#856404;margin:0;">
+      ⚡ <strong>Tạo hàng loạt</strong> — Tự động sinh số phòng theo quy tắc:
+      <code style="background:#fff3cd;padding:2px 6px;border-radius:4px;">tầng + số thứ tự 2 chữ số</code>
+      <br>Ví dụ: Tầng 1, 10 phòng → <strong>101, 102, 103 ... 110</strong>
+    </p>
+  </div>
+
+  <form method="post" id="bulkForm">
+    {% csrf_token %}
+    <div class="form-section">
+      <div class="form-section-title">⚙️ Cấu hình tạo phòng</div>
+
+      <div class="mb-3">
+        <label class="form-label">Loại phòng *</label>
+        <select name="room_type_id" class="form-select" required id="rtSelect">
+          <option value="">-- Chọn loại phòng --</option>
+          {% for rt in room_types %}
+            <option value="{{ rt.pk }}">
+              {{ rt.name }} — {{ rt.price_per_night|floatformat:0 }} ₫/đêm
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-4">
+          <label class="form-label">Tầng bắt đầu *</label>
+          <input type="number" name="floor_start" id="floorStart" class="form-control"
+                 min="1" max="100" value="1" required oninput="updatePreview()">
+        </div>
+        <div class="col-4">
+          <label class="form-label">Tầng kết thúc *</label>
+          <input type="number" name="floor_end" id="floorEnd" class="form-control"
+                 min="1" max="100" value="5" required oninput="updatePreview()">
+        </div>
+        <div class="col-4">
+          <label class="form-label">Phòng / tầng *</label>
+          <input type="number" name="rooms_per_floor" id="rpf" class="form-control"
+                 min="1" max="50" value="10" required oninput="updatePreview()">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Trạng thái mặc định</label>
+        <select name="status" class="form-select">
+          {% for val, label in status_choices %}
+            <option value="{{ val }}" {% if val == 'available' %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="form-section">
+      <div class="form-section-title">👁 Xem trước phòng sẽ tạo</div>
+      <div id="summaryText" style="font-size:13px;color:#555;margin-bottom:10px;"></div>
+      <div class="preview-grid" id="previewGrid"></div>
+    </div>
+
+    <div class="d-grid gap-2">
+      <button type="submit" class="btn btn-gold py-3" style="font-size:14px;letter-spacing:1px;border-radius:10px;"
+              id="submitBtn">
+        ⚡ Tạo phòng hàng loạt
+      </button>
+      <a href="{% url 'dashboard:room_by_hotel' hotel.pk %}" class="btn btn-outline-secondary">Hủy bỏ</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updatePreview() {
+  const fs  = parseInt(document.getElementById('floorStart').value) || 1;
+  const fe  = parseInt(document.getElementById('floorEnd').value)   || 1;
+  const rpf = parseInt(document.getElementById('rpf').value)         || 0;
+
+  if (fs > fe || rpf <= 0) {
+    document.getElementById('summaryText').textContent = '⚠️ Cấu hình không hợp lệ';
+    document.getElementById('previewGrid').innerHTML = '';
+    return;
+  }
+
+  const total = (fe - fs + 1) * rpf;
+  document.getElementById('summaryText').innerHTML =
+    `Sẽ tạo <strong style="color:#C9A84C;">${total} phòng</strong> — từ tầng ${fs} đến tầng ${fe}, mỗi tầng ${rpf} phòng`;
+
+  const grid = document.getElementById('previewGrid');
+  grid.innerHTML = '';
+  let count = 0;
+  for (let f = fs; f <= fe; f++) {
+    for (let i = 1; i <= rpf; i++) {
+      if (count >= 60) {   // giới hạn preview 60 ô
+        const more = document.createElement('div');
+        more.className = 'preview-room';
+        more.style.cssText = 'background:#f3f4f6;border-color:#d1d5db;color:#9ca3af;';
+        more.textContent = `+${total - 60}`;
+        grid.appendChild(more);
+        return;
+      }
+      const d = document.createElement('div');
+      d.className = 'preview-room';
+      d.textContent = `${f}${String(i).padStart(2,'0')}`;
+      grid.appendChild(d);
+      count++;
+    }
+  }
+}
+updatePreview();
+</script>
+{% endblock %}
