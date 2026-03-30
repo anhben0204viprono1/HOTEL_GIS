@@ -10,6 +10,74 @@
   }
   #map { height: 480px; border-radius: 12px; }
   .filter-card { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+
+  /* ── Map Search Control ── */
+  .map-search-wrap {
+    position: absolute;
+    top: 12px; left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    width: min(420px, 90%);
+  }
+  .map-search-box {
+    display: flex; align-items: center;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.18);
+    padding: 0 6px 0 14px;
+    border: 2px solid transparent;
+    transition: border-color .2s;
+  }
+  .map-search-box:focus-within { border-color: #C9A84C; }
+  .map-search-input {
+    flex: 1; border: none; outline: none;
+    font-size: 13px; padding: 10px 4px;
+    background: transparent; font-family: 'Jost', sans-serif;
+  }
+  .map-search-btn {
+    background: #C9A84C; border: none; border-radius: 7px;
+    color: #0D0D0D; font-size: 14px; font-weight: 700;
+    padding: 6px 12px; cursor: pointer; flex-shrink: 0;
+    transition: background .15s;
+  }
+  .map-search-btn:hover { background: #d4b05a; }
+  .map-search-btn.clear-btn {
+    background: transparent; color: #aaa; font-size: 16px;
+    padding: 6px 8px; margin-right: 2px;
+  }
+  .map-search-btn.clear-btn:hover { color: #555; background: #f5f5f5; }
+
+  /* Dropdown kết quả */
+  .map-search-results {
+    background: #fff;
+    border-radius: 10px;
+    margin-top: 6px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.14);
+    overflow: hidden;
+    display: none;
+  }
+  .map-search-results.show { display: block; }
+  .search-section-title {
+    font-size: 10px; font-weight: 700; color: #aaa;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    padding: 10px 14px 4px;
+  }
+  .search-result-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 14px; cursor: pointer;
+    transition: background .12s; font-size: 13px;
+  }
+  .search-result-item:hover { background: #fffdf5; }
+  .search-result-item .icon { font-size: 16px; flex-shrink: 0; }
+  .search-result-item .name { font-weight: 600; color: #1a1d27; }
+  .search-result-item .sub  { font-size: 11px; color: #aaa; margin-top: 1px; }
+  .search-result-item .badge {
+    margin-left: auto; background: #fff9ec; color: #856404;
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 20px; flex-shrink: 0;
+  }
+  .search-divider { border: none; border-top: 1px solid #f3f0eb; margin: 4px 0; }
+  .search-no-result { padding: 14px; text-align: center; color: #aaa; font-size: 13px; }
 </style>
 {% endblock %}
 
@@ -125,7 +193,22 @@
         <button class="btn btn-sm btn-outline-secondary" onclick="clearRoute()">✕ Xóa đường đi</button>
         <span class="text-muted" style="font-size:12px;align-self:center;" id="mapStatus"></span>
       </div>
-      <div id="map"></div>
+      <div style="position:relative;">
+        <!-- ── Map Search Control ── -->
+        <div class="map-search-wrap">
+          <div class="map-search-box">
+            <span style="font-size:15px;margin-right:4px;color:#C9A84C;">🔍</span>
+            <input type="text" id="mapSearchInput" class="map-search-input"
+                   placeholder="Tìm khách sạn hoặc địa điểm trên bản đồ..."
+                   autocomplete="off">
+            <button class="map-search-btn clear-btn" id="mapSearchClear"
+                    onclick="clearMapSearch()" style="display:none;">✕</button>
+            <button class="map-search-btn" onclick="runMapSearch()">Tìm</button>
+          </div>
+          <div class="map-search-results" id="mapSearchResults"></div>
+        </div>
+        <div id="map"></div>
+      </div>
       <div class="mt-2 p-3 bg-white rounded shadow-sm" id="routeInfo" style="display:none;font-size:13px;">
         <strong>🗺 Tuyến đường:</strong> <span id="routeDetails"></span>
       </div>
@@ -141,7 +224,6 @@ const geojson = {{ geojson|safe }};
 let map, userMarker, routingControl;
 let userLat = null, userLng = null;
 const hotelMarkers = {};
-
 
 map = L.map('map').setView([10.7769, 106.7009], 12);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -210,6 +292,206 @@ function clearRoute() {
   if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
   userLat = null; userLng = null;
   document.getElementById('routeInfo').style.display = 'none';
+}
+
+// ════════════════════════════════════════════════════════
+// MAP SEARCH — Tìm kiếm trên bản đồ
+// ════════════════════════════════════════════════════════
+
+const mapSearchInput   = document.getElementById('mapSearchInput');
+const mapSearchResults = document.getElementById('mapSearchResults');
+const mapSearchClear   = document.getElementById('mapSearchClear');
+let searchDebounce     = null;
+let geocodeMarker      = null;
+
+// Dữ liệu khách sạn từ GeoJSON (đã có sẵn)
+const hotelData = geojson.features.map(f => ({
+  id:      f.properties.id,
+  name:    f.properties.name,
+  address: f.properties.address,
+  city:    f.properties.city,
+  stars:   f.properties.stars,
+  price:   f.properties.price,
+  url:     f.properties.url,
+  lat:     f.geometry.coordinates[1],
+  lng:     f.geometry.coordinates[0],
+}));
+
+// ── Input event: debounce 300ms ──
+mapSearchInput.addEventListener('input', function() {
+  const q = this.value.trim();
+  mapSearchClear.style.display = q ? 'block' : 'none';
+  clearTimeout(searchDebounce);
+  if (!q) { hideResults(); return; }
+  searchDebounce = setTimeout(() => showResults(q), 300);
+});
+
+mapSearchInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); runMapSearch(); }
+  if (e.key === 'Escape') { clearMapSearch(); }
+});
+
+// Click ngoài → đóng dropdown
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.map-search-wrap')) hideResults();
+});
+
+// ── Hiển thị kết quả dropdown ──
+function showResults(q) {
+  const ql = q.toLowerCase();
+
+  // Lọc khách sạn khớp
+  const matched = hotelData.filter(h =>
+    h.name.toLowerCase().includes(ql) ||
+    h.address.toLowerCase().includes(ql) ||
+    h.city.toLowerCase().includes(ql)
+  ).slice(0, 5);
+
+  let html = '';
+
+  if (matched.length) {
+    html += '<div class="search-section-title">🏨 Khách sạn</div>';
+    matched.forEach(h => {
+      html += `
+        <div class="search-result-item" onclick="selectHotel(${h.id}, ${h.lat}, ${h.lng})">
+          <span class="icon">🏨</span>
+          <div>
+            <div class="name">${h.name}</div>
+            <div class="sub">📍 ${h.city} · ${h.address.substring(0,35)}...</div>
+          </div>
+          <span class="badge">${h.stars}★</span>
+        </div>`;
+    });
+  }
+
+  // Luôn có option tìm trên bản đồ (Nominatim)
+  if (q.length >= 3) {
+    if (matched.length) html += '<hr class="search-divider">';
+    html += '<div class="search-section-title">🗺 Tìm địa điểm</div>';
+    html += `
+      <div class="search-result-item" onclick="geocodeSearch('${q.replace(/'/g, "\'")}')">
+        <span class="icon">📍</span>
+        <div>
+          <div class="name">Tìm "${q}" trên bản đồ</div>
+          <div class="sub">Tìm kiếm địa điểm qua OpenStreetMap</div>
+        </div>
+      </div>`;
+  }
+
+  if (!html) {
+    html = '<div class="search-no-result">Không tìm thấy kết quả</div>';
+  }
+
+  mapSearchResults.innerHTML = html;
+  mapSearchResults.classList.add('show');
+}
+
+function hideResults() {
+  mapSearchResults.classList.remove('show');
+}
+
+// ── Chọn khách sạn từ dropdown ──
+function selectHotel(id, lat, lng) {
+  hideResults();
+  map.setView([lat, lng], 16);
+  if (hotelMarkers[id]) {
+    hotelMarkers[id].marker.openPopup();
+  }
+  // Highlight card bên trái
+  document.querySelectorAll('.hotel-card').forEach(c => {
+    c.style.border = c.dataset.id == id
+      ? '2px solid #C9A84C'
+      : '';
+    if (c.dataset.id == id) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+}
+
+// ── Geocode tìm địa điểm bất kỳ qua Nominatim ──
+async function geocodeSearch(q) {
+  hideResults();
+  mapSearchResults.innerHTML = '<div class="search-no-result">⏳ Đang tìm kiếm...</div>';
+  mapSearchResults.classList.add('show');
+
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=vi&countrycodes=vn`;
+    const res  = await fetch(url, { headers: { 'Accept-Language': 'vi' } });
+    const data = await res.json();
+
+    if (!data.length) {
+      mapSearchResults.innerHTML = '<div class="search-no-result">Không tìm thấy địa điểm</div>';
+      return;
+    }
+
+    let html = '<div class="search-section-title">📍 Kết quả địa điểm</div>';
+    data.forEach(item => {
+      const shortName = item.display_name.split(',').slice(0, 2).join(', ');
+      html += `
+        <div class="search-result-item" onclick="goToPlace(${item.lat}, ${item.lon}, '${shortName.replace(/'/g, "\'")}')">
+          <span class="icon">📍</span>
+          <div>
+            <div class="name">${shortName}</div>
+            <div class="sub">${item.display_name.substring(0,55)}...</div>
+          </div>
+        </div>`;
+    });
+    mapSearchResults.innerHTML = html;
+
+  } catch(e) {
+    mapSearchResults.innerHTML = '<div class="search-no-result">❌ Lỗi kết nối, thử lại sau</div>';
+  }
+}
+
+// ── Zoom đến địa điểm từ Nominatim ──
+function goToPlace(lat, lng, name) {
+  hideResults();
+  lat = parseFloat(lat); lng = parseFloat(lng);
+
+  if (geocodeMarker) map.removeLayer(geocodeMarker);
+  geocodeMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      html: `<div style="background:#7c3aed;color:#fff;padding:5px 11px;border-radius:20px;
+               font-size:11px;font-weight:600;white-space:nowrap;
+               box-shadow:0 2px 10px rgba(0,0,0,.25);">📍 ${name}</div>`,
+      className: '', iconAnchor: [0, 0],
+    })
+  }).addTo(map).bindPopup(`<strong>📍 ${name}</strong>`).openPopup();
+
+  map.setView([lat, lng], 16);
+  mapSearchInput.value = name;
+  mapSearchClear.style.display = 'block';
+}
+
+// ── Nút Tìm (Enter / click) ──
+function runMapSearch() {
+  const q = mapSearchInput.value.trim();
+  if (!q) return;
+
+  // Kiểm tra khớp khách sạn trước
+  const ql = q.toLowerCase();
+  const matched = hotelData.find(h =>
+    h.name.toLowerCase().includes(ql) ||
+    h.address.toLowerCase().includes(ql)
+  );
+
+  if (matched) {
+    selectHotel(matched.id, matched.lat, matched.lng);
+    mapSearchInput.value = matched.name;
+    mapSearchClear.style.display = 'block';
+    hideResults();
+  } else {
+    // Fallback: geocode
+    geocodeSearch(q);
+  }
+}
+
+// ── Xóa tìm kiếm ──
+function clearMapSearch() {
+  mapSearchInput.value = '';
+  mapSearchClear.style.display = 'none';
+  hideResults();
+  if (geocodeMarker) { map.removeLayer(geocodeMarker); geocodeMarker = null; }
+  // Xóa highlight cards
+  document.querySelectorAll('.hotel-card').forEach(c => c.style.border = '');
 }
 </script>
 {% endblock %}

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hủy đặt phòng #{{ booking.id }}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background:#f4f5f7; color:#1a1d27; }
+  .wrapper { max-width:600px; margin:32px auto; }
+  .header {
+    background: linear-gradient(135deg, #1a1d27 0%, #2d1515 100%);
+    border-radius: 14px 14px 0 0; padding: 36px 40px; text-align: center;
+  }
+  .header .logo { font-size:28px; font-weight:300; color:#fff; letter-spacing:4px; font-family:Georgia,serif; }
+  .header .logo span { color:#C9A84C; }
+  .header .tagline { font-size:11px; color:rgba(255,255,255,.4); letter-spacing:3px; text-transform:uppercase; margin-top:6px; }
+  .body { background:#fff; padding:40px; }
+  .cancel-badge {
+    display:inline-flex; align-items:center; gap:8px;
+    background:#fee2e2; color:#991b1b; padding:10px 20px;
+    border-radius:30px; font-size:14px; font-weight:700;
+    margin-bottom:24px;
+  }
+  .greeting { font-size:20px; font-weight:600; margin-bottom:8px; }
+  .intro { font-size:14px; color:#555; line-height:1.6; margin-bottom:28px; }
+  .info-table { width:100%; border-collapse:collapse; margin-bottom:24px; }
+  .info-table tr { border-bottom:1px solid #f3f0eb; }
+  .info-table tr:last-child { border-bottom:none; }
+  .info-table td { padding:10px 0; font-size:14px; }
+  .info-table td:first-child { color:#888; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; width:40%; }
+  .reason-box {
+    background:#fff5f5; border:1.5px solid #fca5a5; border-radius:10px;
+    padding:16px 20px; margin-bottom:24px;
+  }
+  .reason-box .label { font-size:11px; font-weight:700; color:#dc2626; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
+  .reason-box p { font-size:14px; color:#555; }
+  .cta-wrap { text-align:center; margin:28px 0; }
+  .cta-btn {
+    display:inline-block; background:#C9A84C; color:#0D0D0D;
+    padding:14px 36px; border-radius:10px;
+    font-size:14px; font-weight:700; letter-spacing:1px; text-decoration:none;
+  }
+  .footer {
+    background:#f8f9fb; border-radius:0 0 14px 14px;
+    padding:24px 40px; text-align:center; border-top:1px solid #e8e9ec;
+  }
+  .footer p { font-size:12px; color:#aaa; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <div class="header">
+    <div class="logo">🏨 <span>Hotel</span> GIS</div>
+    <div class="tagline">Thông báo hủy đặt phòng</div>
+  </div>
+
+  <div class="body">
+
+    <div class="cancel-badge">❌ Đặt phòng đã được hủy</div>
+
+    <div class="greeting">Xin chào, {{ booking.user.get_full_name|default:booking.user.username }}</div>
+    <p class="intro">
+      Đặt phòng <strong>#{{ booking.id }}</strong> của bạn tại
+      <strong>{{ booking.room.hotel.name }}</strong> đã được hủy thành công.
+    </p>
+
+    <table class="info-table">
+      <tr><td>Mã đặt phòng</td><td><strong>#{{ booking.id }}</strong></td></tr>
+      <tr><td>Khách sạn</td><td>{{ booking.room.hotel.name }}</td></tr>
+      <tr><td>Loại phòng</td><td>{{ booking.room.room_type.name }}</td></tr>
+      <tr><td>Check-in</td><td>{{ booking.check_in|date:"d/m/Y" }}</td></tr>
+      <tr><td>Check-out</td><td>{{ booking.check_out|date:"d/m/Y" }}</td></tr>
+      <tr><td>Tổng tiền</td><td><strong>{{ booking.total_price|floatformat:0 }} ₫</strong></td></tr>
+      {% if booking.cancelled_at %}
+      <tr><td>Hủy lúc</td><td>{{ booking.cancelled_at|date:"H:i d/m/Y" }}</td></tr>
+      {% endif %}
+    </table>
+
+    {% if booking.cancel_reason %}
+    <div class="reason-box">
+      <div class="label">Lý do hủy</div>
+      <p>{{ booking.cancel_reason }}</p>
+    </div>
+    {% endif %}
+
+    <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:24px;">
+      Nếu bạn muốn đặt phòng khác, hãy ghé thăm website của chúng tôi.
+      Chúng tôi luôn sẵn sàng phục vụ bạn!
+    </p>
+
+    <div class="cta-wrap">
+      <a href="http://127.0.0.1:8000/" class="cta-btn">Tìm khách sạn khác →</a>
+    </div>
+
+  </div>
+
+  <div class="footer">
+    <p>
+      Email này được gửi tự động từ hệ thống <strong>Hotel GIS</strong>.<br>
+      © 2025 Hotel GIS · Hệ thống đặt phòng tích hợp bản đồ GIS
+    </p>
+  </div>
+
+</div>
+</body>
+</html>

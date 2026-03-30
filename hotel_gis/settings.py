@@ -58,6 +58,7 @@ DATABASES = {
         'PORT': '5432',
     }
 }
+
 LANGUAGE_CODE = 'vi'
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = True
@@ -65,7 +66,10 @@ USE_L10N = False   # Tắt locale number format — tránh dấu phẩy thay d�
 USE_TZ = True
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+# Chỉ thêm STATICFILES_DIRS nếu thư mục tồn tại
+import os as _os
+_static_dir = BASE_DIR / 'static'
+STATICFILES_DIRS = [_static_dir] if _os.path.isdir(_static_dir) else []
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -75,3 +79,14 @@ CRISPY_TEMPLATE_PACK = 'bootstrap5'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+
+
+EMAIL_BACKEND   = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST      = 'sandbox.smtp.mailtrap.io'
+EMAIL_PORT      = 2525
+EMAIL_USE_TLS   = True
+EMAIL_USE_SSL   = False
+EMAIL_HOST_USER = '622441704f1d3b'
+EMAIL_HOST_PASSWORD = '****93e8'
+DEFAULT_FROM_EMAIL  = 'Hotel GIS <no-reply@hotelgis.vn>'
+

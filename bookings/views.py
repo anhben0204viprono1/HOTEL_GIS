@@ -6,14 +6,11 @@ from django.db import transaction
 from hotels.models import RoomType, Room
 from .models import Booking
 from .forms import BookingForm
+from .email_utils import send_booking_confirmation, send_booking_cancellation
 
 
 @login_required
 def create_booking(request, room_type_id):
-    """
-    Bước 1: Chọn ngày + số khách cho loại phòng.
-    Bước 2: Xác nhận + submit → tự tìm 1 phòng available rồi tạo Booking.
-    """
     room_type = get_object_or_404(RoomType, id=room_type_id, is_active=True)
     hotel     = room_type.hotel
 
@@ -39,7 +36,10 @@ def create_booking(request, room_type_id):
         ).exclude(id__in=booked_room_ids).first()
 
         if not available_room:
-            messages.error(request, '😔 Không còn phòng trống cho loại phòng này trong khoảng thời gian đã chọn. Vui lòng thử ngày khác.')
+            messages.error(
+                request,
+                '😔 Không còn phòng trống cho loại phòng này trong khoảng thời gian đã chọn. Vui lòng thử ngày khác.'
+            )
             return render(request, 'bookings/create.html', {
                 'form': form, 'room_type': room_type, 'hotel': hotel
             })
@@ -59,10 +59,26 @@ def create_booking(request, room_type_id):
                 status      = 'pending',
             )
 
-        messages.success(request, f'🎉 Đặt phòng thành công! Mã đặt phòng: #{booking.id}')
+        # ── Gửi email xác nhận (ngoài transaction để không rollback nếu mail lỗi)
+        email_sent = send_booking_confirmation(booking)
+
+        if email_sent:
+            messages.success(
+                request,
+                f'🎉 Đặt phòng thành công! Mã: #{booking.id} · Email xác nhận đã gửi đến {request.user.email}'
+            )
+        else:
+            messages.success(
+                request,
+                f'🎉 Đặt phòng thành công! Mã: #{booking.id}'
+            )
+            if request.user.email:
+                messages.warning(request, '⚠️ Không thể gửi email xác nhận. Vui lòng kiểm tra lại sau.')
+            else:
+                messages.info(request, '💡 Hãy cập nhật email trong tài khoản để nhận thông báo đặt phòng.')
+
         return redirect('bookings:detail', pk=booking.pk)
 
-    # Tính số phòng còn trống (không kèm ngày — chỉ theo status)
     available_count = Room.objects.filter(
         room_type=room_type, status='available'
     ).count()
@@ -94,7 +110,11 @@ def cancel_booking(request, pk):
             booking.cancelled_at  = timezone.now()
             booking.cancel_reason = request.POST.get('reason', '').strip()
             booking.save()
-            messages.warning(request, f'Đặt phòng #{booking.id} đã được hủy.')
+
+            # ── Gửi email thông báo hủy
+            send_booking_cancellation(booking)
+
+            messages.warning(request, f'Đặt phòng #{booking.id} đã được hủy. Email thông báo đã gửi.')
         else:
             messages.error(request, 'Không thể hủy đặt phòng ở trạng thái này.')
     return redirect('accounts:profile')

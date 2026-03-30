@@ -9,18 +9,7 @@ from django.utils.text import slugify
 from decimal import Decimal
 import math
 
-class HotelCategory(models.Model):
-    name = models.CharField(max_length=100)
-
-    def __str__(self):
-        return self.name
-
-
-class Hotel(models.Model):
-    name = models.CharField(max_length=200)
-    category = models.ForeignKey(HotelCategory, on_delete=models.CASCADE)
-
-# ─── Helpers ──────────────────────────────────────────────────────────────────
+# ─── Helpers 
 
 def haversine_distance(lat1, lng1, lat2, lng2):
     """Tính khoảng cách (km) giữa 2 tọa độ bằng công thức Haversine."""
@@ -34,7 +23,7 @@ def haversine_distance(lat1, lng1, lat2, lng2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-# ─── 1. Amenity ───────────────────────────────────────────────────────────────
+# ─── 1. Amenity 
 
 class Amenity(models.Model):
     """
@@ -71,7 +60,7 @@ class Amenity(models.Model):
         return dict(self.CATEGORY_CHOICES).get(self.category, self.category)
 
 
-# ─── 2. Hotel ─────────────────────────────────────────────────────────────────
+# ─── 2. Hotel
 
 class Hotel(models.Model):
     """
@@ -137,7 +126,7 @@ class Hotel(models.Model):
             self.slug = slugify(self.name, allow_unicode=True)
         super().save(*args, **kwargs)
 
-    # ── Helpers ──────────────────────────────────────────────────────────────
+    # ── Helpers
 
     def star_range(self):
         return range(self.star_rating)
@@ -161,7 +150,7 @@ class Hotel(models.Model):
         return rt.price_per_night if rt else None
 
 
-# ─── 3. HotelImage ────────────────────────────────────────────────────────────
+# ─── 3. HotelImage
 
 class HotelImage(models.Model):
     """Ảnh gallery của khách sạn."""
@@ -179,7 +168,7 @@ class HotelImage(models.Model):
         return f'Ảnh #{self.order} — {self.hotel.name}'
 
 
-# ─── 4. RoomType ──────────────────────────────────────────────────────────────
+# ─── 4. RoomType 
 
 class RoomType(models.Model):
     """
@@ -249,7 +238,7 @@ class RoomType(models.Model):
         return self.rooms.filter(status='available').count()
 
 
-# ─── 5. RoomAmenity (bảng trung gian N:N) ────────────────────────────────────
+# ─── 5. RoomAmenity (bảng trung gian N:N) 
 
 class RoomAmenity(models.Model):
     """
@@ -268,7 +257,7 @@ class RoomAmenity(models.Model):
         return f'{self.room_type.name} — {self.amenity.name}'
 
 
-# ─── 6. Room (Phòng thực tế) ─────────────────────────────────────────────────
+# ─── 6. Room (Phòng thực tế) 
 
 class Room(models.Model):
     """
