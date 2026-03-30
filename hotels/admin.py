@@ -133,7 +133,7 @@ class HotelAdmin(admin.ModelAdmin):
             'var el=document.getElementById("{mid}");'
             'if(!el||el._leaflet_id)return;'
             'var m=L.map("{mid}",{{zoomControl:true,scrollWheelZoom:false}}).setView([{lat},{lng}],16);'
-            'L.tileLayer("https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png",'
+            'L.tileLayer("https://{{s}}.basemaps.cartocdn.com/rastertiles/voyager/{{z}}/{{x}}/{{y}}{{r}}.png",'
             '{{attribution:"&copy; OpenStreetMap"}}).addTo(m);'
             'var ic=L.divIcon({{'
             'html:"<div style=\'background:#C9A84C;color:#0D0D0D;width:36px;height:36px;'
@@ -179,7 +179,7 @@ class RoomTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display  = ['room_number', 'hotel', 'room_type', 'floor', 'status_display', 'note','status']
+    list_display  = ['room_number', 'hotel', 'room_type', 'floor', 'status', 'status_display', 'note']
     list_filter   = ['status', 'hotel__city', 'floor']
     search_fields = ['room_number', 'hotel__name', 'room_type__name']
     list_editable = ['status']

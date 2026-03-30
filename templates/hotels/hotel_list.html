@@ -79,7 +79,7 @@
       <h5 class="mb-3" style="font-family:'Cormorant Garamond',serif;">{{ total }} Khách Sạn</h5>
       <div style="max-height:520px;overflow-y:auto;padding-right:4px;">
         {% for hotel in hotels %}
-        <div class="card hotel-card mb-3 shadow-sm" onclick="focusHotel('{{ hotel.id }}', '{{ hotel.latitude|default:0 }}', '{{ hotel.longitude|default:0 }}')" style="cursor:pointer;">
+        <div class="card hotel-card mb-3 shadow-sm" data-id="{{ hotel.id }}" data-lat="{{ hotel.latitude|stringformat:'f' }}" data-lng="{{ hotel.longitude|stringformat:'f' }}" onclick="focusHotelEl(this)" style="cursor:pointer;">
           <div class="row g-0">
             <div class="col-4">
               {% if hotel.image %}
@@ -137,14 +137,17 @@
 
 {% block extra_js %}
 <script>
-const geojson = JSON.parse('{{ geojson|escapejs }}');
+const geojson = {{ geojson|safe }};
 let map, userMarker, routingControl;
 let userLat = null, userLng = null;
 const hotelMarkers = {};
 
+
 map = L.map('map').setView([10.7769, 106.7009], 12);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19,
 }).addTo(map);
 
 geojson.features.forEach(f => {
@@ -167,8 +170,17 @@ geojson.features.forEach(f => {
 });
 
 function focusHotel(id, lat, lng) {
-  map.setView([lat, lng], 16);
+  // lat/lng đã là số (từ GeoJSON) — dùng parseFloat để chắc chắn
+  map.setView([parseFloat(lat), parseFloat(lng)], 16);
   if (hotelMarkers[id]) hotelMarkers[id].marker.openPopup();
+}
+
+// Wrapper cho onclick qua data attribute — tránh lỗi locale dấu phẩy
+function focusHotelEl(el) {
+  const id  = el.dataset.id;
+  const lat = parseFloat(el.dataset.lat);
+  const lng = parseFloat(el.dataset.lng);
+  focusHotel(id, lat, lng);
 }
 
 function locateUser() {

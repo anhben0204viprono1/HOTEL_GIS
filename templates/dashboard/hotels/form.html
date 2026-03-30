@@ -198,8 +198,10 @@ const initLng = parseFloat(document.getElementById('lng-input').value) || 106.0;
 const initZoom = document.getElementById('lat-input').value ? 14 : 6;
 
 pickerMap = L.map('picker-map').setView([initLat, initLng], initZoom);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap'
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 19,
 }).addTo(pickerMap);
 
 // Khung VN
