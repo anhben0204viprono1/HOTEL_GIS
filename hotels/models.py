@@ -6,10 +6,10 @@ Thiết kế theo schema PostgreSQL:
 """
 from django.db import models
 from django.utils.text import slugify
-from decimal import Decimal
 import math
 
-# ─── Helpers 
+
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def haversine_distance(lat1, lng1, lat2, lng2):
     """Tính khoảng cách (km) giữa 2 tọa độ bằng công thức Haversine."""
@@ -23,7 +23,7 @@ def haversine_distance(lat1, lng1, lat2, lng2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-# ─── 1. Amenity 
+# ─── 1. Amenity ───────────────────────────────────────────────────────────────
 
 class Amenity(models.Model):
     """
@@ -60,7 +60,7 @@ class Amenity(models.Model):
         return dict(self.CATEGORY_CHOICES).get(self.category, self.category)
 
 
-# ─── 2. Hotel
+# ─── 2. Hotel ─────────────────────────────────────────────────────────────────
 
 class Hotel(models.Model):
     """
@@ -126,7 +126,7 @@ class Hotel(models.Model):
             self.slug = slugify(self.name, allow_unicode=True)
         super().save(*args, **kwargs)
 
-    # ── Helpers
+    # ── Helpers ──────────────────────────────────────────────────────────────
 
     def star_range(self):
         return range(self.star_rating)
@@ -150,14 +150,15 @@ class Hotel(models.Model):
         return rt.price_per_night if rt else None
 
 
-# ─── 3. HotelImage
+# ─── 3. HotelImage ────────────────────────────────────────────────────────────
 
 class HotelImage(models.Model):
     """Ảnh gallery của khách sạn."""
-    hotel   = models.ForeignKey(Hotel, on_delete=models.CASCADE, related_name='images')
-    image   = models.ImageField(upload_to='hotels/gallery/', verbose_name='Ảnh')
-    caption = models.CharField(max_length=200, blank=True, verbose_name='Chú thích')
-    order   = models.SmallIntegerField(default=0, verbose_name='Thứ tự hiển thị')
+    hotel      = models.ForeignKey(Hotel, on_delete=models.CASCADE, related_name='images')
+    image      = models.ImageField(upload_to='hotels/gallery/', verbose_name='Ảnh')
+    caption    = models.CharField(max_length=200, blank=True, verbose_name='Chú thích')
+    is_primary = models.BooleanField(default=False, verbose_name='Ảnh đại diện')
+    order      = models.SmallIntegerField(default=0, verbose_name='Thứ tự hiển thị')
 
     class Meta:
         verbose_name        = 'Ảnh khách sạn'
@@ -168,7 +169,7 @@ class HotelImage(models.Model):
         return f'Ảnh #{self.order} — {self.hotel.name}'
 
 
-# ─── 4. RoomType 
+# ─── 4. RoomType ──────────────────────────────────────────────────────────────
 
 class RoomType(models.Model):
     """
@@ -238,7 +239,7 @@ class RoomType(models.Model):
         return self.rooms.filter(status='available').count()
 
 
-# ─── 5. RoomAmenity (bảng trung gian N:N) 
+# ─── 5. RoomAmenity (bảng trung gian N:N) ────────────────────────────────────
 
 class RoomAmenity(models.Model):
     """
@@ -257,7 +258,26 @@ class RoomAmenity(models.Model):
         return f'{self.room_type.name} — {self.amenity.name}'
 
 
-# ─── 6. Room (Phòng thực tế) 
+# ─── 5b. RoomTypeImage (Ảnh gallery loại phòng) ─────────────────────────────────
+
+class RoomTypeImage(models.Model):
+    """Ảnh gallery của loại phòng."""
+    room_type  = models.ForeignKey(RoomType, on_delete=models.CASCADE, related_name='images')
+    image      = models.ImageField(upload_to='rooms/gallery/', verbose_name='Ảnh')
+    caption    = models.CharField(max_length=200, blank=True, verbose_name='Chú thích')
+    is_primary = models.BooleanField(default=False, verbose_name='Ảnh đại diện')
+    order      = models.SmallIntegerField(default=0, verbose_name='Thứ tự')
+
+    class Meta:
+        verbose_name        = 'Ảnh loại phòng'
+        verbose_name_plural = 'Ảnh loại phòng'
+        ordering            = ['-is_primary', 'order']
+
+    def __str__(self):
+        return f'Ảnh {self.room_type.name}'
+
+
+# ─── 6. Room (Phòng thực tế) ─────────────────────────────────────────────────
 
 class Room(models.Model):
     """

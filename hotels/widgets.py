@@ -46,6 +46,30 @@ class LeafletMapWidget(forms.TextInput):
     </button>
   </div>
 
+  <!-- ── Tìm địa chỉ để lấy tọa độ ── -->
+  <div style="display:flex;gap:8px;margin-bottom:10px;">
+    <div style="position:relative;flex:1;">
+      <input type="text" id="addr-search-input"
+        placeholder="🔍 Nhập địa chỉ để lấy tọa độ... VD: 22 Nguyen Hue, Q1, HCM"
+        style="width:100%;padding:9px 14px;border:1.5px solid #e8e9ec;border-radius:8px;
+               font-size:13px;outline:none;"
+        onkeydown="if(event.key==='Enter'){{event.preventDefault();adminGeocode();}}"
+      >
+      <div id="addr-suggestions" style="
+        position:absolute;top:100%;left:0;right:0;background:#fff;
+        border:1.5px solid #C9A84C;border-top:none;border-radius:0 0 8px 8px;
+        z-index:9999;max-height:200px;overflow-y:auto;display:none;
+        box-shadow:0 8px 24px rgba(0,0,0,.1);">
+      </div>
+    </div>
+    <button type="button" onclick="adminGeocode()"
+      style="background:#C9A84C;color:#0f1117;border:none;border-radius:8px;
+             padding:9px 18px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">
+      📍 Lấy tọa độ
+    </button>
+  </div>
+  <div id="addr-msg" style="display:none;font-size:12px;padding:7px 12px;border-radius:6px;margin-bottom:8px;"></div>
+
   <!-- Map -->
   <div id="hotel-leaflet-map" style="
     height:450px;
@@ -333,6 +357,79 @@ class LeafletMapWidget(forms.TextInput):
       if (d) d.textContent = `${{e.latlng.lat.toFixed(5)}}°N  ${{e.latlng.lng.toFixed(5)}}°E`;
     }});
   }}
+
+
+  // ── Geocode: tìm địa chỉ → tọa độ (chỉ VN) ──────────────────────
+  window.adminGeocode = async function() {{
+    const q = document.getElementById('addr-search-input').value.trim();
+    if (!q) return;
+    showAddrMsg('⏳ Đang tìm...', '#eff6ff', '#1d4ed8');
+    try {{
+      const query = q.toLowerCase().includes('vi') ? q : q + ', Vietnam';
+      const url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query) + '&limit=5&countrycodes=vn&accept-language=vi';
+      const data = await (await fetch(url, {{headers:{{'Accept-Language':'vi'}}}})).json();
+      if (!data.length) {{
+        showAddrMsg('❌ Không tìm thấy địa chỉ tại Việt Nam', '#fff5f5', '#dc2626');
+        return;
+      }}
+      if (data.length === 1) {{
+        applyGeoResult(data[0]);
+      }} else {{
+        window._geoResults = data;
+        const box = document.getElementById('addr-suggestions');
+        box.innerHTML = data.map((item, i) => {{
+          const short = item.display_name.split(',').slice(0,3).join(', ');
+          return '<div onclick="applyGeoResultGlobal(' + i + ')" style="padding:9px 14px;cursor:pointer;font-size:12px;border-bottom:1px solid #f3f0eb;" onmouseover="this.style.background=\'#fffdf5\'" onmouseout="this.style.background=\'\'"><div style="font-weight:600;">📍 ' + short + '</div><div style="font-size:10px;color:#aaa;">' + item.type + '</div></div>';
+        }}).join('');
+        box.style.display = 'block';
+        window.applyGeoResultGlobal = function(i) {{ applyGeoResult(window._geoResults[i]); }};
+        showAddrMsg('📍 Tìm thấy ' + data.length + ' kết quả — chọn bên dưới', '#f0fdf4', '#15803d');
+      }}
+    }} catch(e) {{
+      showAddrMsg('❌ Lỗi kết nối. Thử lại sau.', '#fff5f5', '#dc2626');
+    }}
+  }};
+
+  function applyGeoResult(item) {{
+    const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+    const VN_LAT_MIN=8.18, VN_LAT_MAX=23.39, VN_LNG_MIN=102.14, VN_LNG_MAX=109.46;
+    if (lat < VN_LAT_MIN || lat > VN_LAT_MAX || lng < VN_LNG_MIN || lng > VN_LNG_MAX) {{
+      showAddrMsg('❌ Tọa độ (' + lat.toFixed(4) + ', ' + lng.toFixed(4) + ') nằm ngoài Việt Nam!', '#fff5f5', '#dc2626');
+      return;
+    }}
+    const la = Math.round(lat*1e6)/1e6, lo = Math.round(lng*1e6)/1e6;
+    document.getElementById('id_latitude').value = la;
+    document.getElementById('id_longitude').value = lo;
+    document.getElementById('disp_lat').textContent = la;
+    document.getElementById('disp_lng').textContent = lo;
+    if (hotelMarker) hotelMap.removeLayer(hotelMarker);
+    hotelMarker = L.marker([la, lo], {{
+      icon: L.divIcon({{
+        html: '<div style="background:#C9A84C;color:#0D0D0D;width:38px;height:38px;border-radius:50% 50% 50% 0;display:flex;align-items:center;justify-content:center;font-size:20px;transform:rotate(-45deg);box-shadow:0 4px 14px rgba(0,0,0,.35);border:2px solid #333;"><span style="transform:rotate(45deg)">&#127968;</span></div>',
+        className:'', iconSize:[38,38], iconAnchor:[19,38], popupAnchor:[0,-38]
+      }}),
+      draggable:true
+    }}).addTo(hotelMap);
+    hotelMarker.on('dragend', function(e) {{ const p=e.target.getLatLng(); setCoord(p.lat, p.lng); }});
+    hotelMap.setView([la, lo], 17);
+    document.getElementById('addr-suggestions').style.display = 'none';
+    const name = item.display_name.split(',').slice(0,2).join(', ');
+    document.getElementById('addr-search-input').value = name;
+    showAddrMsg('✅ Đã đặt tọa độ: ' + la + '°N, ' + lo + '°E', '#f0fdf4', '#15803d');
+    document.getElementById('hotel-map-error').style.display = 'none';
+  }}
+
+  function showAddrMsg(msg, bg, color) {{
+    const el = document.getElementById('addr-msg');
+    el.textContent = msg; el.style.display = 'block';
+    el.style.background = bg; el.style.color = color;
+    el.style.border = '1px solid ' + color + '40';
+  }}
+
+  document.addEventListener('click', function(e) {{
+    if (!e.target.closest('#addr-suggestions') && !e.target.closest('#addr-search-input'))
+      document.getElementById('addr-suggestions').style.display = 'none';
+  }});
 
   // Nút định vị
   window.hotelMapLocateMe = function() {{

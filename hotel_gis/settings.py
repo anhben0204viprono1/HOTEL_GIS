@@ -34,8 +34,6 @@ ROOT_URLCONF = 'hotel_gis.urls'
 
 TEMPLATES = [{
     'BACKEND': 'django.template.backends.django.DjangoTemplates',
-    # Thư mục templates/ ở gốc project — phải đứng TRƯỚC app dirs
-    # để admin override (templates/admin/hotels/hotel_change_form.html) hoạt động
     'DIRS': [BASE_DIR / 'templates'],
     'APP_DIRS': True,
     'OPTIONS': {'context_processors': [
@@ -62,11 +60,10 @@ DATABASES = {
 LANGUAGE_CODE = 'vi'
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = True
-USE_L10N = False   # Tắt locale number format — tránh dấu phẩy thay dấu chấm trong JS
+USE_L10N = False   
 USE_TZ = True
 
 STATIC_URL = '/static/'
-# Chỉ thêm STATICFILES_DIRS nếu thư mục tồn tại
 import os as _os
 _static_dir = BASE_DIR / 'static'
 STATICFILES_DIRS = [_static_dir] if _os.path.isdir(_static_dir) else []
@@ -81,12 +78,7 @@ LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 
 
-EMAIL_BACKEND   = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST      = 'sandbox.smtp.mailtrap.io'
-EMAIL_PORT      = 2525
-EMAIL_USE_TLS   = True
-EMAIL_USE_SSL   = False
+EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
 EMAIL_HOST_USER = '622441704f1d3b'
-EMAIL_HOST_PASSWORD = '****93e8'
-DEFAULT_FROM_EMAIL  = 'Hotel GIS <no-reply@hotelgis.vn>'
-
+EMAIL_HOST_PASSWORD = 'ce0b9871fa93e8'
+EMAIL_PORT = '2525'

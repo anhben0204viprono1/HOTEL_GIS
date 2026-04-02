@@ -95,12 +95,10 @@
           <div class="amenity-grid">
             {% for a in group.list %}
             <label class="amenity-item {% if a.id in selected_amenities %}selected{% endif %}" id="lbl-{{ a.id }}">
-                <input type="checkbox"
-                    name="amenities"
-                    value="{{ a.id }}"
-                    {% if a.id in selected_amenities %}checked{% endif %}
-                    onchange="toggleAmenity('{{ a.id }}', this.checked)">
-                <span>{{ a.name }}</span>
+              <input type="checkbox" name="amenities" value="{{ a.id }}"
+                     {% if a.id in selected_amenities %}checked{% endif %}
+                     onchange="toggleAmenity({{ a.id }}, this.checked)">
+              <span>{{ a.name }}</span>
             </label>
             {% endfor %}
           </div>
@@ -111,13 +109,43 @@
     <!-- Cột phải -->
     <div class="col-lg-5">
       <div class="form-section">
-        <div class="form-section-title">🖼 Ảnh loại phòng</div>
+        <div class="form-section-title">🖼 Ảnh đại diện chính</div>
         {% if room_type.image %}
-          <img src="{{ room_type.image.url }}" class="img-fluid rounded mb-2"
-               style="max-height:160px;object-fit:cover;width:100%;">
-          <p style="font-size:11px;color:#aaa;">Upload ảnh mới để thay thế</p>
+          <div style="margin-bottom:10px;position:relative;">
+            <img src="{{ room_type.image.url }}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;">
+            <span style="position:absolute;top:6px;left:6px;background:#C9A84C;color:#0f1117;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">ĐANG DÙNG</span>
+          </div>
         {% endif %}
-        <input type="file" name="image" class="form-control" accept="image/*">
+        <div class="img-upload-area" onclick="document.getElementById('rtMainImg').click()" style="border:2px dashed #e8e9ec;border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:#fafafa;">
+          <div style="font-size:1.6rem;">🖼</div>
+          <div style="font-size:12px;font-weight:600;color:#555;margin-top:4px;">{% if room_type.image %}Thay ảnh đại diện{% else %}Chọn ảnh đại diện{% endif %}</div>
+        </div>
+        <input type="file" id="rtMainImg" name="image_main" accept="image/*" style="display:none" onchange="previewRtMain(this)">
+        <div id="rtMainPreview" style="display:none;margin-top:8px;"><img id="rtMainThumb" style="width:100%;height:90px;object-fit:cover;border-radius:8px;border:2px solid #C9A84C;"><p style="font-size:11px;color:#10b981;margin-top:4px;">✅ Ảnh mới đã chọn</p></div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">📸 Ảnh gallery phòng</div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px;">Click ảnh để đặt làm đại diện · ✕ để xóa</p>
+        {% if rt_images %}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-bottom:10px;" id="rtExistGrid">
+          {% for img in rt_images %}
+          <div style="position:relative;border-radius:8px;overflow:hidden;border:2px solid {% if img.is_primary %}#C9A84C{% else %}#e8e9ec{% endif %};aspect-ratio:4/3;cursor:pointer;background:#f8f9fb;" id="rtec{{ img.id }}" onclick="rtSetPrimaryExist({{ img.id }})">
+            <img src="{{ img.image.url }}" style="width:100%;height:100%;object-fit:cover;">
+            {% if img.is_primary %}<span style="position:absolute;top:3px;left:3px;background:#C9A84C;color:#0f1117;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;">★</span>{% endif %}
+            <button type="button" onclick="event.stopPropagation();rtDelExist({{ img.id }})" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;line-height:18px;display:flex;align-items:center;justify-content:center;">✕</button>
+          </div>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="rtPrimaryImgId" name="primary_rt_image_id" value="{% for img in rt_images %}{% if img.is_primary %}{{ img.id }}{% endif %}{% endfor %}">
+        <input type="hidden" id="rtDelImgIds" name="delete_rt_image_ids" value="">
+        {% endif %}
+        <div style="border:2px dashed #e8e9ec;border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:#fafafa;" onclick="document.getElementById('rtGalInput').click()" ondragover="event.preventDefault()" ondrop="rtHandleDrop(event)">
+          <div style="font-size:1.6rem;">📸</div>
+          <div style="font-size:12px;font-weight:600;color:#555;margin-top:4px;">Click hoặc kéo thả nhiều ảnh</div>
+        </div>
+        <input type="file" id="rtGalInput" name="rt_gallery_images" accept="image/*" multiple style="display:none" onchange="rtHandleFiles(this.files)">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;margin-top:8px;" id="rtNewGrid"></div>
       </div>
 
       <!-- Preview giá -->
@@ -156,6 +184,76 @@ function toggleAmenity(id, checked) {
   const el = document.getElementById('lbl-' + id);
   if (checked) el.classList.add('selected');
   else el.classList.remove('selected');
+}
+
+// ── RoomType Images ──
+let rtNewFiles=[], rtNewPrimary=null;
+
+function previewRtMain(input){
+  if(!input.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{document.getElementById('rtMainThumb').src=e.target.result;document.getElementById('rtMainPreview').style.display='block';};
+  r.readAsDataURL(input.files[0]);
+}
+
+function rtHandleFiles(files){[...files].forEach(f=>rtAddFile(f));}
+function rtHandleDrop(e){e.preventDefault();rtHandleFiles(e.dataTransfer.files);}
+
+function rtAddFile(file){
+  if(!file.type.startsWith('image/'))return;
+  const idx=rtNewFiles.length; rtNewFiles.push(file);
+  const r=new FileReader();
+  r.onload=ev=>{
+    const grid=document.getElementById('rtNewGrid');
+    const card=document.createElement('div');
+    card.id=`rtnc${idx}`;
+    card.style.cssText='position:relative;border-radius:8px;overflow:hidden;border:2px solid #e8e9ec;aspect-ratio:4/3;cursor:pointer;background:#f8f9fb;';
+    card.innerHTML=`<img src="${ev.target.result}" style="width:100%;height:100%;object-fit:cover;"><span id="rtbadge${idx}" style="position:absolute;top:3px;left:3px;background:#C9A84C;color:#0f1117;font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;display:none;">★</span><button type="button" onclick="event.stopPropagation();rtRemoveFile(${idx})" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:50%;width:18px;height:18px;font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>`;
+    card.onclick=()=>rtSetNewPrimary(idx);
+    grid.appendChild(card);
+    if(idx===0&&!document.querySelector('[id^="rtec"].primary'))rtSetNewPrimary(0);
+  };
+  r.readAsDataURL(file);
+}
+
+function rtSetNewPrimary(idx){
+  rtNewPrimary=idx;
+  document.querySelectorAll('#rtNewGrid > div').forEach((c,i)=>{
+    c.style.borderColor=i===idx?'#C9A84C':'#e8e9ec';
+    const badge=document.getElementById(`rtbadge${i}`);
+    if(badge)badge.style.display=i===idx?'block':'none';
+  });
+  document.querySelectorAll('#rtExistGrid > div').forEach(c=>c.style.borderColor='#e8e9ec');
+  const pf=document.getElementById('rtPrimaryImgId'); if(pf)pf.value='';
+  rtRebuild();
+}
+
+function rtRemoveFile(idx){
+  rtNewFiles[idx]=null;
+  const c=document.getElementById(`rtnc${idx}`); if(c)c.remove();
+  if(rtNewPrimary===idx)rtNewPrimary=null;
+  rtRebuild();
+}
+
+function rtRebuild(){
+  const dt=new DataTransfer();
+  rtNewFiles.forEach(f=>{if(f)dt.items.add(f);});
+  document.getElementById('rtGalInput').files=dt.files;
+}
+
+function rtSetPrimaryExist(id){
+  document.querySelectorAll('#rtExistGrid > div').forEach(c=>c.style.borderColor='#e8e9ec');
+  const c=document.getElementById(`rtec${id}`); if(c)c.style.borderColor='#C9A84C';
+  document.querySelectorAll('#rtNewGrid > div').forEach(c=>c.style.borderColor='#e8e9ec');
+  rtNewPrimary=null;
+  const pf=document.getElementById('rtPrimaryImgId'); if(pf)pf.value=id;
+}
+
+function rtDelExist(id){
+  const c=document.getElementById(`rtec${id}`); if(!c)return;
+  c.style.opacity='.3'; c.style.pointerEvents='none';
+  const df=document.getElementById('rtDelImgIds');
+  if(df){const cur=df.value?df.value.split(',').filter(x=>x):[];cur.push(id);df.value=cur.join(',');}
 }
 
 // Preview giá

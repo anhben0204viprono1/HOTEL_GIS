@@ -11,7 +11,7 @@ from django.http import JsonResponse
 from datetime import timedelta, date
 import json
 
-from hotels.models import Hotel, RoomType, Room, Amenity, HotelImage
+from hotels.models import Hotel, RoomType, Room, Amenity, HotelImage, RoomTypeImage
 from bookings.models import Booking, Payment, Review
 from django.contrib.auth.models import User
 from hotels.widgets import LeafletMapWidget
@@ -194,17 +194,38 @@ def _save_hotel(request, hotel):
             setattr(hotel, k, v)
         if not hotel.slug:
             hotel.slug = slugify(hotel.name, allow_unicode=True)
-        if 'image' in request.FILES:
-            hotel.image = request.FILES['image']
         hotel.save()
         messages.success(request, f'Đã cập nhật khách sạn "{hotel.name}".')
     else:
         fields['slug'] = slugify(fields['name'], allow_unicode=True)
         hotel = Hotel(**fields)
-        if 'image' in request.FILES:
-            hotel.image = request.FILES['image']
         hotel.save()
         messages.success(request, f'Đã thêm khách sạn "{hotel.name}".')
+
+    # ── Xử lý ảnh đại diện chính (1 file)
+    if 'image_main' in request.FILES:
+        hotel.image = request.FILES['image_main']
+        hotel.save(update_fields=['image'])
+
+    # ── Xử lý ảnh đính kèm (nhiều file)
+    gallery_files  = request.FILES.getlist('gallery_images')
+    gallery_caps   = request.POST.getlist('gallery_captions')
+    delete_img_ids = request.POST.getlist('delete_image_ids')
+
+    # Xóa ảnh được đánh dấu xóa
+    if delete_img_ids:
+        HotelImage.objects.filter(id__in=delete_img_ids, hotel=hotel).delete()
+
+    # Đặt lại ảnh đại diện gallery
+    primary_id = request.POST.get('primary_image_id')
+    if primary_id:
+        HotelImage.objects.filter(hotel=hotel).update(is_primary=False)
+        HotelImage.objects.filter(id=primary_id, hotel=hotel).update(is_primary=True)
+
+    # Upload ảnh mới
+    for i, f in enumerate(gallery_files):
+        cap = gallery_caps[i] if i < len(gallery_caps) else ''
+        HotelImage.objects.create(hotel=hotel, image=f, caption=cap, order=i)
 
     return redirect('dashboard:hotel_list')
 
@@ -364,7 +385,7 @@ def roomtype_create(request, hotel_pk):
     amenities = Amenity.objects.all().order_by('category', 'name')
     return render(request, 'dashboard/rooms/roomtype_form.html', {
         'hotel': hotel, 'amenities': amenities,
-        'bed_choices': RoomType.BED_CHOICES,
+        'bed_choices': RoomType.BED_CHOICES, 'rt_images': [],
         'page': 'rooms', 'action': 'Thêm loại phòng',
     })
 
@@ -378,10 +399,11 @@ def roomtype_edit(request, hotel_pk, pk):
         return _save_roomtype(request, hotel, room_type)
     amenities         = Amenity.objects.all().order_by('category', 'name')
     selected_amenities = list(room_type.amenities.values_list('id', flat=True))
+    rt_images          = room_type.images.all()
     return render(request, 'dashboard/rooms/roomtype_form.html', {
         'hotel': hotel, 'room_type': room_type,
         'amenities': amenities, 'selected_amenities': selected_amenities,
-        'bed_choices': RoomType.BED_CHOICES,
+        'bed_choices': RoomType.BED_CHOICES, 'rt_images': rt_images,
         'page': 'rooms', 'action': 'Sửa loại phòng',
     })
 
@@ -430,14 +452,29 @@ def _save_roomtype(request, hotel, room_type):
     if room_type:
         for k, v in fields.items():
             setattr(room_type, k, v)
-        if 'image' in request.FILES:
-            room_type.image = request.FILES['image']
         room_type.save()
     else:
         room_type = RoomType(**fields)
-        if 'image' in request.FILES:
-            room_type.image = request.FILES['image']
         room_type.save()
+
+    # ── Ảnh đại diện chính
+    if 'image_main' in request.FILES:
+        room_type.image = request.FILES['image_main']
+        room_type.save(update_fields=['image'])
+
+    # ── Ảnh đính kèm
+    gallery_files  = request.FILES.getlist('rt_gallery_images')
+    gallery_caps   = request.POST.getlist('rt_gallery_captions')
+    delete_img_ids = request.POST.getlist('delete_rt_image_ids')
+    if delete_img_ids:
+        RoomTypeImage.objects.filter(id__in=delete_img_ids, room_type=room_type).delete()
+    primary_id = request.POST.get('primary_rt_image_id')
+    if primary_id:
+        RoomTypeImage.objects.filter(room_type=room_type).update(is_primary=False)
+        RoomTypeImage.objects.filter(id=primary_id, room_type=room_type).update(is_primary=True)
+    for i, f in enumerate(gallery_files):
+        cap = gallery_caps[i] if i < len(gallery_caps) else ''
+        RoomTypeImage.objects.create(room_type=room_type, image=f, caption=cap, order=i)
 
     # Cập nhật tiện ích M2M
     selected_ids = [int(x) for x in data.getlist('amenities') if x.isdigit()]

@@ -5,32 +5,35 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
-  #picker-map {
-    height: 380px; border-radius: 10px;
-    border: 2px solid #e8e9ec; overflow: hidden;
-  }
-  .coord-display {
-    display: flex; gap: 10px; margin-bottom: 10px;
-  }
-  .coord-box {
-    flex: 1; background: #f8f9fb; border: 1px solid #e8e9ec;
-    border-radius: 8px; padding: 8px 14px;
-  }
-  .coord-box label { font-size: 10px; font-weight: 700; color: #aaa; letter-spacing: 1px; display: block; }
-  .coord-box span   { font-family: monospace; font-weight: 700; color: #10b981; font-size: 14px; }
-  .form-section { background: #fff; border-radius: 12px; border: 1px solid #e8e9ec; padding: 24px; margin-bottom: 20px; }
-  .form-section-title { font-size: 12px; font-weight: 700; color: #888; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid #f0ede8; }
-  .form-label { font-size: 12px; font-weight: 600; color: #555; }
-  .form-control:focus, .form-select:focus { border-color: #C9A84C; box-shadow: 0 0 0 3px rgba(201,168,76,.12); }
-  .star-select { display: flex; gap: 8px; }
-  .star-option input { display: none; }
-  .star-option label {
-    cursor: pointer; padding: 7px 16px; border-radius: 8px;
-    border: 1.5px solid #e8e9ec; font-size: 13px; font-weight: 600;
-    color: #aaa; transition: all .15s;
-  }
-  .star-option input:checked + label { border-color: #C9A84C; background: #fff9ec; color: #C9A84C; }
-  .star-option label:hover { border-color: #C9A84C; color: #C9A84C; }
+  #picker-map { height:400px; border-radius:10px; border:2px solid #e8e9ec; overflow:hidden; }
+  .form-section { background:#fff; border-radius:12px; border:1px solid #e8e9ec; padding:24px; margin-bottom:20px; }
+  .form-section-title { font-size:11px; font-weight:700; color:#888; letter-spacing:2px; text-transform:uppercase; margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid #f0ede8; }
+  .form-label { font-size:12px; font-weight:600; color:#555; }
+  .form-control:focus,.form-select:focus { border-color:#C9A84C; box-shadow:0 0 0 3px rgba(201,168,76,.12); }
+  .star-option input { display:none; }
+  .star-option label { cursor:pointer; padding:7px 14px; border-radius:8px; border:1.5px solid #e8e9ec; font-size:13px; font-weight:600; color:#aaa; transition:all .15s; display:inline-block; }
+  .star-option input:checked + label { border-color:#C9A84C; background:#fff9ec; color:#C9A84C; }
+  .addr-suggestions-box { position:absolute; top:100%; left:0; right:0; z-index:9999; background:#fff; border:1.5px solid #C9A84C; border-top:none; border-radius:0 0 10px 10px; max-height:220px; overflow-y:auto; display:none; box-shadow:0 8px 24px rgba(0,0,0,.12); }
+  .addr-sug-item { padding:10px 14px; cursor:pointer; font-size:12px; border-bottom:1px solid #f3f0eb; }
+  .addr-sug-item:hover { background:#fffdf5; }
+  .addr-msg { font-size:12px; padding:7px 12px; border-radius:7px; margin-top:8px; display:none; }
+  .coord-row { display:flex; gap:10px; margin:10px 0; }
+  .coord-box { flex:1; background:#f8f9fb; border:1px solid #e8e9ec; border-radius:8px; padding:8px 14px; }
+  .coord-box label { font-size:10px; font-weight:700; color:#aaa; letter-spacing:1px; display:block; }
+  .coord-box span { font-family:monospace; font-weight:700; color:#10b981; font-size:13px; }
+  .img-upload-area { border:2px dashed #e8e9ec; border-radius:10px; padding:20px; text-align:center; cursor:pointer; transition:all .2s; background:#fafafa; }
+  .img-upload-area:hover,.img-upload-area.dragover { border-color:#C9A84C; background:#fffdf5; }
+  .img-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:8px; margin-top:10px; }
+  .img-card { position:relative; border-radius:8px; overflow:hidden; border:2px solid #e8e9ec; aspect-ratio:4/3; cursor:pointer; transition:border-color .15s; background:#f8f9fb; }
+  .img-card.primary { border-color:#C9A84C; box-shadow:0 0 0 3px rgba(201,168,76,.2); }
+  .img-card img { width:100%; height:100%; object-fit:cover; display:block; }
+  .img-badge { position:absolute; top:4px; left:4px; background:#C9A84C; color:#0f1117; font-size:9px; font-weight:700; padding:2px 6px; border-radius:10px; display:none; }
+  .img-card.primary .img-badge { display:block; }
+  .img-del { position:absolute; top:4px; right:4px; background:rgba(0,0,0,.55); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; }
+  .img-del:hover { background:#dc2626; }
+  .img-set-primary { position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,.5); color:#fff; font-size:10px; font-weight:600; padding:4px; text-align:center; opacity:0; transition:opacity .15s; }
+  .img-card:hover .img-set-primary { opacity:1; }
+  .img-card.primary .img-set-primary { display:none; }
 </style>
 {% endblock %}
 
@@ -40,147 +43,126 @@
   <a href="{% url 'dashboard:hotel_list' %}" class="btn btn-outline-secondary">← Quay lại</a>
 </div>
 
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" id="hotelForm">
   {% csrf_token %}
   <div class="row g-4">
-
-    <!-- ── Cột trái ── -->
     <div class="col-lg-7">
 
-      <!-- Thông tin cơ bản -->
       <div class="form-section">
         <div class="form-section-title">📋 Thông tin cơ bản</div>
         <div class="mb-3">
           <label class="form-label">Tên khách sạn *</label>
-          <input type="text" name="name" class="form-control"
-                 value="{{ hotel.name|default:'' }}" required placeholder="VD: The Reverie Saigon">
+          <input type="text" name="name" class="form-control" required value="{{ hotel.name|default:'' }}" placeholder="VD: The Reverie Saigon">
         </div>
         <div class="mb-3">
           <label class="form-label">Số sao</label>
-          <div class="star-select">
+          <div style="display:flex;gap:8px;">
             {% for i in "12345" %}
             <div class="star-option">
-              <input type="radio" name="star_rating" id="star{{ i }}" value="{{ i }}"
-                     {% if hotel.star_rating == i|add:0 %}checked{% elif not hotel and i == '3' %}checked{% endif %}>
+              <input type="radio" name="star_rating" id="star{{ i }}" value="{{ i }}" {% if hotel.star_rating == i|add:0 %}checked{% elif not hotel and i == '3' %}checked{% endif %}>
               <label for="star{{ i }}">{{ i }}★</label>
             </div>
             {% endfor %}
           </div>
         </div>
-        <div class="row g-3">
-          <div class="col-6">
-            <label class="form-label">Giờ nhận phòng</label>
-            <input type="time" name="check_in_time" class="form-control"
-                   value="{{ hotel.check_in_time|default:'14:00' }}">
-          </div>
-          <div class="col-6">
-            <label class="form-label">Giờ trả phòng</label>
-            <input type="time" name="check_out_time" class="form-control"
-                   value="{{ hotel.check_out_time|default:'12:00' }}">
-          </div>
+        <div class="row g-3 mb-3">
+          <div class="col-6"><label class="form-label">Giờ nhận phòng</label><input type="time" name="check_in_time" class="form-control" value="{{ hotel.check_in_time|default:'14:00' }}"></div>
+          <div class="col-6"><label class="form-label">Giờ trả phòng</label><input type="time" name="check_out_time" class="form-control" value="{{ hotel.check_out_time|default:'12:00' }}"></div>
         </div>
-        <div class="mt-3 form-check">
-          <input type="checkbox" name="is_active" id="is_active" class="form-check-input"
-                 {% if hotel.is_active or not hotel %}checked{% endif %}>
+        <div class="form-check">
+          <input type="checkbox" name="is_active" id="is_active" class="form-check-input" {% if hotel.is_active or not hotel %}checked{% endif %}>
           <label for="is_active" class="form-check-label form-label">Đang hoạt động</label>
         </div>
       </div>
 
-      <!-- Địa chỉ -->
       <div class="form-section">
         <div class="form-section-title">📍 Địa chỉ & Tọa độ</div>
         <div class="mb-3">
-          <label class="form-label">Địa chỉ</label>
-          <input type="text" name="address" class="form-control"
-                 value="{{ hotel.address|default:'' }}" placeholder="Số nhà, đường, phường, quận">
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Thành phố</label>
-          <input type="text" name="city" class="form-control"
-                 value="{{ hotel.city|default:'Hồ Chí Minh' }}">
-        </div>
-
-        <!-- Tọa độ hiển thị -->
-        <div class="coord-display">
-          <div class="coord-box">
-            <label>VĨ ĐỘ (LAT)</label>
-            <span id="disp-lat">{{ hotel.latitude|default:'—' }}</span>
+          <label class="form-label">🔍 Tìm địa chỉ → tọa độ tự động ghim trên bản đồ</label>
+          <div style="position:relative;">
+            <div style="display:flex;gap:8px;">
+              <input type="text" id="addrInput" class="form-control" placeholder="VD: 22 Nguyễn Huệ, Quận 1, TP.HCM" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();doGeocode();}">
+              <button type="button" class="btn btn-gold px-3" onclick="doGeocode()" style="white-space:nowrap;">📍 Tìm</button>
+            </div>
+            <div id="addrSug" class="addr-suggestions-box"></div>
           </div>
-          <div class="coord-box">
-            <label>KINH ĐỘ (LNG)</label>
-            <span id="disp-lng">{{ hotel.longitude|default:'—' }}</span>
-          </div>
-          <button type="button" onclick="gpsLocate()"
-            style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
-            📍 GPS
-          </button>
-          <button type="button" onclick="resetCoord()"
-            style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;">
-            ✕
-          </button>
+          <div id="addrMsg" class="addr-msg"></div>
         </div>
-
-        <!-- Input ẩn -->
-        <input type="hidden" name="latitude"  id="lat-input" value="{{ hotel.latitude|default:'' }}">
-        <input type="hidden" name="longitude" id="lng-input" value="{{ hotel.longitude|default:'' }}">
-
-        <!-- Map picker -->
+        <div class="mb-3"><label class="form-label">Địa chỉ chi tiết</label><input type="text" name="address" class="form-control" value="{{ hotel.address|default:'' }}" placeholder="Số nhà, đường, phường, quận"></div>
+        <div class="mb-3"><label class="form-label">Thành phố</label><input type="text" name="city" class="form-control" value="{{ hotel.city|default:'Hồ Chí Minh' }}"></div>
+        <div class="coord-row">
+          <div class="coord-box"><label>VĨ ĐỘ (LAT)</label><span id="dispLat">{{ hotel.latitude|default:'—' }}</span></div>
+          <div class="coord-box"><label>KINH ĐỘ (LNG)</label><span id="dispLng">{{ hotel.longitude|default:'—' }}</span></div>
+          <button type="button" onclick="gpsLocate()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">📍 GPS</button>
+          <button type="button" onclick="resetCoord()" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-size:12px;cursor:pointer;">✕</button>
+        </div>
+        <input type="hidden" name="latitude"  id="latInput" value="{{ hotel.latitude|default:'' }}">
+        <input type="hidden" name="longitude" id="lngInput" value="{{ hotel.longitude|default:'' }}">
+        <div id="mapErr" style="display:none;color:#dc2626;font-size:12px;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;padding:8px 12px;margin-bottom:8px;"></div>
         <div id="picker-map"></div>
-        <p style="font-size:11px;color:#aaa;margin-top:6px;">
-          🖱 Click lên bản đồ để đặt vị trí · Marker có thể kéo thả · Chỉ nhận tọa độ trong Việt Nam
-        </p>
-        <div id="map-error" style="display:none;color:#ef4444;font-size:12px;background:#fff5f5;border:1px solid #fca5a5;border-radius:6px;padding:8px 12px;margin-top:6px;"></div>
+        <p style="font-size:11px;color:#aaa;margin-top:6px;">🖱 Click lên bản đồ hoặc tìm địa chỉ ở trên · Kéo thả marker để tinh chỉnh · Chỉ trong <strong>Việt Nam</strong></p>
       </div>
 
-      <!-- Liên hệ -->
       <div class="form-section">
         <div class="form-section-title">📞 Liên hệ</div>
         <div class="row g-3">
-          <div class="col-6">
-            <label class="form-label">Số điện thoại</label>
-            <input type="text" name="phone" class="form-control" value="{{ hotel.phone|default:'' }}">
-          </div>
-          <div class="col-6">
-            <label class="form-label">Email</label>
-            <input type="email" name="email" class="form-control" value="{{ hotel.email|default:'' }}">
-          </div>
-          <div class="col-12">
-            <label class="form-label">Website</label>
-            <input type="url" name="website" class="form-control" value="{{ hotel.website|default:'' }}" placeholder="https://...">
-          </div>
+          <div class="col-6"><label class="form-label">Số điện thoại</label><input type="text" name="phone" class="form-control" value="{{ hotel.phone|default:'' }}"></div>
+          <div class="col-6"><label class="form-label">Email</label><input type="email" name="email" class="form-control" value="{{ hotel.email|default:'' }}"></div>
+          <div class="col-12"><label class="form-label">Website</label><input type="url" name="website" class="form-control" value="{{ hotel.website|default:'' }}" placeholder="https://..."></div>
         </div>
       </div>
-
     </div>
 
-    <!-- ── Cột phải ── -->
     <div class="col-lg-5">
-
-      <!-- Mô tả -->
       <div class="form-section">
         <div class="form-section-title">📝 Mô tả</div>
-        <textarea name="description" class="form-control" rows="5"
-                  placeholder="Mô tả ngắn về khách sạn...">{{ hotel.description|default:'' }}</textarea>
+        <textarea name="description" class="form-control" rows="4" placeholder="Mô tả khách sạn...">{{ hotel.description|default:'' }}</textarea>
       </div>
 
-      <!-- Ảnh -->
       <div class="form-section">
-        <div class="form-section-title">🖼 Ảnh đại diện</div>
-        {% if hotel.image %}
-          <img src="{{ hotel.image.url }}" class="img-fluid rounded mb-2" style="max-height:160px;object-fit:cover;width:100%;">
-          <p style="font-size:11px;color:#aaa;">Upload ảnh mới để thay thế</p>
-        {% endif %}
-        <input type="file" name="image" class="form-control" accept="image/*">
+        <div class="form-section-title">🖼 Ảnh đại diện chính</div>
+        {% if hotel.image %}<div style="margin-bottom:10px;position:relative;"><img src="{{ hotel.image.url }}" style="width:100%;height:140px;object-fit:cover;border-radius:8px;"><span style="position:absolute;top:6px;left:6px;background:#C9A84C;color:#0f1117;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;">ĐANG DÙNG</span></div>{% endif %}
+        <div class="img-upload-area" onclick="document.getElementById('mainImg').click()">
+          <div style="font-size:1.8rem;">🖼</div>
+          <div style="font-size:13px;font-weight:600;color:#555;margin-top:4px;">{% if hotel.image %}Thay ảnh đại diện{% else %}Chọn ảnh đại diện{% endif %}</div>
+          <div style="font-size:11px;color:#aaa;">JPG, PNG, WEBP</div>
+        </div>
+        <input type="file" id="mainImg" name="image_main" accept="image/*" style="display:none" onchange="previewMain(this)">
+        <div id="mainPreview" style="display:none;margin-top:8px;"><img id="mainThumb" style="width:100%;height:100px;object-fit:cover;border-radius:8px;border:2px solid #C9A84C;"><p style="font-size:11px;color:#10b981;margin-top:4px;">✅ Ảnh mới đã chọn</p></div>
       </div>
 
-      <!-- Submit -->
+      <div class="form-section">
+        <div class="form-section-title">📸 Ảnh gallery đính kèm</div>
+        <p style="font-size:12px;color:#888;margin-bottom:10px;">Click ảnh để <strong>đặt làm đại diện gallery</strong> · ✕ để xóa ảnh</p>
+        {% if hotel_images %}
+        <div class="img-grid" id="existGrid">
+          {% for img in hotel_images %}
+          <div class="img-card {% if img.is_primary %}primary{% endif %}" id="ec{{ img.id }}" onclick="setPrimaryExist({{ img.id }})">
+            <img src="{{ img.image.url }}">
+            <span class="img-badge">★</span>
+            <button type="button" class="img-del" onclick="event.stopPropagation();delExist({{ img.id }})">✕</button>
+            <div class="img-set-primary" onclick="event.stopPropagation();setPrimaryExist({{ img.id }})">Đặt chính</div>
+          </div>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="primaryImgId" name="primary_image_id" value="{% for img in hotel_images %}{% if img.is_primary %}{{ img.id }}{% endif %}{% endfor %}">
+        <input type="hidden" id="delImgIds" name="delete_image_ids" value="">
+        <hr style="margin:12px 0;">
+        {% endif %}
+        <div class="img-upload-area" id="galDropZone" onclick="document.getElementById('galInput').click()" ondragover="event.preventDefault();this.classList.add('dragover')" ondragleave="this.classList.remove('dragover')" ondrop="handleDrop(event)">
+          <div style="font-size:1.8rem;">📸</div>
+          <div style="font-size:13px;font-weight:600;color:#555;margin-top:4px;">Click hoặc kéo thả ảnh vào đây</div>
+          <div style="font-size:11px;color:#aaa;">Chọn nhiều ảnh cùng lúc</div>
+        </div>
+        <input type="file" id="galInput" name="gallery_images" accept="image/*" multiple style="display:none" onchange="handleFiles(this.files)">
+        <div class="img-grid" id="newGrid"></div>
+        <div id="galCaps"></div>
+      </div>
+
       <div class="d-grid gap-2">
-        <button type="submit" class="btn btn-gold py-3" style="font-size:14px;letter-spacing:1px;border-radius:10px;">
-          ✅ {{ action }} khách sạn
-        </button>
+        <button type="submit" class="btn btn-gold py-3" style="font-size:14px;letter-spacing:1px;border-radius:10px;">✅ {{ action }} khách sạn</button>
         <a href="{% url 'dashboard:hotel_list' %}" class="btn btn-outline-secondary">Hủy bỏ</a>
       </div>
-
     </div>
   </div>
 </form>
@@ -189,112 +171,201 @@
 {% block extra_js %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-const VN_LAT_MIN=8.18, VN_LAT_MAX=23.39, VN_LNG_MIN=102.14, VN_LNG_MAX=109.46;
-let pickerMap, pickerMarker;
+const VN = {latMin:8.18, latMax:23.39, lngMin:102.14, lngMax:109.46};
+let pickerMap, pickerMarker, geoResults=[], newFiles=[];
 
-// ── Khởi tạo map ──
-const initLat = parseFloat(document.getElementById('lat-input').value) || 16.0;
-const initLng = parseFloat(document.getElementById('lng-input').value) || 106.0;
-const initZoom = document.getElementById('lat-input').value ? 14 : 6;
+// ── Init map ──
+const iLat = parseFloat(document.getElementById('latInput').value)||16;
+const iLng = parseFloat(document.getElementById('lngInput').value)||106;
+const iZoom = document.getElementById('latInput').value ? 15 : 6;
+pickerMap = L.map('picker-map').setView([iLat,iLng],iZoom);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',subdomains:'abcd',maxZoom:19}).addTo(pickerMap);
+L.rectangle([[VN.latMin,VN.lngMin],[VN.latMax,VN.lngMax]],{color:'#10b981',weight:1.5,fillOpacity:.03,dashArray:'8,5'}).addTo(pickerMap);
 
-pickerMap = L.map('picker-map').setView([initLat, initLng], initZoom);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 19,
-}).addTo(pickerMap);
-
-// Khung VN
-L.rectangle([[VN_LAT_MIN,VN_LNG_MIN],[VN_LAT_MAX,VN_LNG_MAX]], {
-  color:'#10b981', weight:1.5, fillOpacity:.03, dashArray:'8,5'
-}).addTo(pickerMap);
-
-// Icon khách sạn
-function makeIcon() {
-  return L.divIcon({
-    html:`<div style="background:#C9A84C;color:#0D0D0D;width:38px;height:38px;
-      border-radius:50% 50% 50% 0;display:flex;align-items:center;justify-content:center;
-      font-size:20px;transform:rotate(-45deg);box-shadow:0 4px 12px rgba(0,0,0,.3);
-      border:2px solid #333;"><span style="transform:rotate(45deg)">🏨</span></div>`,
-    className:'', iconSize:[38,38], iconAnchor:[19,38], popupAnchor:[0,-38]
-  });
-}
-
-// Đặt marker sẵn nếu đang edit
-if (document.getElementById('lat-input').value) {
-  pickerMarker = L.marker([initLat, initLng], { icon: makeIcon(), draggable: true }).addTo(pickerMap);
-  bindDrag(pickerMarker);
-}
-
-// ── Hàm đặt tọa độ ──
-function setCoord(lat, lng) {
-  if (lat < VN_LAT_MIN || lat > VN_LAT_MAX || lng < VN_LNG_MIN || lng > VN_LNG_MAX) {
-    showErr(`❌ Tọa độ (${lat.toFixed(4)}, ${lng.toFixed(4)}) nằm ngoài Việt Nam!`);
-    return false;
-  }
-  const la = Math.round(lat*1e6)/1e6;
-  const lo = Math.round(lng*1e6)/1e6;
-
-  document.getElementById('lat-input').value = la;
-  document.getElementById('lng-input').value = lo;
-  document.getElementById('disp-lat').textContent = la;
-  document.getElementById('disp-lng').textContent = lo;
-  document.getElementById('map-error').style.display = 'none';
-
-  if (pickerMarker) {
-    pickerMarker.setLatLng([la, lo]);
-  } else {
-    pickerMarker = L.marker([la, lo], { icon: makeIcon(), draggable: true }).addTo(pickerMap);
-    bindDrag(pickerMarker);
-  }
-  return true;
-}
-
-function bindDrag(m) {
-  m.on('dragend', e => { const p = e.target.getLatLng(); setCoord(p.lat, p.lng); });
-}
-
-function showErr(msg) {
-  const d = document.getElementById('map-error');
-  d.textContent = msg; d.style.display = 'block';
-}
-
-// Click map
-pickerMap.on('click', e => setCoord(e.latlng.lat, e.latlng.lng));
-
-// Tọa độ chuột
-const mouseCtrl = L.control({ position: 'bottomleft' });
-mouseCtrl.onAdd = () => {
-  const d = L.DomUtil.create('div');
-  d.id = 'mouse-coord';
-  d.style.cssText = 'background:rgba(255,255,255,.9);padding:4px 10px;border-radius:5px;font-size:11px;font-family:monospace;color:#333;';
-  d.textContent = 'Di chuột lên bản đồ...';
-  return d;
-};
-mouseCtrl.addTo(pickerMap);
-pickerMap.on('mousemove', e => {
-  const d = document.getElementById('mouse-coord');
-  if (d) d.textContent = `${e.latlng.lat.toFixed(5)}°N  ${e.latlng.lng.toFixed(5)}°E`;
+const mkIcon = () => L.divIcon({
+  html:`<div style="background:#C9A84C;color:#0D0D0D;width:38px;height:38px;border-radius:50% 50% 50% 0;display:flex;align-items:center;justify-content:center;font-size:20px;transform:rotate(-45deg);box-shadow:0 4px 12px rgba(0,0,0,.3);border:2px solid #333;"><span style="transform:rotate(45deg)">&#127968;</span></div>`,
+  className:'',iconSize:[38,38],iconAnchor:[19,38],popupAnchor:[0,-38]
 });
 
-// ── GPS ──
-function gpsLocate() {
-  if (!navigator.geolocation) { showErr('Trình duyệt không hỗ trợ GPS'); return; }
-  navigator.geolocation.getCurrentPosition(
-    p => { if (setCoord(p.coords.latitude, p.coords.longitude)) pickerMap.setView([p.coords.latitude, p.coords.longitude], 16); },
-    () => showErr('Không lấy được GPS. Hãy click thẳng lên bản đồ.'),
-    { enableHighAccuracy: true, timeout: 12000 }
-  );
+if(document.getElementById('latInput').value){
+  pickerMarker=L.marker([iLat,iLng],{icon:mkIcon(),draggable:true}).addTo(pickerMap);
+  pickerMarker.on('dragend',e=>{const p=e.target.getLatLng();setCoord(p.lat,p.lng,false);});
 }
 
-// ── Reset ──
-function resetCoord() {
-  document.getElementById('lat-input').value = '';
-  document.getElementById('lng-input').value = '';
-  document.getElementById('disp-lat').textContent = '—';
-  document.getElementById('disp-lng').textContent = '—';
-  if (pickerMarker) { pickerMap.removeLayer(pickerMarker); pickerMarker = null; }
-  document.getElementById('map-error').style.display = 'none';
+function setCoord(lat,lng,pan=true){
+  if(lat<VN.latMin||lat>VN.latMax||lng<VN.lngMin||lng>VN.lngMax){
+    const e=document.getElementById('mapErr'); e.textContent=`❌ Tọa độ (${lat.toFixed(4)},${lng.toFixed(4)}) nằm ngoài Việt Nam!`; e.style.display='block'; return false;
+  }
+  const la=Math.round(lat*1e6)/1e6, lo=Math.round(lng*1e6)/1e6;
+  document.getElementById('latInput').value=la; document.getElementById('lngInput').value=lo;
+  document.getElementById('dispLat').textContent=la; document.getElementById('dispLng').textContent=lo;
+  document.getElementById('mapErr').style.display='none';
+  if(pickerMarker) pickerMarker.setLatLng([la,lo]);
+  else { pickerMarker=L.marker([la,lo],{icon:mkIcon(),draggable:true}).addTo(pickerMap); pickerMarker.on('dragend',e=>{const p=e.target.getLatLng();setCoord(p.lat,p.lng,false);}); }
+  if(pan) pickerMap.setView([la,lo],17); return true;
+}
+
+pickerMap.on('click',e=>setCoord(e.latlng.lat,e.latlng.lng));
+const mc=L.control({position:'bottomleft'});
+mc.onAdd=()=>{const d=L.DomUtil.create('div');d.style.cssText='background:rgba(255,255,255,.9);padding:4px 10px;border-radius:5px;font-size:11px;font-family:monospace;';d.id='mCoord';d.textContent='Di chuột lên bản đồ...';return d;};
+mc.addTo(pickerMap);
+pickerMap.on('mousemove',e=>{const d=document.getElementById('mCoord');if(d)d.textContent=`${e.latlng.lat.toFixed(5)}°N  ${e.latlng.lng.toFixed(5)}°E`;});
+
+function gpsLocate(){
+  if(!navigator.geolocation){document.getElementById('mapErr').textContent='Không hỗ trợ GPS';document.getElementById('mapErr').style.display='block';return;}
+  navigator.geolocation.getCurrentPosition(p=>{setCoord(p.coords.latitude,p.coords.longitude);},()=>{},{ enableHighAccuracy:true,timeout:12000});
+}
+function resetCoord(){
+  document.getElementById('latInput').value=''; document.getElementById('lngInput').value='';
+  document.getElementById('dispLat').textContent='—'; document.getElementById('dispLng').textContent='—';
+  if(pickerMarker){pickerMap.removeLayer(pickerMarker);pickerMarker=null;}
+}
+
+// ── Geocode ──
+let geoTimer=null;
+document.getElementById('addrInput').addEventListener('input',function(){
+  clearTimeout(geoTimer);
+  const q=this.value.trim();
+  if(q.length<4){hideSug();return;}
+  geoTimer=setTimeout(()=>fetchGeo(q,false),400);
+});
+document.addEventListener('click',e=>{if(!e.target.closest('[id="addrSug"]')&&!e.target.closest('#addrInput'))hideSug();});
+
+async function doGeocode(){fetchGeo(document.getElementById('addrInput').value.trim(),true);}
+
+async function fetchGeo(q,autoApply){
+  if(!q)return;
+  showMsg('⏳ Đang tìm...','#eff6ff','#1d4ed8');
+  try{
+    // Tách số nhà và đường để tìm chính xác hơn
+    const structured = buildStructuredQuery(q);
+    const url = structured
+      ? `https://nominatim.openstreetmap.org/search?format=json&${structured}&limit=6&countrycodes=vn&accept-language=vi&addressdetails=1`
+      : `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q+', Vietnam')}&limit=6&countrycodes=vn&accept-language=vi&addressdetails=1`;
+    const data=await(await fetch(url,{headers:{'Accept-Language':'vi'}})).json();
+    if(!data.length){showMsg('❌ Không tìm thấy địa chỉ tại Việt Nam','#fff5f5','#dc2626');hideSug();return;}
+    geoResults=data;
+    if(autoApply&&data.length===1){applyGeo(data[0]);hideSug();}
+    else showSug(data);
+  }catch(e){showMsg('❌ Lỗi kết nối','#fff5f5','#dc2626');}
+}
+
+function buildStructuredQuery(q) {
+  // Tách số nhà: "123 Nguyễn Huệ" hoặc "123/4 Lê Lợi"
+  const m = q.match(/^([\d\/]+[A-Za-z]?)\s+(.+)/);
+  if (m) {
+    return `street=${encodeURIComponent(m[1]+' '+m[2])}&city=Ho Chi Minh`;
+  }
+  return null;
+}
+
+function showSug(results){
+  const box=document.getElementById('addrSug');
+  box.innerHTML=results.map((item,i)=>{
+    const p = item.address || {};
+    const houseNo = p.house_number || '';
+    const road    = p.road || p.pedestrian || p.footway || p.path || '';
+    const ward    = p.suburb || p.quarter || p.neighbourhood || '';
+    const district= p.city_district || p.district || '';
+    const city    = p.city || p.town || '';
+    const main    = [houseNo, road].filter(Boolean).join(' ') || item.display_name.split(',')[0];
+    const sub     = [ward, district, city].filter(Boolean).join(', ');
+    return `<div class="addr-sug-item" onclick="applyGeo(geoResults[${i}])">
+      <div style="font-weight:600;color:#1a1d27;">📍 ${main}</div>
+      ${sub?`<div style="font-size:10px;color:#aaa;">${sub}</div>`:''}
+    </div>`;
+  }).join('');
+  box.style.display='block';
+}
+function hideSug(){document.getElementById('addrSug').style.display='none';}
+
+function applyGeo(item){
+  const lat=parseFloat(item.lat), lng=parseFloat(item.lon);
+  if(!setCoord(lat,lng,true)){showMsg(`❌ Tọa độ nằm ngoài Việt Nam!`,'#fff5f5','#dc2626');return;}
+  const p = item.address || {};
+  const houseNo = p.house_number || '';
+  const road    = p.road || p.pedestrian || p.footway || '';
+  const ward    = p.suburb || p.quarter || p.neighbourhood || '';
+  const district= p.city_district || p.district || '';
+  const city    = p.city || p.town || '';
+  const detailAddr = [houseNo, road, ward, district].filter(Boolean).join(', ');
+  const name = detailAddr || item.display_name.split(',').slice(0,3).join(', ');
+  document.getElementById('addrInput').value = name;
+  const af = document.querySelector('[name="address"]');
+  if(af && !af.value) af.value = detailAddr || item.display_name.split(',').slice(0,2).join(', ');
+  const cf = document.querySelector('[name="city"]');
+  if(cf && !cf.value && city) cf.value = city;
+  hideSug();
+  showMsg(`✅ Đã ghim: ${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E`,'#f0fdf4','#15803d');
+  if(pickerMarker)pickerMarker.bindPopup(`<strong>${name.split(',')[0]}</strong>`).openPopup();
+}
+
+function showMsg(msg,bg,color){const e=document.getElementById('addrMsg');e.textContent=msg;e.style.display='block';e.style.background=bg;e.style.color=color;e.style.border=`1px solid ${color}30`;}
+
+// ── Image main preview ──
+function previewMain(input){
+  if(!input.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{document.getElementById('mainThumb').src=e.target.result;document.getElementById('mainPreview').style.display='block';};
+  r.readAsDataURL(input.files[0]);
+}
+
+// ── Gallery images ──
+let newPrimary=null;
+
+function handleFiles(files){[...files].forEach(f=>addFile(f));}
+function handleDrop(e){e.preventDefault();document.getElementById('galDropZone').classList.remove('dragover');handleFiles(e.dataTransfer.files);}
+
+function addFile(file){
+  if(!file.type.startsWith('image/'))return;
+  const idx=newFiles.length; newFiles.push(file);
+  const r=new FileReader();
+  r.onload=ev=>{
+    const grid=document.getElementById('newGrid');
+    const card=document.createElement('div');
+    card.className='img-card'; card.id=`nc${idx}`;
+    card.innerHTML=`<img src="${ev.target.result}"><span class="img-badge">★</span><button type="button" class="img-del" onclick="event.stopPropagation();removeFile(${idx})">✕</button><div class="img-set-primary" onclick="event.stopPropagation();setNewPrimary(${idx})">Đặt chính</div>`;
+    card.onclick=()=>setNewPrimary(idx);
+    grid.appendChild(card);
+    if(idx===0&&!document.querySelector('.img-card.primary'))setNewPrimary(0);
+  };
+  r.readAsDataURL(file);
+}
+
+function setNewPrimary(idx){
+  newPrimary=idx;
+  document.querySelectorAll('#newGrid .img-card').forEach((c,i)=>c.classList.toggle('primary',i===idx));
+  document.querySelectorAll('#existGrid .img-card').forEach(c=>c.classList.remove('primary'));
+  const pf=document.getElementById('primaryImgId'); if(pf)pf.value='';
+  rebuildInputs();
+}
+
+function removeFile(idx){
+  newFiles[idx]=null;
+  const c=document.getElementById(`nc${idx}`); if(c)c.remove();
+  if(newPrimary===idx)newPrimary=null;
+  rebuildInputs();
+}
+
+function rebuildInputs(){
+  const dt=new DataTransfer();
+  newFiles.forEach(f=>{if(f)dt.items.add(f);});
+  document.getElementById('galInput').files=dt.files;
+}
+
+function setPrimaryExist(id){
+  document.querySelectorAll('#existGrid .img-card').forEach(c=>c.classList.remove('primary'));
+  document.getElementById(`ec${id}`)?.classList.add('primary');
+  document.querySelectorAll('#newGrid .img-card').forEach(c=>c.classList.remove('primary'));
+  newPrimary=null;
+  const pf=document.getElementById('primaryImgId'); if(pf)pf.value=id;
+}
+
+function delExist(id){
+  const c=document.getElementById(`ec${id}`); if(!c)return;
+  c.style.opacity='.3'; c.style.pointerEvents='none';
+  const df=document.getElementById('delImgIds');
+  if(df){const cur=df.value?df.value.split(',').filter(x=>x):[];cur.push(id);df.value=cur.join(',');}
 }
 </script>
 {% endblock %}

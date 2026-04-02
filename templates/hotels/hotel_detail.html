@@ -3,24 +3,54 @@
 
 {% block extra_css %}
 <style>
-  #map-detail {
-    height: 360px;
-    border-radius: 12px;
-    overflow: hidden;
-    z-index: 1;
-  }
-  .amenity-badge {
-    display: inline-block;
-    background: #fff3cd; color: #856404;
-    padding: 5px 12px; border-radius: 20px;
-    font-size: 12px; margin: 3px;
-  }
+  /* Hero */
   .hero-detail {
-    background: linear-gradient(to right, rgba(13,13,13,.9), rgba(13,13,13,.3)),
+    background: linear-gradient(to right,rgba(13,13,13,.9),rgba(13,13,13,.3)),
       url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1200&q=80') center/cover;
-    min-height: 280px; display: flex; align-items: flex-end;
+    min-height:280px; display:flex; align-items:flex-end;
   }
-  #routeInfo { font-size: 13px; color: #444; padding: 8px 12px; background: #f8f7f4; border-radius: 8px; }
+  /* Gallery lightbox */
+  .hotel-gallery { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:20px; border-radius:14px; overflow:hidden; }
+  .hotel-gallery .main-img { grid-column:1/3; height:260px; }
+  .hotel-gallery img { width:100%; height:160px; object-fit:cover; cursor:pointer; transition:opacity .2s; }
+  .hotel-gallery .main-img img { height:260px; }
+  .hotel-gallery img:hover { opacity:.88; }
+  .gallery-more { position:relative; }
+  .gallery-more-overlay { position:absolute; inset:0; background:rgba(13,13,13,.55); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.1rem; font-weight:700; cursor:pointer; }
+
+  /* Lightbox */
+  .lb-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:9999; align-items:center; justify-content:center; }
+  .lb-overlay.show { display:flex; }
+  .lb-img { max-width:90vw; max-height:88vh; border-radius:8px; object-fit:contain; }
+  .lb-close { position:absolute; top:18px; right:22px; color:#fff; font-size:2rem; cursor:pointer; line-height:1; }
+  .lb-prev,.lb-next { position:absolute; top:50%; transform:translateY(-50%); color:#fff; font-size:2rem; cursor:pointer; background:rgba(255,255,255,.1); border:none; border-radius:50%; width:48px; height:48px; display:flex; align-items:center; justify-content:center; transition:background .15s; }
+  .lb-prev { left:16px; }
+  .lb-next { right:16px; }
+  .lb-prev:hover,.lb-next:hover { background:rgba(255,255,255,.25); }
+  .lb-counter { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); color:#fff; font-size:13px; background:rgba(0,0,0,.5); padding:4px 14px; border-radius:20px; }
+
+  /* Room gallery */
+  .room-gallery { display:flex; gap:5px; margin-top:8px; overflow-x:auto; scrollbar-width:thin; }
+  .room-gallery img { height:70px; width:90px; object-fit:cover; border-radius:6px; cursor:pointer; flex-shrink:0; transition:opacity .15s; }
+  .room-gallery img:hover { opacity:.82; }
+
+  /* Map */
+  #map-detail { height:320px; border-radius:12px; overflow:hidden; z-index:1; }
+  #routeInfo { font-size:13px; color:#444; padding:8px 12px; background:#f8f7f4; border-radius:8px; }
+
+  /* User locate panel */
+  .locate-panel { background:#f8f7f4; border:1px solid #e5e1d8; border-radius:10px; padding:12px; margin-top:8px; }
+  .locate-tabs { display:flex; gap:4px; margin-bottom:10px; }
+  .locate-tab { flex:1; padding:6px; border:1.5px solid #e5e1d8; border-radius:6px; background:#fff; font-size:11px; font-weight:600; cursor:pointer; text-align:center; color:#888; transition:all .15s; }
+  .locate-tab.active { border-color:#C9A84C; background:#fff9ec; color:#856404; }
+
+  /* Amenity */
+  .amenity-badge { display:inline-block; background:#fff3cd; color:#856404; padding:5px 12px; border-radius:20px; font-size:12px; margin:3px; }
+
+  /* Addr search */
+  #userAddrSug { position:absolute; top:100%; left:0; right:0; z-index:999; background:#fff; border:1.5px solid #C9A84C; border-top:none; border-radius:0 0 8px 8px; max-height:180px; overflow-y:auto; display:none; box-shadow:0 6px 18px rgba(0,0,0,.1); }
+  .user-sug-item { padding:8px 12px; cursor:pointer; font-size:12px; border-bottom:1px solid #f3f0eb; }
+  .user-sug-item:hover { background:#fffdf5; }
 </style>
 {% endblock %}
 
@@ -28,15 +58,15 @@
 
 {% if hotel.image %}
 <style>
-  .hero-detail {
-    background-image: linear-gradient(to right,rgba(13,13,13,.85),rgba(13,13,13,.3)),
-      url('{{ hotel.image.url }}') !important;
-    background-size: cover !important;
-    background-position: center !important;
-  }
+.hero-detail {
+  background-image:linear-gradient(to right,rgba(13,13,13,.85),rgba(13,13,13,.3)),
+    url('{{ hotel.image.url }}') !important;
+  background-size:cover !important; background-position:center !important;
+}
 </style>
 {% endif %}
 
+<!-- HERO -->
 <div class="hero-detail text-white px-0">
   <div class="container pb-4">
     <nav aria-label="breadcrumb">
@@ -49,15 +79,12 @@
       {{ hotel.name }}
     </h1>
     <p class="mb-1">
-      {% for i in hotel.star_range %}
-        <span style="color:#C9A84C;">★</span>
-      {% endfor %}
+      {% for i in hotel.star_range %}<span style="color:#C9A84C;">★</span>{% endfor %}
       <span class="ms-2 text-white-50" style="font-size:13px;">📍 {{ hotel.address }}, {{ hotel.city }}</span>
     </p>
     {% if cheapest %}
     <p style="font-size:1.2rem;color:#C9A84C;font-weight:500;">
-      từ {{ cheapest.price_per_night|floatformat:0 }} ₫
-      <span style="font-size:12px;color:#aaa;font-weight:300;">/đêm</span>
+      từ {{ cheapest.price_per_night|floatformat:0 }} ₫<span style="font-size:12px;color:#aaa;font-weight:300;">/đêm</span>
     </p>
     {% endif %}
   </div>
@@ -66,91 +93,122 @@
 <div class="container my-5">
   <div class="row g-4">
 
-    <!-- Cột trái: mô tả + tiện ích + loại phòng -->
+    <!-- ── CỘT TRÁI ── -->
     <div class="col-lg-7">
 
+      <!-- Gallery ảnh khách sạn -->
+      {% with all_imgs=gallery %}
+      {% if all_imgs %}
+      <div class="hotel-gallery mb-4" id="hotelGallery">
+        {% for img in all_imgs %}
+          {% if forloop.counter == 1 %}
+          <div class="main-img" onclick="openLightbox({{ forloop.counter0 }})">
+            <img src="{{ img.image.url }}" alt="{{ img.caption }}">
+          </div>
+          {% elif forloop.counter <= 5 %}
+            {% if forloop.counter == 5 and all_imgs|length > 5 %}
+            <div class="gallery-more" onclick="openLightbox(4)">
+              <img src="{{ img.image.url }}" alt="">
+              <div class="gallery-more-overlay">+{{ all_imgs|length|add:"-4" }} ảnh</div>
+            </div>
+            {% else %}
+            <div onclick="openLightbox({{ forloop.counter0 }})"><img src="{{ img.image.url }}" alt="{{ img.caption }}"></div>
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% elif hotel.image %}
+      <div class="mb-4" style="border-radius:14px;overflow:hidden;cursor:pointer;" onclick="openLightbox(0)">
+        <img src="{{ hotel.image.url }}" style="width:100%;height:280px;object-fit:cover;">
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <!-- Mô tả -->
       <div class="bg-white p-4 rounded-3 shadow-sm mb-4">
         <h4 style="font-family:'Cormorant Garamond',serif;">Mô tả</h4>
         <p class="text-muted">{{ hotel.description|default:"Chưa có mô tả." }}</p>
         <hr class="my-2">
         <div class="row g-2" style="font-size:13px;">
-          {% if hotel.phone %}
-          <div class="col-sm-6">📞 <a href="tel:{{ hotel.phone }}" style="color:inherit;">{{ hotel.phone }}</a></div>
-          {% endif %}
-          {% if hotel.email %}
-          <div class="col-sm-6">✉️ <a href="mailto:{{ hotel.email }}" style="color:inherit;">{{ hotel.email }}</a></div>
-          {% endif %}
-          {% if hotel.website %}
-          <div class="col-sm-6">🌐 <a href="{{ hotel.website }}" target="_blank" style="color:#C9A84C;">Website</a></div>
-          {% endif %}
+          {% if hotel.phone %}<div class="col-sm-6">📞 <a href="tel:{{ hotel.phone }}" style="color:inherit;">{{ hotel.phone }}</a></div>{% endif %}
+          {% if hotel.email %}<div class="col-sm-6">✉️ <a href="mailto:{{ hotel.email }}" style="color:inherit;">{{ hotel.email }}</a></div>{% endif %}
+          {% if hotel.website %}<div class="col-sm-6">🌐 <a href="{{ hotel.website }}" target="_blank" style="color:#C9A84C;">Website</a></div>{% endif %}
           <div class="col-sm-6">🕐 Nhận phòng: <strong>{{ hotel.check_in_time|time:"H:i" }}</strong></div>
           <div class="col-sm-6">🕛 Trả phòng: <strong>{{ hotel.check_out_time|time:"H:i" }}</strong></div>
         </div>
       </div>
 
+      <!-- Tiện nghi -->
       {% if amenities %}
       <div class="bg-white p-4 rounded-3 shadow-sm mb-4">
         <h5 class="mb-3" style="font-family:'Cormorant Garamond',serif;">Tiện nghi</h5>
-        {% for a in amenities %}
-          <span class="amenity-badge">{{ a.name }}</span>
-        {% endfor %}
+        {% for a in amenities %}<span class="amenity-badge">{{ a.name }}</span>{% endfor %}
       </div>
       {% endif %}
 
+      <!-- Loại phòng -->
       <h4 class="mb-3" style="font-family:'Cormorant Garamond',serif;">Loại phòng</h4>
       {% for room in room_types %}
-      <div class="card mb-3 bg-white shadow-sm" style="border-radius:12px;overflow:hidden;">
-        <div class="row g-0">
-          <div class="col-4">
-            {% if room.image %}
-              <img src="{{ room.image.url }}" class="img-fluid h-100" style="object-fit:cover;min-height:130px;">
-            {% else %}
-              <div class="d-flex align-items-center justify-content-center bg-light h-100"
-                   style="min-height:130px;font-size:2.5rem;">🛏️</div>
+      <div class="card mb-4 bg-white shadow-sm" style="border-radius:14px;overflow:hidden;">
+
+        <!-- Ảnh đại diện phòng -->
+        {% with room_imgs=room.images.all %}
+        {% if room_imgs %}
+          <div style="position:relative;height:200px;overflow:hidden;">
+            <img src="{{ room_imgs.0.image.url }}" style="width:100%;height:200px;object-fit:cover;cursor:pointer;" onclick="openRoomLightbox('room{{ room.id }}',0)">
+            {% if room_imgs|length > 1 %}
+            <div style="position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;cursor:pointer;" onclick="openRoomLightbox('room{{ room.id }}',0)">
+              📷 {{ room_imgs|length }} ảnh
+            </div>
             {% endif %}
           </div>
-          <div class="col-8 p-3">
-            <h6 class="fw-semibold mb-1">{{ room.name }}</h6>
-            <p class="text-muted mb-1" style="font-size:12px;">
-              👥 Tối đa {{ room.max_occupancy }} khách
-              {% if room.area_sqm %}&nbsp;|&nbsp; 📐 {{ room.area_sqm }}m²{% endif %}
-              {% if room.bed_type %}&nbsp;|&nbsp; 🛏 {{ room.get_bed_type_display }}{% endif %}
-            </p>
-            <p class="mb-1" style="font-size:11px;color:#888;">
-              ✅ {{ room.available_rooms_count }} phòng còn trống
-            </p>
-            {% if room.description %}
-              <p style="font-size:12px;color:#666;">{{ room.description|truncatechars:80 }}</p>
-            {% endif %}
-            <div class="d-flex justify-content-between align-items-center mt-2">
-              <span style="color:#C9A84C;font-weight:600;">
-                {{ room.price_per_night|floatformat:0 }} ₫/đêm
-              </span>
-              {% if user.is_authenticated %}
-                {% if room.available_rooms_count > 0 %}
-                  <a href="{% url 'bookings:create' room.id %}" class="btn btn-sm btn-gold">Đặt ngay</a>
-                {% else %}
-                  <span class="btn btn-sm btn-secondary disabled" style="opacity:.6;">Hết phòng</span>
-                {% endif %}
+          <!-- Thumbnail strip -->
+          {% if room_imgs|length > 1 %}
+          <div class="room-gallery px-3 py-2" id="roomGal{{ room.id }}">
+            {% for img in room_imgs %}
+              <img src="{{ img.image.url }}" alt="{{ img.caption }}" onclick="openRoomLightbox('room{{ room.id }}',{{ forloop.counter0 }})">
+            {% endfor %}
+          </div>
+          {% endif %}
+        {% elif room.image %}
+          <img src="{{ room.image.url }}" style="width:100%;height:180px;object-fit:cover;">
+        {% else %}
+          <div style="height:120px;background:#f8f7f4;display:flex;align-items:center;justify-content:center;font-size:3rem;">🛏️</div>
+        {% endif %}
+        {% endwith %}
+
+        <div class="p-3">
+          <h6 class="fw-semibold mb-1">{{ room.name }}</h6>
+          <p class="text-muted mb-1" style="font-size:12px;">
+            👥 Tối đa {{ room.max_occupancy }} khách
+            {% if room.area_sqm %}&nbsp;|&nbsp; 📐 {{ room.area_sqm }}m²{% endif %}
+            {% if room.bed_type %}&nbsp;|&nbsp; 🛏 {{ room.get_bed_type_display }}{% endif %}
+          </p>
+          <p class="mb-1" style="font-size:11px;color:#888;">✅ {{ room.available_rooms_count }} phòng còn trống</p>
+          {% if room.description %}<p style="font-size:12px;color:#666;">{{ room.description|truncatechars:90 }}</p>{% endif %}
+          <div class="d-flex justify-content-between align-items-center mt-2">
+            <span style="color:#C9A84C;font-weight:600;">{{ room.price_per_night|floatformat:0 }} ₫/đêm</span>
+            {% if user.is_authenticated %}
+              {% if room.available_rooms_count > 0 %}
+                <a href="{% url 'bookings:create' room.id %}" class="btn btn-sm btn-gold">Đặt ngay</a>
               {% else %}
-                <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-sm btn-outline-secondary">Đăng nhập để đặt</a>
+                <span class="btn btn-sm btn-secondary disabled" style="opacity:.6;">Hết phòng</span>
               {% endif %}
-            </div>
+            {% else %}
+              <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-sm btn-outline-secondary">Đăng nhập để đặt</a>
+            {% endif %}
           </div>
         </div>
       </div>
       {% empty %}
         <div class="alert alert-light text-muted">Chưa có thông tin loại phòng.</div>
       {% endfor %}
-
     </div>
 
-    <!-- Cột phải: bản đồ -->
+    <!-- ── CỘT PHẢI: Bản đồ ── -->
     <div class="col-lg-5">
       <div class="bg-white p-3 rounded-3 shadow-sm sticky-top" style="top:80px;">
-        <h6 class="mb-2" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">
-          📍 Vị trí khách sạn
-        </h6>
+        <h6 class="mb-2" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">📍 Vị trí khách sạn</h6>
 
         <div id="map-detail"
              data-lat="{{ hotel_lat|stringformat:'f' }}"
@@ -158,56 +216,67 @@
              data-name="{{ hotel.name|escapejs }}"
              data-addr="{{ hotel.address|escapejs }}"></div>
 
+        <!-- Nút chính -->
         <div class="mt-3 d-grid gap-2">
-          <button class="btn btn-gold btn-sm" id="btn-locate" onclick="locateUser()">
-            📍 Xác định vị trí của tôi
-          </button>
-          <!-- Nhập tọa độ thủ công — dùng khi GPS máy tính không chính xác -->
-          <button class="btn btn-outline-secondary btn-sm" onclick="toggleManualInput()"
-                  id="btn-manual" style="font-size:12px;">
-            ✏️ Nhập tọa độ thủ công
-          </button>
-          <button class="btn btn-outline-secondary btn-sm" id="btn-route" onclick="findRoute()">
-            🗺 Tìm đường đến đây
-          </button>
-          <button class="btn btn-outline-danger btn-sm" onclick="clearRoute()">
-            ✕ Xóa đường đi
-          </button>
+          <button class="btn btn-gold btn-sm" id="btn-locate" onclick="locateUser()">📍 Xác định vị trí của tôi</button>
+          <button class="btn btn-outline-secondary btn-sm" id="btn-userpanel" onclick="toggleUserPanel()">📌 Ghim / Tìm vị trí của tôi</button>
+          <button class="btn btn-outline-secondary btn-sm" id="btn-route" onclick="findRoute()">🗺 Tìm đường đến đây</button>
+          <button class="btn btn-outline-danger btn-sm" onclick="clearRoute()">✕ Xóa đường đi</button>
         </div>
 
-        <!-- Panel nhập tọa độ thủ công -->
-        <div id="manualInputPanel" style="display:none;background:#f8f7f4;border-radius:10px;padding:12px;margin-top:8px;border:1px solid #e5e1d8;">
-          <p style="font-size:11px;color:#888;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">
-            Nhập tọa độ vị trí của bạn
-          </p>
-          <div class="row g-2">
-            <div class="col-6">
-              <label style="font-size:10px;color:#888;">Vĩ độ (Lat)</label>
-              <input type="number" id="manualLat" class="form-control form-control-sm"
-                     placeholder="VD: 21.0285" step="0.0001"
-                     style="font-family:monospace;font-size:13px;">
-            </div>
-            <div class="col-6">
-              <label style="font-size:10px;color:#888;">Kinh độ (Lng)</label>
-              <input type="number" id="manualLng" class="form-control form-control-sm"
-                     placeholder="VD: 105.8542" step="0.0001"
-                     style="font-family:monospace;font-size:13px;">
-            </div>
+        <!-- Panel ghim / tìm vị trí người dùng -->
+        <div id="userPanel" class="locate-panel" style="display:none;">
+          <!-- Tab chọn mode -->
+          <div class="locate-tabs">
+            <div class="locate-tab active" id="tabSearch" onclick="switchTab('search')">🔍 Tìm địa chỉ</div>
+            <div class="locate-tab" id="tabPin" onclick="switchTab('pin')">🗺 Ghim trên bản đồ</div>
+            <div class="locate-tab" id="tabCoord" onclick="switchTab('coord')">📐 Nhập tọa độ</div>
           </div>
-          <div class="mt-2 d-flex gap-2">
-            <button class="btn btn-sm btn-gold flex-grow-1" onclick="applyManualCoord()">
-              ✅ Xác nhận
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="useHanoiPreset()" style="font-size:11px;">
-              🏙 Hà Nội
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="useHCMPreset()" style="font-size:11px;">
-              🌆 HCM
-            </button>
+
+          <!-- Tab 1: Tìm địa chỉ -->
+          <div id="modeSearch">
+            <div style="position:relative;">
+              <div style="display:flex;gap:6px;">
+                <input type="text" id="userAddrInput" class="form-control form-control-sm"
+                       placeholder="VD: 22 Nguyễn Huệ, Quận 1, TP.HCM"
+                       autocomplete="off"
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();doUserGeocode();}"
+                       oninput="onUserAddrInput(this.value)">
+                <button class="btn btn-sm btn-gold" onclick="doUserGeocode()" style="white-space:nowrap;padding:4px 10px;">Tìm</button>
+              </div>
+              <div id="userAddrSug"></div>
+            </div>
+            <p style="font-size:10px;color:#aaa;margin-top:5px;margin-bottom:0;">Kết quả sẽ ghim vị trí bạn trên bản đồ</p>
           </div>
-          <p style="font-size:10px;color:#aaa;margin-top:6px;margin-bottom:0;">
-            💡 Google Maps: click chuột phải vào vị trí → copy tọa độ
-          </p>
+
+          <!-- Tab 2: Ghim trên bản đồ -->
+          <div id="modePin" style="display:none;">
+            <p style="font-size:12px;color:#555;margin:0;">
+              👆 <strong>Click trực tiếp lên bản đồ</strong> để ghim vị trí của bạn.
+            </p>
+            <p style="font-size:10px;color:#aaa;margin-top:4px;margin-bottom:0;">Đang chờ bạn click vào bản đồ...</p>
+            <div id="pinStatus" style="font-size:11px;color:#10b981;margin-top:6px;display:none;"></div>
+          </div>
+
+          <!-- Tab 3: Nhập tọa độ -->
+          <div id="modeCoord" style="display:none;">
+            <div class="row g-2">
+              <div class="col-6">
+                <label style="font-size:10px;color:#888;">Vĩ độ (Lat)</label>
+                <input type="number" id="manualLat" class="form-control form-control-sm" placeholder="VD: 10.7769" step="0.00001">
+              </div>
+              <div class="col-6">
+                <label style="font-size:10px;color:#888;">Kinh độ (Lng)</label>
+                <input type="number" id="manualLng" class="form-control form-control-sm" placeholder="VD: 106.7009" step="0.00001">
+              </div>
+            </div>
+            <div class="d-flex gap-2 mt-2">
+              <button class="btn btn-sm btn-gold flex-grow-1" onclick="applyManualCoord()">✅ Xác nhận</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="useHanoiPreset()">Hà Nội</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="useHCMPreset()">HCM</button>
+            </div>
+            <p style="font-size:10px;color:#aaa;margin-top:5px;margin-bottom:0;">💡 Google Maps: click chuột phải → copy tọa độ</p>
+          </div>
         </div>
 
         <div id="routeInfo" class="mt-2 text-center d-none"></div>
@@ -222,123 +291,279 @@
 
   </div>
 </div>
+
+<!-- ── Lightbox khách sạn ── -->
+<div class="lb-overlay" id="hotelLb" onclick="closeLbIfBg(event,'hotelLb')">
+  <button class="lb-close" onclick="closeLb('hotelLb')">✕</button>
+  <button class="lb-prev" onclick="lbNav('hotelLb',-1)">‹</button>
+  <img class="lb-img" id="hotelLbImg" src="" alt="">
+  <button class="lb-next" onclick="lbNav('hotelLb',1)">›</button>
+  <div class="lb-counter" id="hotelLbCounter"></div>
+</div>
+
+<!-- ── Lightbox phòng (template, clone qua JS) ── -->
+<div class="lb-overlay" id="roomLbTpl" style="display:none;" onclick="closeLbIfBg(event,currentRoomLb)">
+  <button class="lb-close" onclick="closeLb(currentRoomLb)">✕</button>
+  <button class="lb-prev" onclick="lbNav(currentRoomLb,-1)">‹</button>
+  <img class="lb-img" id="roomLbImg" src="" alt="">
+  <button class="lb-next" onclick="lbNav(currentRoomLb,1)">›</button>
+  <div class="lb-counter" id="roomLbCounter"></div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// ── Tọa độ lấy từ data attribute của #map-detail (tránh lỗi locale dấu phẩy)
-const _mapEl     = document.getElementById('map-detail');
-const HOTEL_LAT  = parseFloat(_mapEl.dataset.lat);
-const HOTEL_LNG  = parseFloat(_mapEl.dataset.lng);
-const HOTEL_NAME = _mapEl.dataset.name;
-const HOTEL_ADDR = _mapEl.dataset.addr;
+// ══════════════════════════════════════════════════
+// LIGHTBOX — Khách sạn
+// ══════════════════════════════════════════════════
+const hotelImgs = [
+  {% for img in gallery %}"{{ img.image.url }}"{% if not forloop.last %},{% endif %}{% endfor %}
+  {% if not gallery and hotel.image %}"{{ hotel.image.url }}"{% endif %}
+];
+let hotelLbIdx = 0;
 
-// ── Biến trạng thái
-let detailMap     = null;
-let userMarker    = null;
-let routingCtrl   = null;
-let userLat       = null;
-let userLng       = null;
+function openLightbox(idx) {
+  if (!hotelImgs.length) return;
+  hotelLbIdx = idx;
+  document.getElementById('hotelLbImg').src = hotelImgs[idx];
+  document.getElementById('hotelLbCounter').textContent = `${idx+1} / ${hotelImgs.length}`;
+  document.getElementById('hotelLb').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
 
-// ── Khởi tạo bản đồ
+function closeLb(id) {
+  document.getElementById(id).classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function closeLbIfBg(e, id) {
+  if (e.target === document.getElementById(id)) closeLb(id);
+}
+
+function lbNav(id, dir) {
+  if (id === 'hotelLb') {
+    hotelLbIdx = (hotelLbIdx + dir + hotelImgs.length) % hotelImgs.length;
+    document.getElementById('hotelLbImg').src = hotelImgs[hotelLbIdx];
+    document.getElementById('hotelLbCounter').textContent = `${hotelLbIdx+1} / ${hotelImgs.length}`;
+  } else {
+    const imgs = roomImgSets[id];
+    roomLbIdxes[id] = (roomLbIdxes[id] + dir + imgs.length) % imgs.length;
+    document.getElementById('roomLbImg').src = imgs[roomLbIdxes[id]];
+    document.getElementById('roomLbCounter').textContent = `${roomLbIdxes[id]+1} / ${imgs.length}`;
+  }
+}
+
+// Keyboard nav
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') lbNav(document.querySelector('.lb-overlay.show')?.id || 'hotelLb', 1);
+  if (e.key === 'ArrowLeft')  lbNav(document.querySelector('.lb-overlay.show')?.id || 'hotelLb', -1);
+  if (e.key === 'Escape') { const open = document.querySelector('.lb-overlay.show'); if (open) closeLb(open.id); }
+});
+
+// ══════════════════════════════════════════════════
+// LIGHTBOX — Phòng
+// ══════════════════════════════════════════════════
+const roomImgSets  = {};
+const roomLbIdxes  = {};
+let   currentRoomLb = null;
+
+// Thu thập ảnh phòng từ DOM
+document.querySelectorAll('[id^="roomGal"]').forEach(gal => {
+  const roomId = 'room' + gal.id.replace('roomGal','');
+  roomImgSets[roomId] = [...gal.querySelectorAll('img')].map(i => i.src);
+  roomLbIdxes[roomId] = 0;
+});
+// Phòng chỉ có ảnh đại diện (không có gallery)
+{% for room in room_types %}
+{% if room.image and not room.images.all %}
+roomImgSets['room{{ room.id }}'] = ['{{ room.image.url }}'];
+roomLbIdxes['room{{ room.id }}'] = 0;
+{% endif %}
+{% endfor %}
+
+function openRoomLightbox(roomId, idx) {
+  const imgs = roomImgSets[roomId];
+  if (!imgs || !imgs.length) return;
+  currentRoomLb = roomId;
+  roomLbIdxes[roomId] = idx;
+  document.getElementById('roomLbImg').src = imgs[idx];
+  document.getElementById('roomLbCounter').textContent = `${idx+1} / ${imgs.length}`;
+  document.getElementById('roomLbTpl').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+// ══════════════════════════════════════════════════
+// BẢN ĐỒ
+// ══════════════════════════════════════════════════
+const _el      = document.getElementById('map-detail');
+const HOTEL_LAT  = parseFloat(_el.dataset.lat);
+const HOTEL_LNG  = parseFloat(_el.dataset.lng);
+const HOTEL_NAME = _el.dataset.name;
+const HOTEL_ADDR = _el.dataset.addr;
+
+let detailMap, userMarker, routingCtrl;
+let userLat = null, userLng = null;
+let pinMode = false;
+
 (function initMap() {
   detailMap = L.map('map-detail').setView([HOTEL_LAT, HOTEL_LNG], 15);
-
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 19,
-}).addTo(detailMap);
+    attribution:'© OpenStreetMap © CARTO', subdomains:'abcd', maxZoom:19,
+  }).addTo(detailMap);
 
-  // Marker khách sạn
   const hotelIcon = L.divIcon({
-    html: `<div style="
-      background:#C9A84C;color:#0D0D0D;
-      padding:5px 11px;border-radius:20px;
-      font-size:11px;font-weight:600;white-space:nowrap;
-      box-shadow:0 2px 10px rgba(0,0,0,.35);
-      border:1.5px solid #0D0D0D;">
-      🏨 ${HOTEL_NAME.length > 18 ? HOTEL_NAME.substring(0,18)+'…' : HOTEL_NAME}
-    </div>`,
-    className: '',
-    iconAnchor: [0, 0],
+    html:`<div style="background:#C9A84C;color:#0D0D0D;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.35);border:1.5px solid #0D0D0D;">🏨 ${HOTEL_NAME.length>18?HOTEL_NAME.substring(0,18)+'…':HOTEL_NAME}</div>`,
+    className:'', iconAnchor:[0,0],
   });
+  L.marker([HOTEL_LAT,HOTEL_LNG],{icon:hotelIcon}).addTo(detailMap)
+    .bindPopup(`<strong>${HOTEL_NAME}</strong><br>${HOTEL_ADDR}`).openPopup();
 
-  L.marker([HOTEL_LAT, HOTEL_LNG], { icon: hotelIcon })
-    .addTo(detailMap)
-    .bindPopup(`<strong>${HOTEL_NAME}</strong><br>${HOTEL_ADDR}`)
-    .openPopup();
+  // Click map → ghim vị trí người dùng nếu đang ở tab Pin
+  detailMap.on('click', function(e) {
+    if (pinMode) {
+      setUserLocation(e.latlng.lat, e.latlng.lng, 'Vị trí bạn đã ghim');
+      const ps = document.getElementById('pinStatus');
+      ps.style.display = 'block';
+      ps.textContent = `✅ Đã ghim: ${e.latlng.lat.toFixed(5)}°N, ${e.latlng.lng.toFixed(5)}°E`;
+    }
+  });
 })();
 
-// ── Hàm: Xác định vị trí người dùng
+function setUserLocation(lat, lng, label) {
+  userLat = lat; userLng = lng;
+  if (userMarker) detailMap.removeLayer(userMarker);
+
+  const userIcon = L.divIcon({
+    html:`<div style="background:#2563eb;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);">📍</div>`,
+    className:'', iconSize:[34,34], iconAnchor:[17,17],
+  });
+  userMarker = L.marker([lat,lng],{icon:userIcon}).addTo(detailMap)
+    .bindPopup(`📍 ${label}`).openPopup();
+
+  const dist = haversine(lat, lng, HOTEL_LAT, HOTEL_LNG);
+  const distTxt = dist<1 ? Math.round(dist*1000)+'m' : dist.toFixed(1)+'km';
+  showInfo(`✅ Bạn cách <strong>${HOTEL_NAME}</strong> khoảng <strong>${distTxt}</strong>`);
+  detailMap.fitBounds([[lat,lng],[HOTEL_LAT,HOTEL_LNG]],{padding:[50,50]});
+}
+
+// ── GPS ──
 function locateUser() {
-  if (!navigator.geolocation) {
-    showInfo('❌ Trình duyệt không hỗ trợ GPS');
-    return;
-  }
+  if (!navigator.geolocation) { showInfo('❌ Trình duyệt không hỗ trợ GPS'); return; }
   const btn = document.getElementById('btn-locate');
-  btn.disabled = true;
-  btn.textContent = '⏳ Đang định vị...';
-  showInfo('⏳ Đang xác định vị trí...');
-
+  btn.disabled = true; btn.textContent = '⏳ Đang định vị...';
   navigator.geolocation.getCurrentPosition(
-    function(pos) {
-      userLat = pos.coords.latitude;
-      userLng = pos.coords.longitude;
-      btn.disabled = false;
-      btn.textContent = '📍 Xác định vị trí của tôi';
-
-      // Xóa marker cũ nếu có
-      if (userMarker) detailMap.removeLayer(userMarker);
-
-      const userIcon = L.divIcon({
-        html: `<div style="
-          background:#2563eb;color:#fff;
-          width:34px;height:34px;border-radius:50%;
-          display:flex;align-items:center;justify-content:center;
-          font-size:17px;border:3px solid #fff;
-          box-shadow:0 2px 8px rgba(0,0,0,.3);">📍</div>`,
-        className: '',
-        iconSize: [34,34],
-        iconAnchor: [17,17],
-      });
-
-      userMarker = L.marker([userLat, userLng], { icon: userIcon })
-        .addTo(detailMap)
-        .bindPopup('📍 Vị trí của bạn')
-        .openPopup();
-
-      const dist = haversine(userLat, userLng, HOTEL_LAT, HOTEL_LNG);
-      const distTxt = dist < 1
-        ? Math.round(dist * 1000) + ' m'
-        : dist.toFixed(1) + ' km';
-
-      showInfo(`✅ Bạn cách <strong>${HOTEL_NAME}</strong> khoảng <strong>${distTxt}</strong>`);
-      detailMap.fitBounds([[userLat, userLng], [HOTEL_LAT, HOTEL_LNG]], { padding: [50, 50] });
+    pos => {
+      btn.disabled = false; btn.textContent = '📍 Xác định vị trí của tôi';
+      setUserLocation(pos.coords.latitude, pos.coords.longitude, 'Vị trí GPS của bạn');
     },
-    function(err) {
-      btn.disabled = false;
-      btn.textContent = '📍 Xác định vị trí của tôi';
-      showInfo('❌ Không thể lấy vị trí. Hãy cấp quyền GPS cho trình duyệt.');
+    () => {
+      btn.disabled = false; btn.textContent = '📍 Xác định vị trí của tôi';
+      showInfo('❌ Không lấy được GPS. Dùng "Ghim / Tìm vị trí" bên dưới.');
     },
-    { enableHighAccuracy: true, timeout: 15000 }
+    {enableHighAccuracy:true, timeout:15000}
   );
 }
 
-// ── Hàm: Tìm đường đến khách sạn
+// ── Toggle panel ──
+function toggleUserPanel() {
+  const panel = document.getElementById('userPanel');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  document.getElementById('btn-userpanel').textContent = isOpen ? '📌 Ghim / Tìm vị trí của tôi' : '✕ Đóng';
+}
+
+// ── Tab switch ──
+function switchTab(tab) {
+  ['search','pin','coord'].forEach(t => {
+    document.getElementById('mode'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab ? 'block' : 'none';
+    document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active', t===tab);
+  });
+  pinMode = (tab === 'pin');
+  if (pinMode) detailMap.getContainer().style.cursor = 'crosshair';
+  else         detailMap.getContainer().style.cursor = '';
+}
+
+// ── Tìm địa chỉ người dùng (Nominatim, cả VN lẫn ngoài nước) ──
+let userGeoTimer = null, userGeoResults = [];
+
+function onUserAddrInput(q) {
+  clearTimeout(userGeoTimer);
+  if (q.length < 4) { document.getElementById('userAddrSug').style.display='none'; return; }
+  userGeoTimer = setTimeout(() => fetchUserGeo(q, false), 400);
+}
+
+async function doUserGeocode() {
+  fetchUserGeo(document.getElementById('userAddrInput').value.trim(), true);
+}
+
+async function fetchUserGeo(q, autoApply) {
+  if (!q) return;
+  try {
+    // Không giới hạn countrycodes — người dùng có thể ở bất kỳ đâu
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6&accept-language=vi&addressdetails=1`;
+    const data = await (await fetch(url, {headers:{'Accept-Language':'vi'}})).json();
+    if (!data.length) { showUserSug('<div style="padding:10px;font-size:12px;color:#888;">Không tìm thấy địa chỉ</div>'); return; }
+    userGeoResults = data;
+    if (autoApply && data.length === 1) { applyUserGeo(data[0]); return; }
+    showUserSugList(data);
+  } catch(e) { showUserSug('<div style="padding:10px;font-size:12px;color:#f00;">Lỗi kết nối</div>'); }
+}
+
+function showUserSugList(results) {
+  const html = results.map((item,i) => {
+    const p = item.address || {};
+    // Ưu tiên: số nhà + đường + quận/huyện + thành phố
+    const road    = p.road || p.pedestrian || p.footway || '';
+    const houseNo = p.house_number || '';
+    const district= p.suburb || p.district || p.city_district || p.quarter || '';
+    const city    = p.city || p.town || p.county || '';
+    const country = p.country || '';
+    const main    = [houseNo, road].filter(Boolean).join(' ') || item.display_name.split(',')[0];
+    const sub     = [district, city, country].filter(Boolean).join(', ');
+    return `<div class="user-sug-item" onclick="applyUserGeo(userGeoResults[${i}])">
+      <div style="font-weight:600;color:#1a1d27;">📍 ${main}</div>
+      ${sub ? `<div style="font-size:10px;color:#aaa;">${sub}</div>` : ''}
+    </div>`;
+  }).join('');
+  showUserSug(html);
+}
+
+function showUserSug(html) {
+  const box = document.getElementById('userAddrSug');
+  box.innerHTML = html; box.style.display = 'block';
+}
+
+function applyUserGeo(item) {
+  const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+  const p   = item.address || {};
+  const road    = p.road || p.pedestrian || p.footway || '';
+  const houseNo = p.house_number || '';
+  const main    = [houseNo, road].filter(Boolean).join(' ') || item.display_name.split(',')[0];
+  document.getElementById('userAddrInput').value = item.display_name.split(',').slice(0,3).join(', ');
+  document.getElementById('userAddrSug').style.display = 'none';
+  setUserLocation(lat, lng, main || 'Địa chỉ tìm kiếm');
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#modeSearch')) document.getElementById('userAddrSug').style.display = 'none';
+});
+
+// ── Nhập tọa độ thủ công ──
+function applyManualCoord() {
+  const lat = parseFloat(document.getElementById('manualLat').value);
+  const lng = parseFloat(document.getElementById('manualLng').value);
+  if (isNaN(lat) || isNaN(lng)) { showInfo('❌ Tọa độ không hợp lệ.'); return; }
+  setUserLocation(lat, lng, `Tọa độ ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
+}
+function useHanoiPreset(){ document.getElementById('manualLat').value='21.0285'; document.getElementById('manualLng').value='105.8542'; }
+function useHCMPreset()  { document.getElementById('manualLat').value='10.7769'; document.getElementById('manualLng').value='106.7009'; }
+
+// ── Tìm đường ──
 function findRoute() {
   if (!userLat || !userLng) {
-    // Chưa định vị → định vị trước rồi tự động tìm đường
-    navigator.geolocation.getCurrentPosition(
-      function(pos) {
-        userLat = pos.coords.latitude;
-        userLng = pos.coords.longitude;
-        drawRoute();
-      },
-      function() { showInfo('❌ Cần cấp quyền GPS để tìm đường.'); },
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
-    showInfo('⏳ Đang lấy vị trí để tìm đường...');
+    toggleUserPanel();
+    showInfo('⚠️ Hãy xác định vị trí của bạn trước.');
     return;
   }
   drawRoute();
@@ -346,112 +571,36 @@ function findRoute() {
 
 function drawRoute() {
   if (routingCtrl) detailMap.removeControl(routingCtrl);
-
   routingCtrl = L.Routing.control({
-    waypoints: [
-      L.latLng(userLat, userLng),
-      L.latLng(HOTEL_LAT, HOTEL_LNG)
-    ],
-    lineOptions: {
-      styles: [{ color: '#C9A84C', weight: 5, opacity: 0.9 }]
-    },
-    createMarker: function() { return null; },   // tắt marker mặc định
-    addWaypoints: false,
-    show: false,                                  // tắt panel chỉ đường dài
-    routeWhileDragging: false,
+    waypoints:[L.latLng(userLat,userLng),L.latLng(HOTEL_LAT,HOTEL_LNG)],
+    lineOptions:{styles:[{color:'#C9A84C',weight:5,opacity:.9}]},
+    createMarker:()=>null, addWaypoints:false, show:false,
   }).addTo(detailMap);
-
-  routingCtrl.on('routesfound', function(e) {
-    const s   = e.routes[0].summary;
-    const km  = (s.totalDistance / 1000).toFixed(1);
-    const min = Math.round(s.totalTime / 60);
-    showInfo(`🗺 Khoảng cách: <strong>${km} km</strong> · Thời gian di chuyển: <strong>~${min} phút</strong>`);
-  });
-
-  routingCtrl.on('routingerror', function() {
-    showInfo('❌ Không tìm được đường đi. Vui lòng thử lại.');
+  routingCtrl.on('routesfound', e => {
+    const s = e.routes[0].summary;
+    showInfo(`🗺 ${(s.totalDistance/1000).toFixed(1)} km · ~${Math.round(s.totalTime/60)} phút`);
   });
 }
 
-// ── Hàm: Xóa đường đi
 function clearRoute() {
-  if (routingCtrl) { detailMap.removeControl(routingCtrl); routingCtrl = null; }
-  if (userMarker)  { detailMap.removeLayer(userMarker);  userMarker  = null; }
-  userLat = null; userLng = null;
+  if (routingCtrl) { detailMap.removeControl(routingCtrl); routingCtrl=null; }
+  if (userMarker)  { detailMap.removeLayer(userMarker);   userMarker=null; }
+  userLat=null; userLng=null; pinMode=false;
+  detailMap.getContainer().style.cursor='';
   hideInfo();
-  detailMap.setView([HOTEL_LAT, HOTEL_LNG], 15);
+  detailMap.setView([HOTEL_LAT,HOTEL_LNG],15);
 }
 
-// ── Helpers
 function showInfo(html) {
-  const el = document.getElementById('routeInfo');
-  el.innerHTML = html;
-  el.classList.remove('d-none');
+  const el=document.getElementById('routeInfo'); el.innerHTML=html; el.classList.remove('d-none');
 }
-function hideInfo() {
-  document.getElementById('routeInfo').classList.add('d-none');
-}
-// ── Hàm: Toggle panel nhập tọa độ thủ công
-function toggleManualInput() {
-  const panel = document.getElementById('manualInputPanel');
-  const btn   = document.getElementById('btn-manual');
-  const isOpen = panel.style.display !== 'none';
-  panel.style.display = isOpen ? 'none' : 'block';
-  btn.textContent = isOpen ? '✏️ Nhập tọa độ thủ công' : '✕ Đóng';
-}
+function hideInfo() { document.getElementById('routeInfo').classList.add('d-none'); }
 
-// ── Hàm: Áp dụng tọa độ đã nhập
-function applyManualCoord() {
-  const lat = parseFloat(document.getElementById('manualLat').value);
-  const lng = parseFloat(document.getElementById('manualLng').value);
-
-  if (isNaN(lat) || isNaN(lng)) {
-    showInfo('❌ Tọa độ không hợp lệ. Vui lòng nhập đúng định dạng số.');
-    return;
-  }
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-    showInfo('❌ Tọa độ nằm ngoài phạm vi cho phép.');
-    return;
-  }
-
-  userLat = lat;
-  userLng = lng;
-
-  if (userMarker) detailMap.removeLayer(userMarker);
-
-  const userIcon = L.divIcon({
-    html: `<div style="background:#2563eb;color:#fff;width:34px;height:34px;border-radius:50%;
-      display:flex;align-items:center;justify-content:center;font-size:17px;
-      border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);">📍</div>`,
-    className: '', iconSize: [34,34], iconAnchor: [17,17],
-  });
-
-  userMarker = L.marker([userLat, userLng], { icon: userIcon })
-    .addTo(detailMap)
-    .bindPopup(`📍 Vị trí của bạn<br><code style="font-size:11px;">${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E</code>`)
-    .openPopup();
-
-  const dist = haversine(userLat, userLng, HOTEL_LAT, HOTEL_LNG);
-  const distTxt = dist < 1 ? Math.round(dist*1000)+' m' : dist.toFixed(1)+' km';
-  showInfo(`✅ Bạn cách <strong>${HOTEL_NAME}</strong> khoảng <strong>${distTxt}</strong>`);
-
-  detailMap.fitBounds([[userLat, userLng], [HOTEL_LAT, HOTEL_LNG]], { padding: [50, 50] });
-
-  // Đóng panel
-  document.getElementById('manualInputPanel').style.display = 'none';
-  document.getElementById('btn-manual').textContent = '✏️ Nhập tọa độ thủ công';
-}
-
-// ── Preset tọa độ thành phố
-function useHanoiPreset()  { document.getElementById('manualLat').value = '21.0285'; document.getElementById('manualLng').value = '105.8542'; }
-function useHCMPreset()    { document.getElementById('manualLat').value = '10.7769'; document.getElementById('manualLng').value = '106.7009'; }
-
-function haversine(la1, lo1, la2, lo2) {
-  const R = 6371, r = Math.PI / 180;
-  const dLa = (la2 - la1) * r, dLo = (lo2 - lo1) * r;
-  const a = Math.sin(dLa/2)**2
-          + Math.cos(la1*r) * Math.cos(la2*r) * Math.sin(dLo/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+function haversine(la1,lo1,la2,lo2) {
+  const R=6371,r=Math.PI/180;
+  const dLa=(la2-la1)*r, dLo=(lo2-lo1)*r;
+  const a=Math.sin(dLa/2)**2+Math.cos(la1*r)*Math.cos(la2*r)*Math.sin(dLo/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 </script>
 {% endblock %}

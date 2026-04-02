@@ -56,8 +56,8 @@ def hotel_list(request):
 
 def hotel_detail(request, slug):
     hotel      = get_object_or_404(Hotel, slug=slug, is_active=True)
-    room_types = hotel.room_types.filter(is_active=True).prefetch_related('amenities')
-    gallery    = hotel.images.all()
+    room_types = hotel.room_types.filter(is_active=True).prefetch_related('amenities', 'images')
+    gallery    = hotel.images.order_by('-is_primary', 'order')
 
     # Gom tất cả tiện ích từ các RoomType (unique)
     amenity_ids = set()
