@@ -139,6 +139,11 @@
     <a href="{% url 'hotels:detail' booking.room.hotel.slug %}" class="btn btn-outline-secondary px-4">
       🏨 Xem khách sạn
     </a>
+    {% if booking.status == 'pending' or booking.status == 'confirmed' %}
+      <a href="{% url 'bookings:create_payment' booking.id %}" class="btn btn-outline-primary px-4">
+        💳 Thanh toán (QR)
+      </a>
+    {% endif %}
     {% if booking.can_cancel %}
       <button class="btn btn-outline-danger px-4" onclick="showCancelModal()">
         ✕ Hủy đặt phòng

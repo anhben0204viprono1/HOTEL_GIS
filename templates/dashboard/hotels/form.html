@@ -173,6 +173,24 @@
         <input type="file" name="image" class="form-control" accept="image/*">
       </div>
 
+      <!-- Gallery -->
+      <div class="form-section">
+        <div class="form-section-title">🖼 Gallery (nhiều ảnh)</div>
+        {% if hotel %}
+          {% if hotel.images.all %}
+            <div class="row g-2 mb-2">
+              {% for img in hotel.images.all %}
+                <div class="col-4">
+                  <img src="{{ img.image.url }}" class="img-fluid rounded" style="height:80px;object-fit:cover;width:100%;">
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+          <p style="font-size:11px;color:#aaa;margin:0 0 8px;">Upload thêm ảnh để bổ sung (không xóa ảnh cũ).</p>
+        {% endif %}
+        <input type="file" name="gallery_images" class="form-control" accept="image/*" multiple>
+      </div>
+
       <!-- Submit -->
       <div class="d-grid gap-2">
         <button type="submit" class="btn btn-gold py-3" style="font-size:14px;letter-spacing:1px;border-radius:10px;">

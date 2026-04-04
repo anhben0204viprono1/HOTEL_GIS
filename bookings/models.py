@@ -7,6 +7,8 @@ Thiết kế theo schema PostgreSQL:
 from django.db import models
 from django.contrib.auth.models import User
 from hotels.models import Room, Hotel
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 
 # ─── 1. Booking ───────────────────────────────────────────────────────────────
@@ -62,7 +64,7 @@ class Booking(models.Model):
         constraints = [
             # Tương ứng: CONSTRAINT chk_dates CHECK (check_out > check_in)
             models.CheckConstraint(
-                condition=models.Q(check_out__gt=models.F('check_in')),
+                check=models.Q(check_out__gt=models.F('check_in')),
                 name='chk_checkout_after_checkin'
             )
         ]
@@ -74,12 +76,102 @@ class Booking(models.Model):
         """Số đêm ở."""
         return (self.check_out - self.check_in).days
 
+    def clean(self):
+        errors = {}
+
+        if self.user_id and not self.user.is_active:
+            errors['user'] = 'Tài khoản đang bị khóa.'
+
+        today = timezone.localdate()
+        if self.check_in and self.check_in < today:
+            errors['check_in'] = 'Ngày nhận phòng không được trong quá khứ.'
+
+        if self.check_in and self.check_out:
+            if self.check_out <= self.check_in:
+                errors['check_out'] = 'Ngày trả phòng phải sau ngày nhận phòng.'
+            if (self.check_out - self.check_in).days > 30:
+                errors['check_out'] = 'Không thể đặt phòng quá 30 đêm liên tiếp.'
+
+        if self.room_id:
+            if self.room.status == 'maintenance':
+                errors['room'] = 'Phòng đang bảo trì, không thể đặt.'
+
+            if self.num_guests and self.room.room_type_id:
+                max_occ = self.room.room_type.max_occupancy
+                if self.num_guests > max_occ:
+                    errors['num_guests'] = f'Loại phòng này chỉ chứa tối đa {max_occ} khách.'
+
+        # Không cho phép trùng lịch cho cùng 1 room với booking đang active
+        if self.room_id and self.check_in and self.check_out:
+            active_statuses = ['pending', 'confirmed', 'checked_in']
+            overlap_qs = (
+                Booking.objects
+                .filter(
+                    room_id=self.room_id,
+                    status__in=active_statuses,
+                    check_in__lt=self.check_out,
+                    check_out__gt=self.check_in,
+                )
+            )
+            if self.pk:
+                overlap_qs = overlap_qs.exclude(pk=self.pk)
+            if overlap_qs.exists():
+                errors['room'] = 'Phòng đã được đặt trong khoảng ngày bạn chọn.'
+
+        if errors:
+            raise ValidationError(errors)
+
     def save(self, *args, **kwargs):
+        # Cho phép skip validate khi seed/fixture
+        if not kwargs.pop('skip_clean', False):
+            self.full_clean()
+
+        previous_status = None
+        if self.pk:
+            previous_status = (
+                Booking.objects.filter(pk=self.pk)
+                .values_list('status', flat=True)
+                .first()
+            )
+
         # Tự tính tổng tiền = số đêm × giá phòng
         if self.check_in and self.check_out and self.room_id:
             n = (self.check_out - self.check_in).days
             self.total_price = self.room.room_type.price_per_night * max(n, 1)
         super().save(*args, **kwargs)
+
+        if previous_status != self.status:
+            self._sync_room_status(previous_status, self.status)
+
+    def _sync_room_status(self, previous_status, new_status):
+        """
+        Đồng bộ Room.status theo vòng đời booking.
+        - checked_in  -> occupied
+        - checked_out/cancelled (từ checked_in) -> available (nếu không bảo trì và không còn ai đang ở)
+        """
+        if not self.room_id:
+            return
+
+        room = self.room
+
+        if new_status == 'checked_in':
+            if room.status != 'maintenance' and room.status != 'occupied':
+                room.status = 'occupied'
+                room.save(update_fields=['status', 'updated_at'])
+            return
+
+        if previous_status == 'checked_in' and new_status in ('checked_out', 'cancelled'):
+            if room.status == 'maintenance':
+                return
+            has_other_checked_in = (
+                Booking.objects
+                .filter(room_id=room.id, status='checked_in')
+                .exclude(pk=self.pk)
+                .exists()
+            )
+            if not has_other_checked_in and room.status != 'available':
+                room.status = 'available'
+                room.save(update_fields=['status', 'updated_at'])
 
     def can_cancel(self):
         return self.status in ('pending', 'confirmed')
@@ -125,6 +217,18 @@ class Payment(models.Model):
         max_length=20, choices=STATUS_CHOICES,
         default='pending', verbose_name='Trạng thái'
     )
+    reference        = models.CharField(
+        max_length=64, blank=True,
+        verbose_name='Mã tham chiếu'
+    )
+    qr_payload       = models.TextField(
+        blank=True,
+        verbose_name='Nội dung QR (payload/link)'
+    )
+    qr_url           = models.URLField(
+        max_length=500, blank=True,
+        verbose_name='URL ảnh QR'
+    )
     transaction_code = models.CharField(
         max_length=100, blank=True, verbose_name='Mã giao dịch'
     )
@@ -153,6 +257,24 @@ class Payment(models.Model):
 
     def __str__(self):
         return f'Payment #{self.id} — {self.get_method_display()} — {self.get_status_display()}'
+
+    QR_METHODS = {'bank_transfer', 'e_wallet', 'momo', 'vnpay', 'zalopay'}
+
+    def wants_qr(self):
+        return self.method in self.QR_METHODS and self.status == 'pending'
+
+    def set_qr(self, payload: str):
+        """
+        Tạo QR URL từ payload mà không phụ thuộc thư viện ngoài.
+        Ảnh QR được render qua dịch vụ tạo QR miễn phí.
+        """
+        from urllib.parse import quote_plus
+        self.qr_payload = payload or ''
+        if self.qr_payload:
+            data = quote_plus(self.qr_payload)
+            self.qr_url = f'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data={data}'
+        else:
+            self.qr_url = ''
 
 
 # ─── 3. Review ────────────────────────────────────────────────────────────────

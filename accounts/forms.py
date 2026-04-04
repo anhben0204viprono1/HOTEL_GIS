@@ -17,6 +17,14 @@ class RegisterForm(UserCreationForm):
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
 
+    def clean_email(self):
+        email = (self.cleaned_data.get('email') or '').strip().lower()
+        if not email:
+            return email
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError('Email này đã được sử dụng.')
+        return email
+
 
 class LoginForm(AuthenticationForm):
     def __init__(self, *args, **kwargs):

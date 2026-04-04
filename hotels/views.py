@@ -1,5 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from django.db.models import Q, Min
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 from .models import Hotel, RoomType, Amenity
 import json
 
@@ -82,3 +84,48 @@ def hotel_detail(request, slug):
         'hotel_lng':  float(hotel.longitude),
     }
     return render(request, 'hotels/hotel_detail.html', context)
+
+
+@require_GET
+def hotels_geojson_api(request):
+    """
+    API trả về GeoJSON markers cho bản đồ.
+    Hỗ trợ filter giống trang list: q, city, stars, max_price
+    """
+    hotels = Hotel.objects.filter(is_active=True).prefetch_related('room_types')
+
+    q = request.GET.get('q', '')
+    city = request.GET.get('city', '')
+    stars = request.GET.get('stars', '')
+    max_price = request.GET.get('max_price', '')
+
+    if q:
+        hotels = hotels.filter(Q(name__icontains=q) | Q(address__icontains=q) | Q(city__icontains=q))
+    if city:
+        hotels = hotels.filter(city__icontains=city)
+    if stars:
+        hotels = hotels.filter(star_rating=stars)
+    if max_price:
+        hotels = hotels.annotate(min_price=Min('room_types__price_per_night')).filter(min_price__lte=max_price)
+
+    hotels = hotels.annotate(min_price=Min('room_types__price_per_night'))
+
+    features = []
+    for h in hotels:
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [float(h.longitude), float(h.latitude)]},
+            "properties": {
+                "id": h.id,
+                "slug": h.slug,
+                "name": h.name,
+                "stars": h.star_rating,
+                "price": str(h.min_price or ''),
+                "address": h.address,
+                "city": h.city,
+                "thumbnail": h.thumbnail(),
+                "url": f"/hotels/{h.slug}/",
+            }
+        })
+
+    return JsonResponse({"type": "FeatureCollection", "features": features})

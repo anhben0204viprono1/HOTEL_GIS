@@ -33,6 +33,25 @@ def haversine_distance(lat1, lng1, lat2, lng2):
          math.sin(d_lng / 2) ** 2)
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
+def unique_slugify_for_model(*, model, value: str, slug_field: str = 'slug', instance_pk=None) -> str:
+    """
+    Tạo slug unique (append -2, -3...) nếu bị trùng.
+    """
+    base = slugify(value or '', allow_unicode=True).strip('-')
+    if not base:
+        base = 'item'
+
+    slug = base
+    i = 2
+    qs = model._default_manager.all()
+    if instance_pk:
+        qs = qs.exclude(pk=instance_pk)
+
+    while qs.filter(**{slug_field: slug}).exists():
+        slug = f'{base}-{i}'
+        i += 1
+    return slug
+
 
 # ─── 1. Amenity ───────────────────────────────────────────────────────────────
 
@@ -134,7 +153,12 @@ class Hotel(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name, allow_unicode=True)
+            self.slug = unique_slugify_for_model(model=Hotel, value=self.name, instance_pk=self.pk)
+        else:
+            # Nếu user set slug nhưng bị trùng, tự append suffix
+            existing = Hotel.objects.filter(slug=self.slug).exclude(pk=self.pk).exists()
+            if existing:
+                self.slug = unique_slugify_for_model(model=Hotel, value=self.slug, instance_pk=self.pk)
         super().save(*args, **kwargs)
 
     # ── Helpers ──────────────────────────────────────────────────────────────

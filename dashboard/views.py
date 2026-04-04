@@ -5,9 +5,10 @@ Trang admin tự xây — yêu cầu staff hoặc superuser.
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-from django.db.models import Count, Sum, Avg, Q
+from django.db.models import Count, Sum, Avg, Q, Max
 from django.utils import timezone
 from django.http import JsonResponse
+from django.core.exceptions import ValidationError
 from datetime import timedelta, date
 import json
 
@@ -159,7 +160,7 @@ def hotel_toggle(request, pk):
 
 def _save_hotel(request, hotel):
     """Helper lưu hotel từ POST data."""
-    from django.utils.text import slugify
+    from hotels.models import unique_slugify_for_model
     data = request.POST
 
     try:
@@ -193,20 +194,35 @@ def _save_hotel(request, hotel):
         for k, v in fields.items():
             setattr(hotel, k, v)
         if not hotel.slug:
-            hotel.slug = slugify(hotel.name, allow_unicode=True)
+            hotel.slug = unique_slugify_for_model(model=Hotel, value=hotel.name, instance_pk=hotel.pk)
         if 'image' in request.FILES:
             hotel.image = request.FILES['image']
         hotel.save()
+        _save_hotel_gallery_images(request, hotel)
         messages.success(request, f'Đã cập nhật khách sạn "{hotel.name}".')
     else:
-        fields['slug'] = slugify(fields['name'], allow_unicode=True)
+        fields['slug'] = unique_slugify_for_model(model=Hotel, value=fields['name'])
         hotel = Hotel(**fields)
         if 'image' in request.FILES:
             hotel.image = request.FILES['image']
         hotel.save()
+        _save_hotel_gallery_images(request, hotel)
         messages.success(request, f'Đã thêm khách sạn "{hotel.name}".')
 
     return redirect('dashboard:hotel_list')
+
+def _save_hotel_gallery_images(request, hotel):
+    """
+    Nhận nhiều ảnh gallery từ input name="gallery_images" (multiple)
+    và tạo các bản ghi HotelImage.
+    """
+    files = request.FILES.getlist('gallery_images')
+    if not files:
+        return
+
+    start = (hotel.images.aggregate(m=Max('order'))['m'] or 0) + 1
+    for i, f in enumerate(files, start=start):
+        HotelImage.objects.create(hotel=hotel, image=f, order=i)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -263,8 +279,11 @@ def booking_update_status(request, pk):
             booking.status = new_status
             if new_status == 'cancelled':
                 booking.cancelled_at = timezone.now()
-            booking.save()
-            messages.success(request, f'Đã cập nhật trạng thái booking #{pk}.')
+            try:
+                booking.save()
+                messages.success(request, f'Đã cập nhật trạng thái booking #{pk}.')
+            except ValidationError as e:
+                messages.error(request, f'Không thể cập nhật booking #{pk}: {e}')
     return redirect('dashboard:booking_detail', pk=pk)
 
 

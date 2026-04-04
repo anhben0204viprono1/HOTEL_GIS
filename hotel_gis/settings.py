@@ -1,4 +1,6 @@
 from pathlib import Path
+import os
+os.environ['GDAL_LIBRARY_PATH'] = '/opt/homebrew/opt/gdal/lib/libgdal.dylib'
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-change-this-in-production-use-env-variable'
@@ -50,11 +52,14 @@ WSGI_APPLICATION = 'hotel_gis.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'hotel_gis',
+        'USER': 'postgres',
+        'PASSWORD': 'vu2005',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
-
 LANGUAGE_CODE = 'vi'
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = True
@@ -72,3 +77,22 @@ CRISPY_TEMPLATE_PACK = 'bootstrap5'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+
+# Base URL dùng cho email/QR/link tuyệt đối (override bằng env SITE_URL)
+SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')
+
+# ── MoMo (Collection Link) ────────────────────────────────
+# Bật bằng env: MOMO_ENABLED=1 và set các biến bên dưới
+MOMO_ENABLED = os.environ.get('MOMO_ENABLED', '0') == '1'
+MOMO_ENDPOINT = os.environ.get('MOMO_ENDPOINT', 'https://test-payment.momo.vn')
+MOMO_PARTNER_CODE = os.environ.get('MOMO_PARTNER_CODE', '')
+MOMO_ACCESS_KEY = os.environ.get('MOMO_ACCESS_KEY', '')
+MOMO_SECRET_KEY = os.environ.get('MOMO_SECRET_KEY', '')
+MOMO_STORE_ID = os.environ.get('MOMO_STORE_ID', 'HotelGIS')
+
+# ── Mailtrap Transactional (API) ──────────────────────────
+ANYMAIL = {
+    "MAILTRAP_API_TOKEN": "<b79bdc57d64e8834f126cfc40310c321>",
+}
+EMAIL_BACKEND = "anymail.backends.mailtrap.EmailBackend"
+DEFAULT_FROM_EMAIL = "Hotel GIS <hello@demomailtrap.co>"

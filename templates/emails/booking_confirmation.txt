@@ -1,0 +1,19 @@
+Xin chào {{ user.get_full_name|default:user.username }},
+
+{% if booking.status == 'confirmed' %}
+Đặt phòng của bạn đã được xác nhận.
+{% else %}
+Đặt phòng của bạn đã được tiếp nhận và đang chờ xác nhận.
+{% endif %}
+
+Mã đặt phòng: #{{ booking.id }}
+Khách sạn: {{ hotel.name }}
+Phòng: {{ room_type.name }} (Phòng {{ room.room_number }})
+Nhận phòng: {{ booking.check_in|date:"d/m/Y" }} (từ {{ hotel.check_in_time|time:"H:i" }})
+Trả phòng: {{ booking.check_out|date:"d/m/Y" }} (trước {{ hotel.check_out_time|time:"H:i" }})
+Số đêm: {{ nights }}
+Tổng tiền: {{ booking.total_price|floatformat:0 }} ₫
+
+Xem chi tiết: {{ booking_url }}
+
+Hotel GIS

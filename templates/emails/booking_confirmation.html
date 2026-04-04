@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Xác nhận đặt phòng #{{ booking.id }}</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background: #f4f2ee;
+        font-family: "Segoe UI", Arial, sans-serif;
+      }
+      .wrapper {
+        max-width: 600px;
+        margin: 32px auto;
+        background: #fff;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Header */
+      .header {
+        background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 100%);
+        padding: 36px 40px;
+        text-align: center;
+      }
+      .header-brand {
+        font-size: 11px;
+        letter-spacing: 5px;
+        text-transform: uppercase;
+        color: #c9a84c;
+        margin-bottom: 10px;
+      }
+      .header-title {
+        font-size: 28px;
+        color: #fff;
+        font-weight: 300;
+        margin: 0 0 6px;
+        letter-spacing: 1px;
+      }
+      .header-sub {
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.5);
+        margin: 0;
+      }
+      .booking-id {
+        display: inline-block;
+        background: rgba(201, 168, 76, 0.15);
+        border: 1px solid rgba(201, 168, 76, 0.4);
+        color: #c9a84c;
+        padding: 6px 20px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        margin-top: 16px;
+      }
+
+      /* Body */
+      .body {
+        padding: 36px 40px;
+      }
+
+      /* Greeting */
+      .greeting {
+        font-size: 16px;
+        color: #1a1a2e;
+        margin-bottom: 6px;
+      }
+      .greeting strong {
+        color: #c9a84c;
+      }
+      .sub-text {
+        font-size: 13px;
+        color: #888;
+        margin-bottom: 28px;
+      }
+
+      /* Booking card */
+      .card {
+        background: #fafaf8;
+        border: 1.5px solid #e8e4da;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 24px;
+      }
+      .card-header {
+        background: linear-gradient(135deg, #1a1a2e, #0d0d0d);
+        padding: 16px 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .card-hotel {
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+      }
+      .card-stars {
+        color: #c9a84c;
+        font-size: 14px;
+      }
+      .card-body {
+        padding: 0;
+      }
+
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 22px;
+        border-bottom: 1px solid #f0ede8;
+        font-size: 14px;
+      }
+      .detail-row:last-child {
+        border-bottom: none;
+      }
+      .detail-label {
+        color: #888;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+      }
+      .detail-value {
+        color: #1a1a2e;
+        font-weight: 500;
+        text-align: right;
+        max-width: 60%;
+      }
+
+      /* Dates highlight */
+      .dates-box {
+        display: flex;
+        gap: 0;
+        margin-bottom: 24px;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 1.5px solid #e8e4da;
+      }
+      .date-cell {
+        flex: 1;
+        padding: 18px 20px;
+        text-align: center;
+      }
+      .date-cell:first-child {
+        border-right: 1px solid #e8e4da;
+      }
+      .date-label {
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #aaa;
+        margin-bottom: 6px;
+      }
+      .date-value {
+        font-size: 17px;
+        font-weight: 700;
+        color: #1a1a2e;
+      }
+      .date-time {
+        font-size: 11px;
+        color: #c9a84c;
+        margin-top: 3px;
+      }
+      .nights-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 18px;
+        background: #fff9ec;
+        border-right: 1px solid #e8e4da;
+        min-width: 70px;
+      }
+      .nights-num {
+        font-size: 22px;
+        font-weight: 800;
+        color: #c9a84c;
+        line-height: 1;
+      }
+      .nights-lbl {
+        font-size: 10px;
+        color: #aaa;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      /* Price */
+      .price-box {
+        background: linear-gradient(135deg, #fff9ec, #fff3cd);
+        border: 1.5px solid #c9a84c;
+        border-radius: 12px;
+        padding: 18px 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 28px;
+      }
+      .price-breakdown {
+        font-size: 12px;
+        color: #856404;
+      }
+      .price-breakdown strong {
+        display: block;
+        font-size: 11px;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #a07a10;
+        margin-bottom: 3px;
+      }
+      .price-total {
+        font-size: 28px;
+        font-weight: 800;
+        color: #c9a84c;
+      }
+      .price-currency {
+        font-size: 14px;
+        font-weight: 400;
+      }
+
+      /* Status badge */
+      .status-pending {
+        display: inline-block;
+        background: #fff3cd;
+        color: #856404;
+        padding: 5px 16px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      /* CTA */
+      .cta {
+        text-align: center;
+        margin-bottom: 28px;
+      }
+      .cta-btn {
+        display: inline-block;
+        background: #c9a84c;
+        color: #0d0d0d;
+        padding: 14px 36px;
+        border-radius: 30px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 1px;
+      }
+
+      /* Note box */
+      .note-box {
+        background: #f0f7ff;
+        border-left: 4px solid #2563eb;
+        border-radius: 0 8px 8px 0;
+        padding: 12px 16px;
+        margin-bottom: 24px;
+        font-size: 13px;
+        color: #374151;
+      }
+      .note-box strong {
+        color: #1e40af;
+        display: block;
+        margin-bottom: 4px;
+        font-size: 11px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+
+      /* Footer */
+      .footer {
+        background: #0d0d0d;
+        padding: 24px 40px;
+        text-align: center;
+      }
+      .footer-brand {
+        color: #c9a84c;
+        font-size: 14px;
+        letter-spacing: 3px;
+        margin-bottom: 8px;
+      }
+      .footer-text {
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.35);
+        line-height: 1.7;
+        margin: 0;
+      }
+
+      /* Divider */
+      .divider {
+        border: none;
+        border-top: 1px solid #f0ede8;
+        margin: 0 0 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <!-- ── HEADER ── -->
+      <div class="header">
+        <div class="header-brand">🏨 Hotel GIS</div>
+        <h1 class="header-title">Đặt phòng thành công</h1>
+        <p class="header-sub">Cảm ơn bạn đã tin tưởng lựa chọn chúng tôi</p>
+        <div class="booking-id">MÃ ĐẶT PHÒNG #{{ booking.id }}</div>
+      </div>
+
+      <!-- ── BODY ── -->
+      <div class="body">
+        <p class="greeting">
+          Xin chào,
+          <strong>{{ user.get_full_name|default:user.username }}</strong> 👋
+        </p>
+        <p class="sub-text">
+          {% if booking.status == 'confirmed' %}
+            Đặt phòng của bạn đã được <strong>xác nhận</strong>. Dưới đây là toàn bộ thông tin chi tiết.
+          {% else %}
+            Đặt phòng của bạn đã được tiếp nhận và đang chờ xác nhận. Dưới đây là toàn bộ thông tin chi tiết.
+          {% endif %}
+        </p>
+
+        <!-- Khách sạn + phòng -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-hotel">{{ hotel.name }}</span>
+            <span class="card-stars">
+              {% for i in hotel.star_range %}★{% endfor %}
+            </span>
+          </div>
+          <div class="card-body">
+            <div class="detail-row">
+              <span class="detail-label">Địa chỉ</span>
+              <span class="detail-value"
+                >{{ hotel.address }}, {{ hotel.city }}</span
+              >
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Loại phòng</span>
+              <span class="detail-value"
+                >{{ room_type.name }}{% if room_type.bed_type %} · {{
+                room_type.get_bed_type_display }}{% endif %}</span
+              >
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Số phòng</span>
+              <span class="detail-value"
+                >Phòng {{ room.room_number }}{% if room.floor %} — Tầng {{
+                room.floor }}{% endif %}</span
+              >
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Số khách</span>
+              <span class="detail-value">{{ booking.num_guests }} người</span>
+            </div>
+            <div class="detail-row">
+              <span class="detail-label">Trạng thái</span>
+              <span class="detail-value"
+                ><span class="status-pending">
+                  {% if booking.status == 'confirmed' %}✅ Đã xác nhận{% else %}⏳ Chờ xác nhận{% endif %}
+                </span></span
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Ngày check-in / check-out -->
+        <div class="dates-box">
+          <div class="date-cell">
+            <div class="date-label">📅 Nhận phòng</div>
+            <div class="date-value">{{ booking.check_in|date:"d/m/Y" }}</div>
+            <div class="date-time">từ {{ hotel.check_in_time|time:"H:i" }}</div>
+          </div>
+          <div class="nights-badge">
+            <div style="text-align: center">
+              <div class="nights-num">{{ nights }}</div>
+              <div class="nights-lbl">đêm</div>
+            </div>
+          </div>
+          <div class="date-cell">
+            <div class="date-label">🚪 Trả phòng</div>
+            <div class="date-value">{{ booking.check_out|date:"d/m/Y" }}</div>
+            <div class="date-time">
+              trước {{ hotel.check_out_time|time:"H:i" }}
+            </div>
+          </div>
+        </div>
+
+        <!-- Tổng tiền -->
+        <div class="price-box">
+          <div class="price-breakdown">
+            <strong>Tổng tiền</strong>
+            {{ nights }} đêm × {{ room_type.price_per_night|floatformat:0 }}
+            ₫/đêm
+          </div>
+          <div class="price-total">
+            {{ booking.total_price|floatformat:0 }}<span class="price-currency">
+              ₫</span
+            >
+          </div>
+        </div>
+
+        {% if booking.note %}
+        <!-- Yêu cầu đặc biệt -->
+        <div class="note-box">
+          <strong>Yêu cầu đặc biệt của bạn</strong>
+          {{ booking.note }}
+        </div>
+        {% endif %}
+
+        <!-- CTA -->
+        <div class="cta">
+          <a href="{{ booking_url }}" class="cta-btn"> Xem chi tiết đặt phòng → </a>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- Thông tin liên hệ khách sạn -->
+        <p
+          style="
+            font-size: 13px;
+            color: #555;
+            text-align: center;
+            margin: 0 0 8px;
+          "
+        >
+          Cần hỗ trợ? Liên hệ trực tiếp với khách sạn:
+        </p>
+        <p
+          style="font-size: 13px; text-align: center; margin: 0; color: #1a1a2e"
+        >
+          {% if hotel.phone %}📞 {{ hotel.phone }}{% endif %}
+          {% if hotel.phone and hotel.email %} &nbsp;·&nbsp; {% endif %}
+          {% if hotel.email %}✉️ {{ hotel.email }}{% endif %}
+        </p>
+      </div>
+
+      <!-- ── FOOTER ── -->
+      <div class="footer">
+        <div class="footer-brand">🏨 HOTEL GIS</div>
+        <p class="footer-text">
+          Hệ thống đặt phòng tích hợp GIS · TP. Hồ Chí Minh<br />
+          Email này được gửi tự động, vui lòng không reply trực tiếp.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

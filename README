@@ -1,0 +1,12 @@
+backup về lúc đầu lấy về máy (xoá thay đổi local)
+git fetch origin
+git checkout gis-tool
+git reset --hard origin/gis-tool
+
+Pull code 
+git stash
+git fetch origin
+git checkout -b gis-tool origin/gis-tool
+
+Chạy sv 
+python manage.py runserver

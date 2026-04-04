@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% block title %}Thanh toán booking #{{ booking.id }} | Hotel GIS{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:820px;">
+  <div class="bg-white rounded-3 shadow-sm overflow-hidden">
+    <div style="background:linear-gradient(135deg,#0D0D0D,#1a1a2e);padding:26px 24px;" class="text-white">
+      <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#C9A84C;">Thanh toán</div>
+      <h2 class="mb-0" style="font-family:'Cormorant Garamond',serif;font-weight:400;">
+        Booking #{{ booking.id }}
+      </h2>
+      <div style="color:rgba(255,255,255,.55);font-size:13px;">
+        {{ booking.room.hotel.name }} · {{ booking.room.room_type.name }}
+      </div>
+    </div>
+
+    <div class="p-4">
+      <div class="row g-4 align-items-center">
+        <div class="col-md-6">
+          <div class="p-3 rounded-3" style="background:#fff9ec;border:1.5px solid #C9A84C;">
+            <div style="font-size:11px;color:#856404;letter-spacing:1px;text-transform:uppercase;">Số tiền cần thanh toán</div>
+            <div style="font-size:1.8rem;font-weight:800;color:#C9A84C;margin-top:4px;">
+              {{ payment.amount|floatformat:0 }} ₫
+            </div>
+            {% if payment.reference %}
+              <div class="mt-2" style="font-size:12px;color:#856404;">
+                Mã tham chiếu: <strong>{{ payment.reference }}</strong>
+              </div>
+            {% endif %}
+          </div>
+
+          <div class="mt-3" style="font-size:13px;color:#555;">
+            Quét QR để mở trang thanh toán và làm theo hướng dẫn.
+          </div>
+          {% if payment.qr_payload %}
+            <div class="mt-2" style="font-size:12px;color:#6b7280;word-break:break-all;">
+              Link: <a href="{{ payment.qr_payload }}">{{ payment.qr_payload }}</a>
+            </div>
+          {% endif %}
+
+          {% if payment.status == 'pending' %}
+            <form method="post" action="{% url 'bookings:payment_mark_paid' payment.id %}" class="mt-3">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-outline-success">
+                ✅ Tôi đã thanh toán (Demo)
+              </button>
+            </form>
+            <div class="mt-2 text-muted" style="font-size:12px;">
+              (Dự án demo: bấm nút này để sang bước “đặt phòng thành công” và gửi email.)
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="col-md-6 text-center">
+          {% if payment.qr_url %}
+            <img src="{{ payment.qr_url }}" alt="QR" class="img-fluid rounded-3" style="max-width:280px;border:1px solid #eee;">
+          {% else %}
+            <div class="alert alert-warning mb-0">Không có QR cho phương thức này.</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap mt-4">
+        <a class="btn btn-gold px-4" href="{% url 'bookings:detail' booking.id %}">← Quay lại booking</a>
+        <a class="btn btn-outline-secondary px-4" href="{% url 'hotels:detail' booking.room.hotel.slug %}">🏨 Xem khách sạn</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
