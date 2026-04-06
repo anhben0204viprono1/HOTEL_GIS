@@ -1,70 +1,936 @@
-{% extends 'base.html' %}
-{% block title %}Thanh toán booking #{{ booking.id }} | Hotel GIS{% endblock %}
+{% extends 'base.html' %} {% block title %}Thanh toán — Đặt phòng #{{ booking.id
+}} | Hotel GIS{% endblock %} {% block extra_css %}
+<style>
+  /* ── Layout ─────────────────────────────────────────────── */
+  .pay-wrap {
+    max-width: 960px;
+    margin: 0 auto;
+  }
 
-{% block content %}
-<div class="container py-5" style="max-width:820px;">
-  <div class="bg-white rounded-3 shadow-sm overflow-hidden">
-    <div style="background:linear-gradient(135deg,#0D0D0D,#1a1a2e);padding:26px 24px;" class="text-white">
-      <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#C9A84C;">Thanh toán</div>
-      <h2 class="mb-0" style="font-family:'Cormorant Garamond',serif;font-weight:400;">
-        Booking #{{ booking.id }}
-      </h2>
-      <div style="color:rgba(255,255,255,.55);font-size:13px;">
-        {{ booking.room.hotel.name }} · {{ booking.room.room_type.name }}
-      </div>
+  /* ── Booking summary bar ─────────────────────────────────── */
+  .summary-bar {
+    background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 100%);
+    border-radius: 16px;
+    padding: 24px 28px;
+    color: #fff;
+    margin-bottom: 28px;
+  }
+  .summary-bar .label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #c9a84c;
+    text-transform: uppercase;
+  }
+  .summary-bar h2 {
+    font-family: "Cormorant Garamond", serif;
+    font-weight: 300;
+    font-size: 1.9rem;
+    margin: 4px 0;
+  }
+  .summary-bar .meta {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.55);
+  }
+  .summary-bar .price {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #c9a84c;
+  }
+  .summary-bar .price-sub {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  /* ── Step indicator ──────────────────────────────────────── */
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 32px;
+  }
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ccc;
+  }
+  .step .dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .step.done .dot {
+    background: #10b981;
+    color: #fff;
+  }
+  .step.active .dot {
+    background: #c9a84c;
+    color: #0d0d0d;
+  }
+  .step.active {
+    color: #1a1d27;
+  }
+  .step-line {
+    flex: 1;
+    height: 2px;
+    background: #e5e7eb;
+    margin: 0 8px;
+  }
+  .step-line.done {
+    background: #10b981;
+  }
+
+  /* ── Payment method cards ────────────────────────────────── */
+  .method-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 600px) {
+    .method-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .method-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 14px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    background: #fff;
+  }
+  .method-card:hover {
+    border-color: #c9a84c;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+  .method-card.selected {
+    border-color: #c9a84c;
+    background: #fffdf5;
+  }
+  .method-card .badge-recommend {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: #c9a84c;
+    color: #0d0d0d;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+  .method-card .method-icon {
+    font-size: 2.2rem;
+    margin-bottom: 10px;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .method-card .method-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a1d27;
+    margin-bottom: 4px;
+  }
+  .method-card .method-desc {
+    font-size: 12px;
+    color: #888;
+    line-height: 1.5;
+  }
+
+  /* MoMo card accent */
+  .method-card.momo-card .method-icon {
+    background: linear-gradient(135deg, #ae2070, #d02078);
+  }
+  .method-card.cash-card .method-icon {
+    background: linear-gradient(135deg, #059669, #10b981);
+  }
+  .method-card.bank-card .method-icon {
+    background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  }
+
+  /* ── Detail info rows ────────────────────────────────────── */
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #f3f0eb;
+    font-size: 14px;
+  }
+  .info-row:last-child {
+    border-bottom: none;
+  }
+  .info-label {
+    color: #888;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .info-val {
+    font-weight: 500;
+    color: #1a1d27;
+  }
+
+  /* ── Total box ───────────────────────────────────────────── */
+  .total-box {
+    background: linear-gradient(135deg, #fff9ec, #fffdf5);
+    border: 2px solid #c9a84c;
+    border-radius: 14px;
+    padding: 18px 22px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .total-box .t-label {
+    font-size: 11px;
+    color: #856404;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .total-box .t-sub {
+    font-size: 12px;
+    color: #a07a10;
+    margin-top: 2px;
+  }
+  .total-box .t-amt {
+    font-size: 2rem;
+    font-weight: 800;
+    color: #c9a84c;
+  }
+
+  /* ── MoMo button ─────────────────────────────────────────── */
+  .btn-momo {
+    background: linear-gradient(135deg, #ae2070, #d02078);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 16px 24px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s;
+  }
+  .btn-momo:hover {
+    background: linear-gradient(135deg, #9d1d66, #c0196c);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(174, 32, 112, 0.35);
+  }
+  .btn-momo:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-counter {
+    background: #fff;
+    color: #1a1d27;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 14px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.2s;
+    margin-top: 10px;
+  }
+  .btn-counter:hover {
+    border-color: #c9a84c;
+    color: #c9a84c;
+  }
+
+  /* ── Security badge ──────────────────────────────────────── */
+  .security-strip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 12px;
+    background: #f8f9fb;
+    border-radius: 10px;
+    margin-top: 16px;
+    font-size: 11px;
+    color: #888;
+  }
+  .security-strip span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* ── Loading overlay ─────────────────────────────────────── */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .loading-overlay.show {
+    display: flex;
+  }
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #c9a84c;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+</style>
+{% endblock %} {% block content %}
+<div class="container py-5 pay-wrap">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item">
+        <a href="/" style="color: #c9a84c">Trang chủ</a>
+      </li>
+      <li class="breadcrumb-item">
+        <a
+          href="{% url 'hotels:detail' booking.room.hotel.slug %}"
+          style="color: #c9a84c"
+        >
+          {{ booking.room.hotel.name }}
+        </a>
+      </li>
+      <li class="breadcrumb-item active text-muted">Thanh toán</li>
+    </ol>
+  </nav>
+
+  <!-- Step Indicator -->
+  <div class="steps mb-4">
+    <div class="step done">
+      <div class="dot">✓</div>
+      <span>Chọn phòng</span>
     </div>
+    <div class="step-line done"></div>
+    <div class="step done">
+      <div class="dot">✓</div>
+      <span>Xác nhận</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step active">
+      <div class="dot">3</div>
+      <span>Thanh toán</span>
+    </div>
+    <div class="step-line"></div>
+    <div class="step">
+      <div class="dot">4</div>
+      <span>Hoàn tất</span>
+    </div>
+  </div>
 
-    <div class="p-4">
-      <div class="row g-4 align-items-center">
-        <div class="col-md-6">
-          <div class="p-3 rounded-3" style="background:#fff9ec;border:1.5px solid #C9A84C;">
-            <div style="font-size:11px;color:#856404;letter-spacing:1px;text-transform:uppercase;">Số tiền cần thanh toán</div>
-            <div style="font-size:1.8rem;font-weight:800;color:#C9A84C;margin-top:4px;">
-              {{ payment.amount|floatformat:0 }} ₫
-            </div>
-            {% if payment.reference %}
-              <div class="mt-2" style="font-size:12px;color:#856404;">
-                Mã tham chiếu: <strong>{{ payment.reference }}</strong>
-              </div>
-            {% endif %}
-          </div>
-
-          <div class="mt-3" style="font-size:13px;color:#555;">
-            Quét QR để mở trang thanh toán và làm theo hướng dẫn.
-          </div>
-          {% if payment.qr_payload %}
-            <div class="mt-2" style="font-size:12px;color:#6b7280;word-break:break-all;">
-              Link: <a href="{{ payment.qr_payload }}">{{ payment.qr_payload }}</a>
-            </div>
-          {% endif %}
-
-          {% if payment.status == 'pending' %}
-            <form method="post" action="{% url 'bookings:payment_mark_paid' payment.id %}" class="mt-3">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-outline-success">
-                ✅ Tôi đã thanh toán (Demo)
-              </button>
-            </form>
-            <div class="mt-2 text-muted" style="font-size:12px;">
-              (Dự án demo: bấm nút này để sang bước “đặt phòng thành công” và gửi email.)
-            </div>
-          {% endif %}
-        </div>
-
-        <div class="col-md-6 text-center">
-          {% if payment.qr_url %}
-            <img src="{{ payment.qr_url }}" alt="QR" class="img-fluid rounded-3" style="max-width:280px;border:1px solid #eee;">
-          {% else %}
-            <div class="alert alert-warning mb-0">Không có QR cho phương thức này.</div>
-          {% endif %}
-        </div>
+  <!-- Summary Bar -->
+  <div class="summary-bar">
+    <div class="row align-items-center g-3">
+      <div class="col-md-8">
+        <div class="label">Đặt phòng #{{ booking.id }}</div>
+        <h2>{{ booking.room.hotel.name }}</h2>
+        <p class="meta mb-0">
+          🛏 {{ booking.room.room_type.name }} · Phòng {{
+          booking.room.room_number }} &nbsp;|&nbsp; 📅 {{
+          booking.check_in|date:"d/m/Y" }} → {{ booking.check_out|date:"d/m/Y"
+          }} ({{ booking.nights }} đêm · {{ booking.num_guests }} khách)
+        </p>
       </div>
-
-      <div class="d-flex gap-2 flex-wrap mt-4">
-        <a class="btn btn-gold px-4" href="{% url 'bookings:detail' booking.id %}">← Quay lại booking</a>
-        <a class="btn btn-outline-secondary px-4" href="{% url 'hotels:detail' booking.room.hotel.slug %}">🏨 Xem khách sạn</a>
+      <div class="col-md-4 text-md-end">
+        <div class="price">{{ booking.total_price|floatformat:0 }} ₫</div>
+        <div class="price-sub">Tổng thanh toán</div>
       </div>
     </div>
   </div>
+
+  <div class="row g-4">
+    <!-- ── Cột trái: Chọn phương thức ── -->
+    <div class="col-lg-7">
+      <div class="bg-white rounded-3 shadow-sm p-4">
+        <h5
+          class="mb-4"
+          style="
+            font-family: &quot;Cormorant Garamond&quot;, serif;
+            font-size: 1.3rem;
+          "
+        >
+          Chọn phương thức thanh toán
+        </h5>
+
+        <!-- Lưới phương thức -->
+        <div class="method-grid" id="methodGrid">
+          <!-- MoMo -->
+          <div
+            class="method-card momo-card selected"
+            data-method="momo"
+            onclick="selectMethod('momo', this)"
+          >
+            <div class="badge-recommend">Phổ biến</div>
+            <div class="method-icon">🟣</div>
+            <div class="method-name">Ví MoMo</div>
+            <div class="method-desc">
+              Quét mã QR hoặc thanh toán qua app MoMo. Xác nhận tức thì, hoàn
+              tiền dễ dàng.
+            </div>
+          </div>
+
+          <!-- Thẻ ngân hàng qua MoMo ATM -->
+          <div
+            class="method-card"
+            data-method="atm"
+            onclick="selectMethod('atm', this)"
+          >
+            <div
+              class="method-icon bank-card"
+              style="background: linear-gradient(135deg, #1d4ed8, #2563eb)"
+            >
+              💳
+            </div>
+            <div class="method-name">Thẻ ATM / Internet Banking</div>
+            <div class="method-desc">
+              Thanh toán qua thẻ ATM nội địa hoặc Internet Banking qua cổng
+              MoMo.
+            </div>
+          </div>
+
+          <!-- Tiền mặt -->
+          <div
+            class="method-card cash-card"
+            data-method="cash"
+            onclick="selectMethod('cash', this)"
+          >
+            <div class="method-icon">💵</div>
+            <div class="method-name">Tiền mặt tại quầy</div>
+            <div class="method-desc">
+              Thanh toán khi nhận phòng tại lễ tân. Đặt phòng được giữ trong 24
+              giờ.
+            </div>
+          </div>
+
+          <!-- Chuyển khoản -->
+          <div
+            class="method-card"
+            data-method="bank_transfer"
+            onclick="selectMethod('bank_transfer', this)"
+          >
+            <div
+              class="method-icon"
+              style="background: linear-gradient(135deg, #7c3aed, #a855f7)"
+            >
+              🏦
+            </div>
+            <div class="method-name">Chuyển khoản ngân hàng</div>
+            <div class="method-desc">
+              Chuyển khoản trực tiếp vào tài khoản khách sạn. Xác nhận trong 1–2
+              giờ làm việc.
+            </div>
+          </div>
+        </div>
+        <!-- /method-grid -->
+
+        <!-- Panel: MoMo QR -->
+        <div id="panel-momo" class="method-panel">
+          <!-- Hướng dẫn 3 bước -->
+          <div
+            style="
+              background: #fff5fb;
+              border: 1.5px solid #f9a8d4;
+              border-radius: 14px;
+              padding: 20px 24px;
+              margin-bottom: 20px;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 16px;
+              "
+            >
+              <span style="font-size: 1.8rem">🟣</span>
+              <div>
+                <div style="font-weight: 700; color: #be185d; font-size: 15px">
+                  Thanh toán QR MoMo
+                </div>
+                <div style="font-size: 12px; color: #9d174d">
+                  Quét mã QR bằng app MoMo — xác nhận tức thì
+                </div>
+              </div>
+            </div>
+
+            <!-- Steps -->
+            <div style="display: flex; gap: 0; margin-bottom: 16px">
+              <div
+                style="
+                  flex: 1;
+                  text-align: center;
+                  padding: 10px 6px;
+                  background: #fff0f7;
+                  border-radius: 10px 0 0 10px;
+                  border: 1px solid #f9a8d4;
+                "
+              >
+                <div style="font-size: 1.5rem; margin-bottom: 4px">📱</div>
+                <div style="font-size: 11px; font-weight: 700; color: #be185d">
+                  Bước 1
+                </div>
+                <div style="font-size: 11px; color: #9d174d; margin-top: 2px">
+                  Mở app MoMo<br />trên điện thoại
+                </div>
+              </div>
+              <div style="width: 1px; background: #f9a8d4"></div>
+              <div
+                style="
+                  flex: 1;
+                  text-align: center;
+                  padding: 10px 6px;
+                  background: #fff0f7;
+                  border: 1px solid #f9a8d4;
+                "
+              >
+                <div style="font-size: 1.5rem; margin-bottom: 4px">📷</div>
+                <div style="font-size: 11px; font-weight: 700; color: #be185d">
+                  Bước 2
+                </div>
+                <div style="font-size: 11px; color: #9d174d; margin-top: 2px">
+                  Quét mã QR<br />hiển thị trên màn hình
+                </div>
+              </div>
+              <div style="width: 1px; background: #f9a8d4"></div>
+              <div
+                style="
+                  flex: 1;
+                  text-align: center;
+                  padding: 10px 6px;
+                  background: #fff0f7;
+                  border-radius: 0 10px 10px 0;
+                  border: 1px solid #f9a8d4;
+                "
+              >
+                <div style="font-size: 1.5rem; margin-bottom: 4px">✅</div>
+                <div style="font-size: 11px; font-weight: 700; color: #be185d">
+                  Bước 3
+                </div>
+                <div style="font-size: 11px; color: #9d174d; margin-top: 2px">
+                  Xác nhận thanh toán<br />trong app
+                </div>
+              </div>
+            </div>
+
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                font-size: 11px;
+                color: #9d174d;
+              "
+            >
+              <span>✅ Hoàn tiền tự động nếu hủy</span>
+              <span>✅ Bảo mật 256-bit</span>
+              <span>✅ Xác nhận tức thì</span>
+            </div>
+          </div>
+
+          <form
+            method="post"
+            action="{% url 'bookings:momo_init' booking.pk %}"
+            id="momoForm"
+          >
+            {% csrf_token %}
+            <button type="submit" class="btn-momo" id="momoBtn">
+              <span style="font-size: 1.4rem">🟣</span>
+              Tạo mã QR — Thanh toán {{ booking.total_price|floatformat:0 }} ₫
+            </button>
+          </form>
+          <p
+            style="
+              text-align: center;
+              font-size: 11px;
+              color: #aaa;
+              margin-top: 10px;
+            "
+          >
+            Bạn sẽ được chuyển đến cổng MoMo để quét QR an toàn
+          </p>
+        </div>
+
+        <!-- Panel: ATM qua MoMo -->
+        <div id="panel-atm" class="method-panel" style="display: none">
+          <div
+            style="
+              background: #eff6ff;
+              border: 1.5px solid #93c5fd;
+              border-radius: 12px;
+              padding: 18px 20px;
+              margin-bottom: 20px;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                margin-bottom: 12px;
+              "
+            >
+              <span style="font-size: 2rem">💳</span>
+              <div>
+                <div style="font-weight: 700; color: #1e40af">
+                  Thẻ ATM / Internet Banking
+                </div>
+                <div style="font-size: 12px; color: #1d4ed8">
+                  Qua cổng thanh toán MoMo — hỗ trợ hầu hết ngân hàng VN
+                </div>
+              </div>
+            </div>
+            <div
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                font-size: 12px;
+                color: #1e40af;
+              "
+            >
+              <span>✅ Hỗ trợ 35+ ngân hàng</span>
+              <span>✅ Không cần cài app MoMo</span>
+              <span>✅ Xác nhận ngay lập tức</span>
+            </div>
+          </div>
+          <form
+            method="post"
+            action="{% url 'bookings:momo_init' booking.pk %}"
+            id="atmForm"
+          >
+            {% csrf_token %}
+            <input type="hidden" name="request_type" value="payWithATM" />
+            <button
+              type="submit"
+              class="btn-momo"
+              style="background: linear-gradient(135deg, #1d4ed8, #2563eb)"
+            >
+              <span style="font-size: 1.4rem">💳</span>
+              Thanh toán {{ booking.total_price|floatformat:0 }} ₫ qua ATM
+            </button>
+          </form>
+        </div>
+
+        <!-- Panel: Tiền mặt -->
+        <div id="panel-cash" class="method-panel" style="display: none">
+          <div
+            style="
+              background: #f0fdf4;
+              border: 1.5px solid #86efac;
+              border-radius: 12px;
+              padding: 18px 20px;
+              margin-bottom: 20px;
+            "
+          >
+            <div style="font-weight: 700; color: #166534; margin-bottom: 8px">
+              💵 Thanh toán tại quầy lễ tân
+            </div>
+            <p
+              style="
+                font-size: 13px;
+                color: #15803d;
+                margin: 0;
+                line-height: 1.7;
+              "
+            >
+              Đặt phòng của bạn sẽ được <strong>giữ trong 24 giờ</strong> kể từ
+              khi xác nhận. Vui lòng đến quầy lễ tân để hoàn tất thanh toán khi
+              nhận phòng.
+            </p>
+          </div>
+          <form
+            method="post"
+            action="{% url 'bookings:pay_counter' booking.pk %}"
+          >
+            {% csrf_token %}
+            <input type="hidden" name="method" value="cash" />
+            <button
+              type="submit"
+              class="btn-momo"
+              style="background: linear-gradient(135deg, #059669, #10b981)"
+            >
+              <span style="font-size: 1.4rem">💵</span>
+              Xác nhận — Thanh toán tiền mặt tại quầy
+            </button>
+          </form>
+        </div>
+
+        <!-- Panel: Chuyển khoản -->
+        <div
+          id="panel-bank_transfer"
+          class="method-panel"
+          style="display: none"
+        >
+          <div
+            style="
+              background: #faf5ff;
+              border: 1.5px solid #d8b4fe;
+              border-radius: 12px;
+              padding: 18px 20px;
+              margin-bottom: 20px;
+            "
+          >
+            <div style="font-weight: 700; color: #6d28d9; margin-bottom: 10px">
+              🏦 Thông tin chuyển khoản
+            </div>
+            <table
+              style="font-size: 13px; width: 100%; border-collapse: collapse"
+            >
+              <tr>
+                <td style="padding: 5px 0; color: #7c3aed; width: 40%">
+                  Ngân hàng
+                </td>
+                <td style="font-weight: 600">Vietcombank</td>
+              </tr>
+              <tr>
+                <td style="padding: 5px 0; color: #7c3aed">Số tài khoản</td>
+                <td style="font-weight: 600; font-family: monospace">
+                  0123456789
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 5px 0; color: #7c3aed">Chủ tài khoản</td>
+                <td style="font-weight: 600">CÔNG TY TNHH HOTEL GIS</td>
+              </tr>
+              <tr>
+                <td style="padding: 5px 0; color: #7c3aed">Số tiền</td>
+                <td style="font-weight: 700; color: #c9a84c">
+                  {{ booking.total_price|floatformat:0 }} ₫
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 5px 0; color: #7c3aed">Nội dung CK</td>
+                <td
+                  style="
+                    font-weight: 600;
+                    font-family: monospace;
+                    color: #6d28d9;
+                  "
+                >
+                  HOTELPAY{{ booking.id }}{{ request.user.id }}
+                </td>
+              </tr>
+            </table>
+          </div>
+          <form
+            method="post"
+            action="{% url 'bookings:pay_counter' booking.pk %}"
+          >
+            {% csrf_token %}
+            <input type="hidden" name="method" value="bank_transfer" />
+            <button
+              type="submit"
+              class="btn-momo"
+              style="background: linear-gradient(135deg, #7c3aed, #a855f7)"
+            >
+              <span style="font-size: 1.4rem">🏦</span>
+              Xác nhận đã chuyển khoản
+            </button>
+          </form>
+        </div>
+
+        <!-- Security strip -->
+        <div class="security-strip">
+          <span>🔒 SSL 256-bit</span>
+          <span>🛡 Bảo mật PCI DSS</span>
+          <span>✅ Cổng MoMo chính thức</span>
+          <span>🔄 Hoàn tiền đảm bảo</span>
+        </div>
+      </div>
+      <!-- /bg-white -->
+    </div>
+    <!-- /col -->
+
+    <!-- ── Cột phải: Tóm tắt đơn hàng ── -->
+    <div class="col-lg-5">
+      <!-- Ảnh khách sạn -->
+      {% if booking.room.hotel.image %}
+      <div
+        style="
+          border-radius: 14px;
+          overflow: hidden;
+          margin-bottom: 16px;
+          height: 180px;
+        "
+      >
+        <img
+          src="{{ booking.room.hotel.image.url }}"
+          class="w-100 h-100"
+          style="object-fit: cover"
+        />
+      </div>
+      {% endif %}
+
+      <!-- Chi tiết đơn -->
+      <div class="bg-white rounded-3 shadow-sm p-4 mb-3">
+        <h6
+          class="mb-3"
+          style="
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #c9a84c;
+          "
+        >
+          Tóm tắt đặt phòng
+        </h6>
+
+        <div class="info-row">
+          <span class="info-label">Khách sạn</span>
+          <span class="info-val fw-semibold"
+            >{{ booking.room.hotel.name }}</span
+          >
+        </div>
+        <div class="info-row">
+          <span class="info-label">Loại phòng</span>
+          <span class="info-val">{{ booking.room.room_type.name }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Số phòng</span>
+          <span class="info-val">{{ booking.room.room_number }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Nhận phòng</span>
+          <span class="info-val" style="color: #15803d"
+            >{{ booking.check_in|date:"d/m/Y" }}</span
+          >
+        </div>
+        <div class="info-row">
+          <span class="info-label">Trả phòng</span>
+          <span class="info-val" style="color: #dc2626"
+            >{{ booking.check_out|date:"d/m/Y" }}</span
+          >
+        </div>
+        <div class="info-row">
+          <span class="info-label">Số đêm</span>
+          <span class="info-val">{{ booking.nights }} đêm</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Số khách</span>
+          <span class="info-val">{{ booking.num_guests }} người</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Giá / đêm</span>
+          <span class="info-val"
+            >{{ booking.room.room_type.price_per_night|floatformat:0 }} ₫</span
+          >
+        </div>
+      </div>
+
+      <!-- Tổng tiền -->
+      <div class="total-box">
+        <div>
+          <div class="t-label">Tổng thanh toán</div>
+          <div class="t-sub">
+            {{ booking.nights }} đêm × {{
+            booking.room.room_type.price_per_night|floatformat:0 }} ₫
+          </div>
+        </div>
+        <div class="t-amt">{{ booking.total_price|floatformat:0 }} ₫</div>
+      </div>
+
+      <!-- Chính sách hủy -->
+      <div
+        class="mt-3 p-3 rounded-3"
+        style="
+          background: #f8f9fb;
+          font-size: 12px;
+          color: #666;
+          line-height: 1.7;
+        "
+      >
+        <strong style="color: #1a1d27">📋 Chính sách:</strong><br />
+        • Hủy miễn phí trước 24h nhận phòng<br />
+        • Hoàn tiền trong 3–5 ngày làm việc (MoMo)<br />
+        • Đặt phòng được giữ tối đa 24h (thanh toán tại quầy)
+      </div>
+    </div>
+    <!-- /col-right -->
+  </div>
+  <!-- /row -->
 </div>
+
+<!-- Loading overlay khi redirect sang MoMo -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div style="color: #fff; font-size: 14px; font-weight: 500">
+    Đang kết nối đến MoMo...
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  let currentMethod = "momo";
+
+  function selectMethod(method, el) {
+    // Bỏ selected khỏi tất cả card
+    document
+      .querySelectorAll(".method-card")
+      .forEach((c) => c.classList.remove("selected"));
+    // Thêm selected vào card được chọn
+    el.classList.add("selected");
+    currentMethod = method;
+
+    // Ẩn tất cả panel
+    document
+      .querySelectorAll(".method-panel")
+      .forEach((p) => (p.style.display = "none"));
+    // Hiện panel tương ứng
+    const panel = document.getElementById("panel-" + method);
+    if (panel) panel.style.display = "block";
+  }
+
+  // Hiện loading khi submit form MoMo/ATM
+  ["momoForm", "atmForm"].forEach(function (id) {
+    const form = document.getElementById(id);
+    if (form) {
+      form.addEventListener("submit", function () {
+        const overlay = document.getElementById("loadingOverlay");
+        overlay.classList.add("show");
+        // Tự động ẩn sau 15s nếu không redirect được
+        setTimeout(function () {
+          overlay.classList.remove("show");
+        }, 15000);
+      });
+    }
+  });
+</script>
 {% endblock %}

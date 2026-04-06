@@ -82,13 +82,14 @@ LOGOUT_REDIRECT_URL = '/'
 SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')
 
 # ── MoMo (Collection Link) ────────────────────────────────
-# Bật bằng env: MOMO_ENABLED=1 và set các biến bên dưới
-MOMO_ENABLED = os.environ.get('MOMO_ENABLED', '0') == '1'
-MOMO_ENDPOINT = os.environ.get('MOMO_ENDPOINT', 'https://test-payment.momo.vn')
-MOMO_PARTNER_CODE = os.environ.get('MOMO_PARTNER_CODE', '')
-MOMO_ACCESS_KEY = os.environ.get('MOMO_ACCESS_KEY', '')
-MOMO_SECRET_KEY = os.environ.get('MOMO_SECRET_KEY', '')
-MOMO_STORE_ID = os.environ.get('MOMO_STORE_ID', 'HotelGIS')
+# Môi trường sandbox (test) — thay bằng thông tin thật khi lên production
+MOMO_PARTNER_CODE = 'MOMO'                        # Cấp bởi MoMo
+MOMO_ACCESS_KEY   = 'F8BBA842ECF85'               # Cấp bởi MoMo
+MOMO_SECRET_KEY   = 'K951B6PE1waDMi640xX08PD3vg6EkVlz'  # Cấp bởi MoMo
+ 
+# Sandbox endpoint — đổi sang production khi live:
+# MOMO_ENDPOINT = 'https://payment.momo.vn/v2/gateway/api/create'
+MOMO_ENDPOINT = 'https://test-payment.momo.vn/v2/gateway/api/create'
 
 # ── Mailtrap Transactional (API) ──────────────────────────
 ANYMAIL = {
