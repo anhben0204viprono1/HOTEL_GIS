@@ -61,9 +61,13 @@ def hotel_detail(request, slug):
     room_types = hotel.room_types.filter(is_active=True).prefetch_related('amenities')
     gallery    = hotel.images.all()
 
-    # Gom tất cả tiện ích từ các RoomType (unique)
+    # Gom tất cả tiện ích từ khách sạn + các RoomType (unique)
     amenity_ids = set()
     amenities_list = []
+    for a in hotel.amenities.all():
+        if a.id not in amenity_ids:
+            amenity_ids.add(a.id)
+            amenities_list.append(a)
     for rt in room_types:
         for a in rt.amenities.all():
             if a.id not in amenity_ids:

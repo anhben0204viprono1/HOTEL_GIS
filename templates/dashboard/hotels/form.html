@@ -163,6 +163,30 @@
                   placeholder="Mô tả ngắn về khách sạn...">{{ hotel.description|default:'' }}</textarea>
       </div>
 
+      <!-- Tiện ích khách sạn -->
+      <div class="form-section">
+        <div class="form-section-title">✨ Tiện ích khách sạn</div>
+        {% regroup amenities by get_category_display as amenity_groups %}
+        <div class="row g-2">
+          {% for group in amenity_groups %}
+            <div class="col-12">
+              <div style="font-size:11px;font-weight:700;color:#888;letter-spacing:1px;margin:10px 0 6px;">
+                {{ group.grouper }}
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;">
+                {% for a in group.list %}
+                  <label style="display:flex;align-items:center;gap:6px;border:1px solid #e8e9ec;border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer;background:#f8f9fb;">
+                    <input type="checkbox" name="amenities" value="{{ a.id }}"
+                           {% if a.id in selected_amenities %}checked{% endif %}>
+                    <span>{{ a.name }}</span>
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
       <!-- Ảnh -->
       <div class="form-section">
         <div class="form-section-title">🖼 Ảnh đại diện</div>

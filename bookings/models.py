@@ -4,11 +4,22 @@ Thiết kế theo schema PostgreSQL:
   Booking → Payment
   Booking → Review
 """
+import inspect
+
 from django.db import models
 from django.contrib.auth.models import User
 from hotels.models import Room, Hotel
+from hotels.models import Amenity
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+
+
+# Django 6.0 đổi tên tham số CheckConstraint từ `check` → `condition`.
+_CHECKCONSTRAINT_EXPR_KWARG = (
+    "check"
+    if "check" in inspect.signature(models.CheckConstraint).parameters
+    else "condition"
+)
 
 
 # ─── 1. Booking ───────────────────────────────────────────────────────────────
@@ -26,6 +37,11 @@ class Booking(models.Model):
         ('cancelled',    '❌ Đã hủy'),
     ]
 
+    BOOKING_TYPE_CHOICES = [
+        ("daily", "🗓 Theo ngày"),
+        ("hourly", "🕐 Theo giờ"),
+    ]
+
     user            = models.ForeignKey(
         User, on_delete=models.RESTRICT,
         related_name='bookings', verbose_name='Khách hàng'
@@ -34,8 +50,18 @@ class Booking(models.Model):
         Room, on_delete=models.RESTRICT,
         related_name='bookings', verbose_name='Phòng'
     )
-    check_in        = models.DateField(verbose_name='Ngày nhận phòng')
-    check_out       = models.DateField(verbose_name='Ngày trả phòng')
+    booking_type    = models.CharField(
+        max_length=10,
+        choices=BOOKING_TYPE_CHOICES,
+        default="daily",
+        verbose_name="Loại đặt phòng",
+    )
+    # Daily booking
+    check_in        = models.DateField(null=True, blank=True, verbose_name='Ngày nhận phòng')
+    check_out       = models.DateField(null=True, blank=True, verbose_name='Ngày trả phòng')
+    # Hourly booking
+    check_in_dt     = models.DateTimeField(null=True, blank=True, verbose_name="Giờ nhận phòng")
+    check_out_dt    = models.DateTimeField(null=True, blank=True, verbose_name="Giờ trả phòng")
     num_guests      = models.SmallIntegerField(default=1, verbose_name='Số khách')
     total_price     = models.DecimalField(
         max_digits=12, decimal_places=2,
@@ -62,10 +88,25 @@ class Booking(models.Model):
             models.Index(fields=['status'],           name='idx_booking_status'),
         ]
         constraints = [
-            # Tương ứng: CONSTRAINT chk_dates CHECK (check_out > check_in)
+            # Daily: check_out > check_in; Hourly: check_out_dt > check_in_dt
             models.CheckConstraint(
-                check=models.Q(check_out__gt=models.F('check_in')),
-                name='chk_checkout_after_checkin'
+                **{
+                    _CHECKCONSTRAINT_EXPR_KWARG: models.Q(
+                        models.Q(
+                            booking_type="daily",
+                            check_in__isnull=False,
+                            check_out__isnull=False,
+                            check_out__gt=models.F("check_in"),
+                        )
+                        | models.Q(
+                            booking_type="hourly",
+                            check_in_dt__isnull=False,
+                            check_out_dt__isnull=False,
+                            check_out_dt__gt=models.F("check_in_dt"),
+                        )
+                    ),
+                    "name": "chk_checkout_after_checkin",
+                },
             )
         ]
 
@@ -74,7 +115,24 @@ class Booking(models.Model):
 
     def nights(self):
         """Số đêm ở."""
+        if self.booking_type != "daily":
+            return 0
+        if not self.check_in or not self.check_out:
+            return 0
         return (self.check_out - self.check_in).days
+
+    def hours(self):
+        """Số giờ ở (booking theo giờ)."""
+        if self.booking_type != "hourly":
+            return 0
+        if not self.check_in_dt or not self.check_out_dt:
+            return 0
+        seconds = (self.check_out_dt - self.check_in_dt).total_seconds()
+        if seconds <= 0:
+            return 0
+        # Làm tròn lên theo giờ
+        import math
+        return int(math.ceil(seconds / 3600))
 
     def clean(self):
         errors = {}
@@ -83,14 +141,38 @@ class Booking(models.Model):
             errors['user'] = 'Tài khoản đang bị khóa.'
 
         today = timezone.localdate()
-        if self.check_in and self.check_in < today:
-            errors['check_in'] = 'Ngày nhận phòng không được trong quá khứ.'
+        now = timezone.now()
 
-        if self.check_in and self.check_out:
-            if self.check_out <= self.check_in:
-                errors['check_out'] = 'Ngày trả phòng phải sau ngày nhận phòng.'
-            if (self.check_out - self.check_in).days > 30:
-                errors['check_out'] = 'Không thể đặt phòng quá 30 đêm liên tiếp.'
+        if self.booking_type == "daily":
+            if not self.check_in:
+                errors["check_in"] = "Vui lòng chọn ngày nhận phòng."
+            if not self.check_out:
+                errors["check_out"] = "Vui lòng chọn ngày trả phòng."
+
+            if self.check_in and self.check_in < today:
+                errors['check_in'] = 'Ngày nhận phòng không được trong quá khứ.'
+
+            if self.check_in and self.check_out:
+                if self.check_out <= self.check_in:
+                    errors['check_out'] = 'Ngày trả phòng phải sau ngày nhận phòng.'
+                if (self.check_out - self.check_in).days > 30:
+                    errors['check_out'] = 'Không thể đặt phòng quá 30 đêm liên tiếp.'
+
+        elif self.booking_type == "hourly":
+            if not self.check_in_dt:
+                errors["check_in_dt"] = "Vui lòng chọn giờ nhận phòng."
+            if not self.check_out_dt:
+                errors["check_out_dt"] = "Vui lòng chọn giờ trả phòng."
+
+            if self.check_in_dt and self.check_in_dt < now:
+                errors["check_in_dt"] = "Giờ nhận phòng không được trong quá khứ."
+
+            if self.check_in_dt and self.check_out_dt:
+                if self.check_out_dt <= self.check_in_dt:
+                    errors["check_out_dt"] = "Giờ trả phòng phải sau giờ nhận phòng."
+                # Giới hạn 48h để tránh booking theo giờ quá dài
+                if (self.check_out_dt - self.check_in_dt).total_seconds() > 48 * 3600:
+                    errors["check_out_dt"] = "Không thể đặt theo giờ quá 48 giờ."
 
         if self.room_id:
             if self.room.status == 'maintenance':
@@ -102,21 +184,58 @@ class Booking(models.Model):
                     errors['num_guests'] = f'Loại phòng này chỉ chứa tối đa {max_occ} khách.'
 
         # Không cho phép trùng lịch cho cùng 1 room với booking đang active
-        if self.room_id and self.check_in and self.check_out:
-            active_statuses = ['pending', 'confirmed', 'checked_in']
-            overlap_qs = (
-                Booking.objects
-                .filter(
-                    room_id=self.room_id,
-                    status__in=active_statuses,
+        active_statuses = ['pending', 'confirmed', 'checked_in']
+        if self.room_id:
+            overlap_qs = Booking.objects.filter(room_id=self.room_id, status__in=active_statuses)
+            if self.pk:
+                overlap_qs = overlap_qs.exclude(pk=self.pk)
+
+            if self.booking_type == "daily" and self.check_in and self.check_out:
+                # Xung đột với booking daily khác
+                daily_conflict = overlap_qs.filter(
+                    booking_type="daily",
                     check_in__lt=self.check_out,
                     check_out__gt=self.check_in,
                 )
-            )
-            if self.pk:
-                overlap_qs = overlap_qs.exclude(pk=self.pk)
-            if overlap_qs.exists():
-                errors['room'] = 'Phòng đã được đặt trong khoảng ngày bạn chọn.'
+
+                # Xung đột với booking hourly trong khoảng ngày
+                from datetime import datetime, time as dt_time
+                start_dt = timezone.make_aware(datetime.combine(self.check_in, dt_time.min))
+                end_dt = timezone.make_aware(datetime.combine(self.check_out, dt_time.min))
+                hourly_conflict = overlap_qs.filter(
+                    booking_type="hourly",
+                    check_in_dt__lt=end_dt,
+                    check_out_dt__gt=start_dt,
+                )
+
+                if daily_conflict.exists() or hourly_conflict.exists():
+                    errors["room"] = "Phòng đã được đặt trong khoảng thời gian bạn chọn."
+
+            if self.booking_type == "hourly" and self.check_in_dt and self.check_out_dt:
+                # Xung đột với booking hourly khác
+                hourly_conflict = overlap_qs.filter(
+                    booking_type="hourly",
+                    check_in_dt__lt=self.check_out_dt,
+                    check_out_dt__gt=self.check_in_dt,
+                )
+
+                # Xung đột với booking daily (coi daily block theo ngày)
+                from datetime import timedelta
+                start_date = timezone.localtime(self.check_in_dt).date()
+                end_date = timezone.localtime(self.check_out_dt).date()
+                end_exclusive = end_date
+                from datetime import time as dt_time
+                if timezone.localtime(self.check_out_dt).time() != dt_time(0, 0):
+                    end_exclusive = end_date + timedelta(days=1)
+
+                daily_conflict = overlap_qs.filter(
+                    booking_type="daily",
+                    check_in__lt=end_exclusive,
+                    check_out__gt=start_date,
+                )
+
+                if hourly_conflict.exists() or daily_conflict.exists():
+                    errors["room"] = "Phòng đã được đặt trong khoảng thời gian bạn chọn."
 
         if errors:
             raise ValidationError(errors)
@@ -134,10 +253,19 @@ class Booking(models.Model):
                 .first()
             )
 
-        # Tự tính tổng tiền = số đêm × giá phòng
-        if self.check_in and self.check_out and self.room_id:
-            n = (self.check_out - self.check_in).days
-            self.total_price = self.room.room_type.price_per_night * max(n, 1)
+        # Tự tính tổng tiền theo loại booking
+        if self.room_id:
+            rt = self.room.room_type
+            if self.booking_type == "daily" and self.check_in and self.check_out:
+                n = (self.check_out - self.check_in).days
+                self.total_price = rt.price_per_night * max(n, 1)
+            if self.booking_type == "hourly" and self.check_in_dt and self.check_out_dt:
+                from decimal import Decimal
+                hours = max(self.hours(), 1)
+                price_per_hour = rt.price_per_hour
+                if price_per_hour is None:
+                    price_per_hour = (rt.price_per_night / Decimal("24"))
+                self.total_price = price_per_hour * Decimal(hours)
         super().save(*args, **kwargs)
 
         if previous_status != self.status:
@@ -315,3 +443,55 @@ class Review(models.Model):
 
     def __str__(self):
         return f'Review #{self.id} — {self.hotel.name} — {self.rating}★'
+
+
+# ─── 4. Amenity usage ────────────────────────────────────────────────────────
+
+class AmenityUsage(models.Model):
+    """
+    Ghi nhận khách đang ở sử dụng tiện ích (tiện ích khách sạn hoặc tiện ích phòng).
+    """
+    booking = models.ForeignKey(
+        Booking,
+        on_delete=models.CASCADE,
+        related_name="amenity_usages",
+        verbose_name="Đặt phòng",
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="amenity_usages",
+        verbose_name="Khách hàng",
+    )
+    amenity = models.ForeignKey(
+        Amenity,
+        on_delete=models.RESTRICT,
+        related_name="usages",
+        verbose_name="Tiện ích",
+    )
+    quantity = models.PositiveSmallIntegerField(default=1, verbose_name="Số lượng/lượt")
+    note = models.TextField(blank=True, verbose_name="Ghi chú")
+    used_at = models.DateTimeField(default=timezone.now, verbose_name="Thời điểm sử dụng")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Sử dụng tiện ích"
+        verbose_name_plural = "Sử dụng tiện ích"
+        ordering = ["-used_at"]
+        indexes = [
+            models.Index(fields=["booking"], name="idx_amenity_usage_booking"),
+            models.Index(fields=["user"], name="idx_amenity_usage_user"),
+            models.Index(fields=["amenity"], name="idx_amenity_usage_amenity"),
+        ]
+
+    def __str__(self):
+        return f"AmenityUsage #{self.id} — booking #{self.booking_id} — {self.amenity.name}"
+
+    def clean(self):
+        errors = {}
+        if self.booking_id and self.user_id and self.booking.user_id != self.user_id:
+            errors["user"] = "User không khớp với booking."
+        if self.booking_id and self.booking.status != "checked_in":
+            errors["booking"] = "Chỉ được ghi nhận tiện ích khi booking đang ở (checked_in)."
+        if errors:
+            raise ValidationError(errors)

@@ -29,7 +29,7 @@
     <thead>
       <tr>
         <th>#</th><th>Khách hàng</th><th>Khách sạn / Phòng</th>
-        <th>Check-in</th><th>Check-out</th><th>Đêm</th>
+        <th>Check-in</th><th>Check-out</th><th>Thời lượng</th>
         <th>Tổng tiền</th><th>Trạng thái</th><th>Thao tác</th>
       </tr>
     </thead>
@@ -45,9 +45,23 @@
           <div style="font-size:13px;font-weight:500;">{{ b.room.hotel.name|truncatechars:20 }}</div>
           <div style="font-size:11px;color:#aaa;">{{ b.room.room_type.name }} · P.{{ b.room.room_number }}</div>
         </td>
-        <td style="font-size:13px;">{{ b.check_in|date:"d/m/Y" }}</td>
-        <td style="font-size:13px;">{{ b.check_out|date:"d/m/Y" }}</td>
-        <td style="font-weight:600;">{{ b.nights }}</td>
+        <td style="font-size:13px;">
+          {% if b.booking_type == 'hourly' %}
+            {{ b.check_in_dt|date:"H:i d/m/Y" }}
+          {% else %}
+            {{ b.check_in|date:"d/m/Y" }}
+          {% endif %}
+        </td>
+        <td style="font-size:13px;">
+          {% if b.booking_type == 'hourly' %}
+            {{ b.check_out_dt|date:"H:i d/m/Y" }}
+          {% else %}
+            {{ b.check_out|date:"d/m/Y" }}
+          {% endif %}
+        </td>
+        <td style="font-weight:600;">
+          {% if b.booking_type == 'hourly' %}{{ b.hours }} giờ{% else %}{{ b.nights }} đêm{% endif %}
+        </td>
         <td style="font-weight:700;color:#C9A84C;">{{ b.total_price|floatformat:0 }} ₫</td>
         <td><span class="badge-status bs-{{ b.status }}">{{ b.get_status_display }}</span></td>
         <td>

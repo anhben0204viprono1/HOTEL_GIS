@@ -6,8 +6,11 @@ app_name = 'bookings'
 urlpatterns = [
     # ── Đặt phòng ─────────────────────────────────────────────────────────
     path('book/<int:room_type_id>/',      views.create_booking,  name='create'),
+    path('book-hourly/<int:room_type_id>/', views.create_booking_hourly, name='create_hourly'),
     path('<int:pk>/',                      views.booking_detail,  name='detail'),
     path('<int:pk>/cancel/',               views.cancel_booking,  name='cancel'),
+    path('<int:pk>/amenities/',           views.amenity_usage_page, name='amenities'),
+    path('<int:pk>/amenities/use/<int:amenity_id>/', views.amenity_use, name='amenity_use'),
 
     # ── Thanh toán ────────────────────────────────────────────────────────
     path('<int:pk>/payment/',              views.payment_page,    name='payment'),

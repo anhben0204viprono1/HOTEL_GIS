@@ -15,11 +15,6 @@ class HotelCategory(models.Model):
     def __str__(self):
         return self.name
 
-
-class Hotel(models.Model):
-    name = models.CharField(max_length=200)
-    category = models.ForeignKey(HotelCategory, on_delete=models.CASCADE)
-
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def haversine_distance(lat1, lng1, lat2, lng2):
@@ -122,6 +117,12 @@ class Hotel(models.Model):
         choices=STAR_CHOICES, default=3, verbose_name='Số sao'
     )
     description     = models.TextField(blank=True, verbose_name='Mô tả')
+    amenities       = models.ManyToManyField(
+        "Amenity",
+        blank=True,
+        related_name="hotels",
+        verbose_name="Tiện ích khách sạn",
+    )
     thumbnail_url   = models.CharField(max_length=500, blank=True, verbose_name='URL ảnh đại diện')
     image           = models.ImageField(
         upload_to='hotels/', blank=True, null=True,
@@ -238,6 +239,12 @@ class RoomType(models.Model):
     price_per_night = models.DecimalField(
         max_digits=12, decimal_places=2,
         verbose_name='Giá / đêm (VNĐ)'
+    )
+    price_per_hour  = models.DecimalField(
+        max_digits=12, decimal_places=2,
+        null=True, blank=True,
+        verbose_name="Giá / giờ (VNĐ)",
+        help_text="Bỏ trống sẽ tự tính xấp xỉ = giá/đêm ÷ 24 khi đặt theo giờ.",
     )
     thumbnail_url   = models.CharField(max_length=500, blank=True, verbose_name='URL ảnh')
     image           = models.ImageField(

@@ -19,9 +19,13 @@
         <div class="bg-white rounded-3 shadow-sm p-4 mb-3">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <h6 class="fw-semibold mb-1">{{ b.room_type.hotel.name }}</h6>
-              <p class="text-muted mb-1" style="font-size:13px;">🛏️ {{ b.room_type.name }}</p>
-              <p class="mb-1" style="font-size:13px;">📅 {{ b.check_in|date:"d/m/Y" }} → {{ b.check_out|date:"d/m/Y" }} ({{ b.nights }} đêm)</p>
+              <h6 class="fw-semibold mb-1">{{ b.room.hotel.name }}</h6>
+              <p class="text-muted mb-1" style="font-size:13px;">🛏️ {{ b.room.room_type.name }}</p>
+              {% if b.booking_type == 'hourly' %}
+                <p class="mb-1" style="font-size:13px;">🕐 {{ b.check_in_dt|date:"H:i d/m/Y" }} → {{ b.check_out_dt|date:"H:i d/m/Y" }} ({{ b.hours }} giờ)</p>
+              {% else %}
+                <p class="mb-1" style="font-size:13px;">📅 {{ b.check_in|date:"d/m/Y" }} → {{ b.check_out|date:"d/m/Y" }} ({{ b.nights }} đêm)</p>
+              {% endif %}
               <p class="mb-0" style="font-size:13px;color:#C9A84C;font-weight:600;">{{ b.total_price|floatformat:0 }} ₫</p>
             </div>
             <div class="text-end">

@@ -32,6 +32,13 @@
             </div>
             <span style="font-weight:600;font-size:13px;">{{ u.username }}</span>
             {% if u.is_staff %}<span style="font-size:10px;background:#dbeafe;color:#1e40af;padding:2px 6px;border-radius:4px;">STAFF</span>{% endif %}
+            {% if u.groups.all %}
+              {% for g in u.groups.all %}
+                {% if g.name == 'Employee' %}
+                  <span style="font-size:10px;background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;">EMPLOYEE</span>
+                {% endif %}
+              {% endfor %}
+            {% endif %}
           </div>
         </td>
         <td style="font-size:13px;">{{ u.get_full_name|default:'—' }}</td>
@@ -47,6 +54,8 @@
         </td>
         <td>
           {% if u != request.user %}
+          <a href="{% url 'dashboard:user_permissions' u.pk %}" class="btn btn-sm btn-outline-primary"
+             style="font-size:11px;padding:4px 10px;">🔐 Phân quyền</a>
           <form method="post" action="{% url 'dashboard:user_toggle' u.pk %}" style="display:inline;"
                 onsubmit="return confirm('{% if u.is_active %}Khóa{% else %}Mở khóa{% endif %} tài khoản {{ u.username }}?')">
             {% csrf_token %}

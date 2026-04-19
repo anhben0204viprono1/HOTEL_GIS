@@ -23,9 +23,15 @@
       {% include 'dashboard/bookings/_row.html' with label="Khách sạn" value=booking.room.hotel.name %}
       {% include 'dashboard/bookings/_row.html' with label="Loại phòng" value=booking.room.room_type.name %}
       {% include 'dashboard/bookings/_row.html' with label="Số phòng" value=booking.room.room_number %}
-      {% include 'dashboard/bookings/_row.html' with label="Check-in" value=booking.check_in|date:"l, d/m/Y" %}
-      {% include 'dashboard/bookings/_row.html' with label="Check-out" value=booking.check_out|date:"l, d/m/Y" %}
-      {% include 'dashboard/bookings/_row.html' with label="Số đêm" value=booking.nights %}
+      {% if booking.booking_type == 'hourly' %}
+        {% include 'dashboard/bookings/_row.html' with label="Check-in" value=booking.check_in_dt|date:"H:i — d/m/Y" %}
+        {% include 'dashboard/bookings/_row.html' with label="Check-out" value=booking.check_out_dt|date:"H:i — d/m/Y" %}
+        {% include 'dashboard/bookings/_row.html' with label="Số giờ" value=booking.hours %}
+      {% else %}
+        {% include 'dashboard/bookings/_row.html' with label="Check-in" value=booking.check_in|date:"l, d/m/Y" %}
+        {% include 'dashboard/bookings/_row.html' with label="Check-out" value=booking.check_out|date:"l, d/m/Y" %}
+        {% include 'dashboard/bookings/_row.html' with label="Số đêm" value=booking.nights %}
+      {% endif %}
       {% include 'dashboard/bookings/_row.html' with label="Số khách" value=booking.num_guests %}
 
       <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f3f0eb;font-size:14px;">
@@ -39,6 +45,37 @@
 
       {% if booking.cancel_reason %}
       {% include 'dashboard/bookings/_row.html' with label="Lý do hủy" value=booking.cancel_reason %}
+      {% endif %}
+    </div>
+
+    <!-- Tiện ích sử dụng -->
+    <div class="form-section" style="background:#fff;border-radius:12px;border:1px solid #e8e9ec;padding:24px;margin-bottom:20px;">
+      <div class="form-section-title" style="font-size:12px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #f0ede8;">
+        Tiện ích đã sử dụng
+      </div>
+      {% if booking.amenity_usages.all|length %}
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Tiện ích</th>
+              <th>Số lượng</th>
+              <th>Thời điểm</th>
+              <th>Ghi chú</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in booking.amenity_usages.all %}
+              <tr>
+                <td>{{ u.amenity.name }}</td>
+                <td>{{ u.quantity }}</td>
+                <td style="font-size:12px;color:#666;">{{ u.used_at|date:"H:i d/m/Y" }}</td>
+                <td style="font-size:12px;color:#666;">{{ u.note|default:"—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="text-muted">Chưa có lượt sử dụng tiện ích nào.</div>
       {% endif %}
     </div>
 

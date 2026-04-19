@@ -15,12 +15,17 @@ import json
 from hotels.models import Hotel, RoomType, Room, Amenity, HotelImage
 from bookings.models import Booking, Payment, Review
 from django.contrib.auth.models import User
+from django.contrib.auth.models import Group
 from hotels.widgets import LeafletMapWidget
 
 
 # ── Guard: chỉ staff/superuser mới vào được ──────────────────────────────────
 def is_staff(user):
-    return user.is_authenticated and (user.is_staff or user.is_superuser)
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser or user.is_staff:
+        return True
+    return user.groups.filter(name="Employee").exists()
 
 staff_required = user_passes_test(is_staff, login_url='/accounts/login/')
 
@@ -119,7 +124,10 @@ def hotel_create(request):
         return _save_hotel(request, None)
     amenities = Amenity.objects.all()
     return render(request, 'dashboard/hotels/form.html', {
-        'amenities': amenities, 'page': 'hotels', 'action': 'Thêm mới',
+        'amenities': amenities,
+        'selected_amenities': [],
+        'page': 'hotels',
+        'action': 'Thêm mới',
     })
 
 
@@ -131,8 +139,11 @@ def hotel_edit(request, pk):
         return _save_hotel(request, hotel)
     amenities = Amenity.objects.all()
     return render(request, 'dashboard/hotels/form.html', {
-        'hotel': hotel, 'amenities': amenities,
-        'page': 'hotels', 'action': 'Chỉnh sửa',
+        'hotel': hotel,
+        'amenities': amenities,
+        'selected_amenities': list(hotel.amenities.values_list("id", flat=True)),
+        'page': 'hotels',
+        'action': 'Chỉnh sửa',
     })
 
 
@@ -198,6 +209,7 @@ def _save_hotel(request, hotel):
         if 'image' in request.FILES:
             hotel.image = request.FILES['image']
         hotel.save()
+        _save_hotel_amenities(request, hotel)
         _save_hotel_gallery_images(request, hotel)
         messages.success(request, f'Đã cập nhật khách sạn "{hotel.name}".')
     else:
@@ -206,10 +218,15 @@ def _save_hotel(request, hotel):
         if 'image' in request.FILES:
             hotel.image = request.FILES['image']
         hotel.save()
+        _save_hotel_amenities(request, hotel)
         _save_hotel_gallery_images(request, hotel)
         messages.success(request, f'Đã thêm khách sạn "{hotel.name}".')
 
     return redirect('dashboard:hotel_list')
+
+def _save_hotel_amenities(request, hotel):
+    selected_ids = [int(x) for x in request.POST.getlist("amenities") if x.isdigit()]
+    hotel.amenities.set(Amenity.objects.filter(id__in=selected_ids))
 
 def _save_hotel_gallery_images(request, hotel):
     """
@@ -260,7 +277,9 @@ def booking_list(request):
 @staff_required
 def booking_detail(request, pk):
     booking = get_object_or_404(
-        Booking.objects.select_related('user', 'room__room_type__hotel'),
+        Booking.objects.select_related('user', 'room__room_type__hotel').prefetch_related(
+            "amenity_usages__amenity"
+        ),
         pk=pk
     )
     return render(request, 'dashboard/bookings/detail.html', {
@@ -358,6 +377,38 @@ def user_toggle(request, pk):
     return redirect('dashboard:user_list')
 
 
+@login_required
+@staff_required
+def user_permissions(request, pk):
+    """
+    Trang phân quyền user (gán group/role).
+    Chỉ superuser được phép thay đổi phân quyền.
+    """
+    if not request.user.is_superuser:
+        messages.error(request, "Bạn không có quyền phân quyền tài khoản.")
+        return redirect("dashboard:user_list")
+
+    user_obj = get_object_or_404(User, pk=pk)
+    employee_group, _ = Group.objects.get_or_create(name="Employee")
+
+    if request.method == "POST":
+        make_employee = request.POST.get("is_employee") == "on"
+        if make_employee:
+            user_obj.groups.add(employee_group)
+        else:
+            user_obj.groups.remove(employee_group)
+
+        messages.success(request, f'Đã cập nhật quyền cho "{user_obj.username}".')
+        return redirect("dashboard:user_list")
+
+    return render(request, "dashboard/users/permissions.html", {
+        "u": user_obj,
+        "employee_group": employee_group,
+        "is_employee": user_obj.groups.filter(id=employee_group.id).exists(),
+        "page": "users",
+    })
+
+
 # ═══════════════════════════════════════════════════════════
 # ROOM TYPES — Quản lý loại phòng
 # ═══════════════════════════════════════════════════════════
@@ -425,6 +476,7 @@ def _save_roomtype(request, hotel, room_type):
     data = request.POST
     try:
         price     = float(data.get('price_per_night', 0))
+        price_hour = float(data.get('price_per_hour', 0)) if data.get('price_per_hour') else None
         occupancy = int(data.get('max_occupancy', 2))
         area      = float(data.get('area_sqm', 0)) if data.get('area_sqm') else None
     except ValueError:
@@ -439,6 +491,7 @@ def _save_roomtype(request, hotel, room_type):
         'max_occupancy':   occupancy,
         'area_sqm':        area,
         'price_per_night': price,
+        'price_per_hour':  price_hour,
         'is_active':       data.get('is_active') == 'on',
     }
 

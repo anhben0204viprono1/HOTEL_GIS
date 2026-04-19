@@ -79,10 +79,17 @@
                 {% if booking.room.floor %} — Tầng {{ booking.room.floor }}{% endif %}
               </p>
               <p class="mb-0 mt-1" style="font-size:12px;color:#555;">
-                📅 {{ booking.check_in|date:"d/m/Y" }}
-                <span class="text-muted">→</span>
-                {{ booking.check_out|date:"d/m/Y" }}
-                <span class="text-muted">({{ booking.nights }} đêm · {{ booking.num_guests }} khách)</span>
+                {% if booking.booking_type == 'hourly' %}
+                  🕐 {{ booking.check_in_dt|date:"H:i d/m/Y" }}
+                  <span class="text-muted">→</span>
+                  {{ booking.check_out_dt|date:"H:i d/m/Y" }}
+                  <span class="text-muted">({{ booking.hours }} giờ · {{ booking.num_guests }} khách)</span>
+                {% else %}
+                  📅 {{ booking.check_in|date:"d/m/Y" }}
+                  <span class="text-muted">→</span>
+                  {{ booking.check_out|date:"d/m/Y" }}
+                  <span class="text-muted">({{ booking.nights }} đêm · {{ booking.num_guests }} khách)</span>
+                {% endif %}
               </p>
             </div>
 

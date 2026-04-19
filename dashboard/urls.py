@@ -39,6 +39,7 @@ urlpatterns = [
     # ── Users ─────────────────────────────────────────────────────
     path('users/',                              views.user_list,             name='user_list'),
     path('users/<int:pk>/toggle/',              views.user_toggle,           name='user_toggle'),
+    path('users/<int:pk>/permissions/',         views.user_permissions,      name='user_permissions'),
 
     # ── API ───────────────────────────────────────────────────────
     path('api/stats/',                          views.api_stats,             name='api_stats'),

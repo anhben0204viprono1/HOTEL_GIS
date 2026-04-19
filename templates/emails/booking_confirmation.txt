@@ -9,9 +9,15 @@ Xin chào {{ user.get_full_name|default:user.username }},
 Mã đặt phòng: #{{ booking.id }}
 Khách sạn: {{ hotel.name }}
 Phòng: {{ room_type.name }} (Phòng {{ room.room_number }})
+{% if booking.booking_type == 'hourly' %}
+Nhận phòng: {{ booking.check_in_dt|date:"H:i d/m/Y" }}
+Trả phòng: {{ booking.check_out_dt|date:"H:i d/m/Y" }}
+Số giờ: {{ hours }}
+{% else %}
 Nhận phòng: {{ booking.check_in|date:"d/m/Y" }} (từ {{ hotel.check_in_time|time:"H:i" }})
 Trả phòng: {{ booking.check_out|date:"d/m/Y" }} (trước {{ hotel.check_out_time|time:"H:i" }})
 Số đêm: {{ nights }}
+{% endif %}
 Tổng tiền: {{ booking.total_price|floatformat:0 }} ₫
 
 Xem chi tiết: {{ booking_url }}

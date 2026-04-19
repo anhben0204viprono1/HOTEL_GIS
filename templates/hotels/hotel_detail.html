@@ -128,7 +128,10 @@
               </span>
               {% if user.is_authenticated %}
                 {% if room.available_rooms_count > 0 %}
-                  <a href="{% url 'bookings:create' room.id %}" class="btn btn-sm btn-gold">Đặt ngay</a>
+                  <div class="d-flex gap-2">
+                    <a href="{% url 'bookings:create' room.id %}" class="btn btn-sm btn-gold">🗓 Theo ngày</a>
+                    <a href="{% url 'bookings:create_hourly' room.id %}" class="btn btn-sm btn-outline-primary">🕐 Theo giờ</a>
+                  </div>
                 {% else %}
                   <span class="btn btn-sm btn-secondary disabled" style="opacity:.6;">Hết phòng</span>
                 {% endif %}

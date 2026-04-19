@@ -37,6 +37,7 @@ def send_booking_confirmation(booking):
         'room':       booking.room,
         'user':       booking.user,
         'nights':     booking.nights(),
+        'hours':      booking.hours(),
         'booking_url': booking_url,
     }
 

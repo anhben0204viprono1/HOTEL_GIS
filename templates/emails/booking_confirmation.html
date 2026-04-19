@@ -367,21 +367,34 @@
         <div class="dates-box">
           <div class="date-cell">
             <div class="date-label">📅 Nhận phòng</div>
-            <div class="date-value">{{ booking.check_in|date:"d/m/Y" }}</div>
-            <div class="date-time">từ {{ hotel.check_in_time|time:"H:i" }}</div>
+            {% if booking.booking_type == 'hourly' %}
+              <div class="date-value">{{ booking.check_in_dt|date:"H:i d/m/Y" }}</div>
+              <div class="date-time">&nbsp;</div>
+            {% else %}
+              <div class="date-value">{{ booking.check_in|date:"d/m/Y" }}</div>
+              <div class="date-time">từ {{ hotel.check_in_time|time:"H:i" }}</div>
+            {% endif %}
           </div>
           <div class="nights-badge">
             <div style="text-align: center">
-              <div class="nights-num">{{ nights }}</div>
-              <div class="nights-lbl">đêm</div>
+              {% if booking.booking_type == 'hourly' %}
+                <div class="nights-num">{{ hours }}</div>
+                <div class="nights-lbl">giờ</div>
+              {% else %}
+                <div class="nights-num">{{ nights }}</div>
+                <div class="nights-lbl">đêm</div>
+              {% endif %}
             </div>
           </div>
           <div class="date-cell">
             <div class="date-label">🚪 Trả phòng</div>
-            <div class="date-value">{{ booking.check_out|date:"d/m/Y" }}</div>
-            <div class="date-time">
-              trước {{ hotel.check_out_time|time:"H:i" }}
-            </div>
+            {% if booking.booking_type == 'hourly' %}
+              <div class="date-value">{{ booking.check_out_dt|date:"H:i d/m/Y" }}</div>
+              <div class="date-time">&nbsp;</div>
+            {% else %}
+              <div class="date-value">{{ booking.check_out|date:"d/m/Y" }}</div>
+              <div class="date-time">trước {{ hotel.check_out_time|time:"H:i" }}</div>
+            {% endif %}
           </div>
         </div>
 
@@ -389,8 +402,16 @@
         <div class="price-box">
           <div class="price-breakdown">
             <strong>Tổng tiền</strong>
-            {{ nights }} đêm × {{ room_type.price_per_night|floatformat:0 }}
-            ₫/đêm
+            {% if booking.booking_type == 'hourly' %}
+              {{ hours }} giờ ×
+              {% if room_type.price_per_hour %}
+                {{ room_type.price_per_hour|floatformat:0 }} ₫/giờ
+              {% else %}
+                ({{ room_type.price_per_night|floatformat:0 }} ₫/đêm ÷ 24)
+              {% endif %}
+            {% else %}
+              {{ nights }} đêm × {{ room_type.price_per_night|floatformat:0 }} ₫/đêm
+            {% endif %}
           </div>
           <div class="price-total">
             {{ booking.total_price|floatformat:0 }}<span class="price-currency">

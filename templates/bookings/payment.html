@@ -363,10 +363,15 @@
         <div class="label">Đặt phòng #{{ booking.id }}</div>
         <h2>{{ booking.room.hotel.name }}</h2>
         <p class="meta mb-0">
-          🛏 {{ booking.room.room_type.name }} · Phòng {{
-          booking.room.room_number }} &nbsp;|&nbsp; 📅 {{
-          booking.check_in|date:"d/m/Y" }} → {{ booking.check_out|date:"d/m/Y"
-          }} ({{ booking.nights }} đêm · {{ booking.num_guests }} khách)
+          🛏 {{ booking.room.room_type.name }} · Phòng {{ booking.room.room_number }}
+          &nbsp;|&nbsp;
+          {% if booking.booking_type == 'hourly' %}
+            🕐 {{ booking.check_in_dt|date:"H:i d/m/Y" }} → {{ booking.check_out_dt|date:"H:i d/m/Y" }}
+            ({{ booking.hours }} giờ · {{ booking.num_guests }} khách)
+          {% else %}
+            📅 {{ booking.check_in|date:"d/m/Y" }} → {{ booking.check_out|date:"d/m/Y" }}
+            ({{ booking.nights }} đêm · {{ booking.num_guests }} khách)
+          {% endif %}
         </p>
       </div>
       <div class="col-md-4 text-md-end">
@@ -831,28 +836,52 @@
         <div class="info-row">
           <span class="info-label">Nhận phòng</span>
           <span class="info-val" style="color: #15803d"
-            >{{ booking.check_in|date:"d/m/Y" }}</span
+            >
+            {% if booking.booking_type == 'hourly' %}
+              {{ booking.check_in_dt|date:"H:i d/m/Y" }}
+            {% else %}
+              {{ booking.check_in|date:"d/m/Y" }}
+            {% endif %}
+          </span
           >
         </div>
         <div class="info-row">
           <span class="info-label">Trả phòng</span>
           <span class="info-val" style="color: #dc2626"
-            >{{ booking.check_out|date:"d/m/Y" }}</span
+            >
+            {% if booking.booking_type == 'hourly' %}
+              {{ booking.check_out_dt|date:"H:i d/m/Y" }}
+            {% else %}
+              {{ booking.check_out|date:"d/m/Y" }}
+            {% endif %}
+          </span
           >
         </div>
         <div class="info-row">
-          <span class="info-label">Số đêm</span>
-          <span class="info-val">{{ booking.nights }} đêm</span>
+          <span class="info-label">Thời lượng</span>
+          {% if booking.booking_type == 'hourly' %}
+            <span class="info-val">{{ booking.hours }} giờ</span>
+          {% else %}
+            <span class="info-val">{{ booking.nights }} đêm</span>
+          {% endif %}
         </div>
         <div class="info-row">
           <span class="info-label">Số khách</span>
           <span class="info-val">{{ booking.num_guests }} người</span>
         </div>
         <div class="info-row">
-          <span class="info-label">Giá / đêm</span>
-          <span class="info-val"
-            >{{ booking.room.room_type.price_per_night|floatformat:0 }} ₫</span
-          >
+          <span class="info-label">Đơn giá</span>
+          <span class="info-val">
+            {% if booking.booking_type == 'hourly' %}
+              {% if booking.room.room_type.price_per_hour %}
+                {{ booking.room.room_type.price_per_hour|floatformat:0 }} ₫/giờ
+              {% else %}
+                ({{ booking.room.room_type.price_per_night|floatformat:0 }} ₫/đêm ÷ 24)
+              {% endif %}
+            {% else %}
+              {{ booking.room.room_type.price_per_night|floatformat:0 }} ₫/đêm
+            {% endif %}
+          </span>
         </div>
       </div>
 
@@ -861,8 +890,16 @@
         <div>
           <div class="t-label">Tổng thanh toán</div>
           <div class="t-sub">
-            {{ booking.nights }} đêm × {{
-            booking.room.room_type.price_per_night|floatformat:0 }} ₫
+            {% if booking.booking_type == 'hourly' %}
+              {{ booking.hours }} giờ ×
+              {% if booking.room.room_type.price_per_hour %}
+                {{ booking.room.room_type.price_per_hour|floatformat:0 }} ₫
+              {% else %}
+                ({{ booking.room.room_type.price_per_night|floatformat:0 }} ₫/đêm ÷ 24)
+              {% endif %}
+            {% else %}
+              {{ booking.nights }} đêm × {{ booking.room.room_type.price_per_night|floatformat:0 }} ₫
+            {% endif %}
           </div>
         </div>
         <div class="t-amt">{{ booking.total_price|floatformat:0 }} ₫</div>

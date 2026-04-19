@@ -18,7 +18,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'hotels',
     'dashboard',
-    'accounts',
+    'accounts.apps.AccountsConfig',
     'bookings',
 ]
 

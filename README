@@ -10,3 +10,12 @@ git checkout -b gis-tool origin/gis-tool
 
 Chạy sv 
 python manage.py runserver
+-- PUSH code 
+git status
+git checkout tool02
+git commit -m "update tool02"
+git push
+
+
+-
+python manage.py migrate

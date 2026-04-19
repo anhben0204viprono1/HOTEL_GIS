@@ -382,19 +382,37 @@
     <div class="detail-row">
       <span class="d-label">Nhận phòng</span>
       <span class="d-val" style="color: #15803d"
-        >{{ booking.check_in|date:"l, d/m/Y" }}</span
+        >
+        {% if booking.booking_type == 'hourly' %}
+          {{ booking.check_in_dt|date:"H:i — d/m/Y" }}
+        {% else %}
+          {{ booking.check_in|date:"l, d/m/Y" }}
+        {% endif %}
+      </span
       >
     </div>
     <div class="detail-row">
       <span class="d-label">Trả phòng</span>
       <span class="d-val" style="color: #dc2626"
-        >{{ booking.check_out|date:"l, d/m/Y" }}</span
+        >
+        {% if booking.booking_type == 'hourly' %}
+          {{ booking.check_out_dt|date:"H:i — d/m/Y" }}
+        {% else %}
+          {{ booking.check_out|date:"l, d/m/Y" }}
+        {% endif %}
+      </span
       >
     </div>
     <div class="detail-row">
       <span class="d-label">Thời gian lưu trú</span>
       <span class="d-val"
-        >{{ booking.nights }} đêm · {{ booking.num_guests }} khách</span
+        >
+        {% if booking.booking_type == 'hourly' %}
+          {{ booking.hours }} giờ · {{ booking.num_guests }} khách
+        {% else %}
+          {{ booking.nights }} đêm · {{ booking.num_guests }} khách
+        {% endif %}
+      </span
       >
     </div>
     <div class="detail-row">
@@ -469,8 +487,11 @@
         <div class="tl-dot gray">○</div>
         <div>
           <div class="tl-text" style="color: #9ca3af">
-            Nhận phòng · {{ booking.check_in|date:"d/m/Y" }} lúc {{
-            booking.room.hotel.check_in_time|time:"H:i" }}
+            {% if booking.booking_type == 'hourly' %}
+              Nhận phòng · {{ booking.check_in_dt|date:"H:i d/m/Y" }}
+            {% else %}
+              Nhận phòng · {{ booking.check_in|date:"d/m/Y" }} lúc {{ booking.room.hotel.check_in_time|time:"H:i" }}
+            {% endif %}
           </div>
         </div>
       </div>

@@ -73,6 +73,18 @@
           </div>
         </div>
 
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label">Giá / giờ (VNĐ)</label>
+            <input type="number" name="price_per_hour" class="form-control" min="0" step="1000"
+                   value="{{ room_type.price_per_hour|default:'' }}"
+                   placeholder="VD: 150000">
+            <div class="text-muted" style="font-size:11px;margin-top:6px;">
+              Bỏ trống để tự tính xấp xỉ = giá/đêm ÷ 24 khi khách đặt theo giờ.
+            </div>
+          </div>
+        </div>
+
         <div class="mb-3">
           <label class="form-label">Mô tả</label>
           <textarea name="description" class="form-control" rows="3"

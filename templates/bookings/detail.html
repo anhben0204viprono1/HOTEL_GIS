@@ -88,20 +88,32 @@
       <div class="detail-row">
         <span class="detail-label">Nhận phòng</span>
         <span class="fw-semibold" style="color:#15803d;">
-          {{ booking.check_in|date:"l, d/m/Y" }}
-          <small class="text-muted fw-normal">({{ booking.room.hotel.check_in_time|time:"H:i" }})</small>
+          {% if booking.booking_type == 'hourly' %}
+            {{ booking.check_in_dt|date:"H:i — d/m/Y" }}
+          {% else %}
+            {{ booking.check_in|date:"l, d/m/Y" }}
+            <small class="text-muted fw-normal">({{ booking.room.hotel.check_in_time|time:"H:i" }})</small>
+          {% endif %}
         </span>
       </div>
       <div class="detail-row">
         <span class="detail-label">Trả phòng</span>
         <span class="fw-semibold" style="color:#dc2626;">
-          {{ booking.check_out|date:"l, d/m/Y" }}
-          <small class="text-muted fw-normal">({{ booking.room.hotel.check_out_time|time:"H:i" }})</small>
+          {% if booking.booking_type == 'hourly' %}
+            {{ booking.check_out_dt|date:"H:i — d/m/Y" }}
+          {% else %}
+            {{ booking.check_out|date:"l, d/m/Y" }}
+            <small class="text-muted fw-normal">({{ booking.room.hotel.check_out_time|time:"H:i" }})</small>
+          {% endif %}
         </span>
       </div>
       <div class="detail-row">
         <span class="detail-label">Thời gian lưu trú</span>
-        <span>{{ booking.nights }} đêm</span>
+        {% if booking.booking_type == 'hourly' %}
+          <span>{{ booking.hours }} giờ</span>
+        {% else %}
+          <span>{{ booking.nights }} đêm</span>
+        {% endif %}
       </div>
       <div class="detail-row">
         <span class="detail-label">Số khách</span>
@@ -120,7 +132,16 @@
           <div>
             <div style="font-size:11px;color:#856404;letter-spacing:1px;text-transform:uppercase;">Tổng tiền</div>
             <div style="font-size:12px;color:#a07a10;margin-top:2px;">
-              {{ booking.nights }} đêm × {{ booking.room.room_type.price_per_night|floatformat:0 }} ₫/đêm
+              {% if booking.booking_type == 'hourly' %}
+                {{ booking.hours }} giờ ×
+                {% if booking.room.room_type.price_per_hour %}
+                  {{ booking.room.room_type.price_per_hour|floatformat:0 }} ₫/giờ
+                {% else %}
+                  ({{ booking.room.room_type.price_per_night|floatformat:0 }} ₫/đêm ÷ 24)
+                {% endif %}
+              {% else %}
+                {{ booking.nights }} đêm × {{ booking.room.room_type.price_per_night|floatformat:0 }} ₫/đêm
+              {% endif %}
             </div>
           </div>
           <div style="font-size:1.6rem;font-weight:700;color:#C9A84C;">
@@ -140,8 +161,13 @@
       🏨 Xem khách sạn
     </a>
     {% if booking.status == 'pending' or booking.status == 'confirmed' %}
-      <a href="{% url 'bookings:create_payment' booking.id %}" class="btn btn-outline-primary px-4">
-        💳 Thanh toán (QR)
+      <a href="{% url 'bookings:payment' booking.id %}" class="btn btn-outline-primary px-4">
+        💳 Thanh toán
+      </a>
+    {% endif %}
+    {% if booking.status == 'checked_in' %}
+      <a href="{% url 'bookings:amenities' booking.id %}" class="btn btn-outline-primary px-4">
+        ✨ Tiện ích khi đang ở
       </a>
     {% endif %}
     {% if booking.can_cancel %}
