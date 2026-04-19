@@ -1,0 +1,109 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Nhân viên{% endblock %}
+{% block page_title %}Quản lý nhân viên{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4>👷 Danh sách nhân viên</h4>
+  <a href="{% url 'dashboard:staff_create' %}" class="btn btn-gold px-4">+ Thêm nhân viên</a>
+</div>
+
+<!-- Filter -->
+<form method="get" class="search-bar">
+  <input type="text" name="q" value="{{ filters.q }}" class="form-control"
+         style="max-width:240px;" placeholder="🔍 Tên, email, username...">
+  <select name="hotel" class="form-select" style="max-width:220px;font-size:13px;" onchange="this.form.submit()">
+    <option value="">-- Tất cả khách sạn --</option>
+    {% for h in hotels %}
+    <option value="{{ h.pk }}" {% if filters.hotel == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>
+    {% endfor %}
+  </select>
+  <button class="btn btn-gold px-4">Tìm</button>
+  {% if filters.q or filters.hotel %}
+  <a href="{% url 'dashboard:staff_list' %}" class="btn btn-outline-secondary">✕ Xóa lọc</a>
+  {% endif %}
+</form>
+
+<div class="dash-table">
+  <table class="table table-hover mb-0">
+    <thead>
+      <tr>
+        <th>Nhân viên</th>
+        <th>Khách sạn</th>
+        <th>Chức vụ</th>
+        <th>Liên hệ</th>
+        <th>Ngày vào làm</th>
+        <th>Trạng thái</th>
+        <th>Thao tác</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in staff_list %}
+      <tr>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0d9488,#065f46);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">
+              {{ s.user.username|first|upper }}
+            </div>
+            <div>
+              <div style="font-weight:600;font-size:13px;">{{ s.full_name }}</div>
+              <div style="font-size:11px;color:#888;">@{{ s.user.username }}</div>
+            </div>
+          </div>
+        </td>
+        <td style="font-size:13px;">
+          <span style="font-weight:500;">{{ s.hotel.name }}</span>
+          <div style="font-size:11px;color:#888;">{{ s.hotel.city }}</div>
+        </td>
+        <td>
+          <span style="font-size:12px;background:#f0fdfa;color:#0d9488;padding:3px 10px;border-radius:20px;font-weight:600;">
+            {{ s.get_role_display }}
+          </span>
+        </td>
+        <td style="font-size:12px;color:#666;">
+          {{ s.user.email|default:'—' }}
+          {% if s.phone %}<div style="color:#888;">{{ s.phone }}</div>{% endif %}
+        </td>
+        <td style="font-size:12px;color:#888;">{{ s.hired_at|date:"d/m/Y"|default:'—' }}</td>
+        <td>
+          {% if s.is_active %}
+            <span class="badge-status bs-available">Hoạt động</span>
+          {% else %}
+            <span class="badge-status bs-cancelled">Đã khóa</span>
+          {% endif %}
+        </td>
+        <td>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <a href="{% url 'dashboard:staff_edit' s.pk %}"
+               class="btn btn-icon" style="background:#f0fdfa;color:#0d9488;" title="Sửa">✏️</a>
+
+            <form method="post" action="{% url 'dashboard:staff_toggle' s.pk %}" style="display:inline;">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-icon"
+                      style="background:{% if s.is_active %}#fff1f2;color:#e11d48;{% else %}#f0fdf4;color:#16a34a;{% endif %}"
+                      title="{% if s.is_active %}Khóa{% else %}Kích hoạt{% endif %}">
+                {% if s.is_active %}🔒{% else %}🔓{% endif %}
+              </button>
+            </form>
+
+            <form method="post" action="{% url 'dashboard:staff_delete' s.pk %}" style="display:inline;"
+                  onsubmit="return confirm('Xóa nhân viên {{ s.full_name }}? Thao tác không thể hoàn tác!')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-icon"
+                      style="background:#fff1f2;color:#e11d48;" title="Xóa">🗑</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" style="text-align:center;color:#aaa;padding:50px;font-size:14px;">
+          👷 Chưa có nhân viên nào.
+          <a href="{% url 'dashboard:staff_create' %}" style="color:#0d9488;">Thêm ngay →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

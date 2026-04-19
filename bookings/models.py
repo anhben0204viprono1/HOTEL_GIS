@@ -46,8 +46,16 @@ class Booking(models.Model):
     note            = models.TextField(blank=True, verbose_name='Yêu cầu đặc biệt')
     cancelled_at    = models.DateTimeField(null=True, blank=True, verbose_name='Thời điểm hủy')
     cancel_reason   = models.TextField(blank=True, verbose_name='Lý do hủy')
-    created_at      = models.DateTimeField(auto_now_add=True)
-    updated_at      = models.DateTimeField(auto_now=True)
+
+    # ── Ràng buộc 1: bắt buộc thanh toán QR trước ──────────────────────────
+    requires_prepayment = models.BooleanField(
+        default=False,
+        verbose_name='Bắt buộc thanh toán trước',
+        help_text='Tự động True khi đặt từ 2 phòng trở lên trong cùng 1 lần đặt'
+    )
+
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name        = 'Đặt phòng'

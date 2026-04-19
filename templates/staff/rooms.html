@@ -1,0 +1,97 @@
+{% extends 'staff/base.html' %}
+{% block title %}Quản lý phòng{% endblock %}
+{% block page_title %}🛏 Quản lý phòng — {{ hotel.name }}{% endblock %}
+
+{% block content %}
+<!-- Stat row -->
+<div class="row g-3 mb-4">
+  <div class="col-4">
+    <a href="?status=available" style="text-decoration:none;">
+      <div class="stat-card {% if filters.status == 'available' %}border-success{% endif %}">
+        <div class="stat-value" style="color:#059669;">{{ status_counts.available }}</div>
+        <div class="stat-label">✅ Còn trống</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-4">
+    <a href="?status=occupied" style="text-decoration:none;">
+      <div class="stat-card {% if filters.status == 'occupied' %}border-danger{% endif %}">
+        <div class="stat-value" style="color:#dc2626;">{{ status_counts.occupied }}</div>
+        <div class="stat-label">🔴 Có khách</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-4">
+    <a href="?status=maintenance" style="text-decoration:none;">
+      <div class="stat-card {% if filters.status == 'maintenance' %}border-warning{% endif %}">
+        <div class="stat-value" style="color:#d97706;">{{ status_counts.maintenance }}</div>
+        <div class="stat-label">🔧 Bảo trì</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- Filter bar -->
+<form method="get" class="filter-bar mb-4">
+  <select name="status" class="form-select" style="max-width:180px;" onchange="this.form.submit()">
+    <option value="">-- Tất cả trạng thái --</option>
+    {% for val, label in status_choices %}
+    <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <select name="floor" class="form-select" style="max-width:150px;" onchange="this.form.submit()">
+    <option value="">-- Tất cả tầng --</option>
+    {% for f in floors %}
+      {% if f %}<option value="{{ f }}" {% if filters.floor == f|stringformat:"s" %}selected{% endif %}>Tầng {{ f }}</option>{% endif %}
+    {% endfor %}
+  </select>
+  {% if filters.status or filters.floor %}
+    <a href="{% url 'staff:rooms' %}" class="btn btn-outline-secondary" style="border-radius:8px;font-size:13px;">✕ Xóa lọc</a>
+  {% endif %}
+</form>
+
+<!-- Rooms grid -->
+<div class="row g-3">
+  {% for room in rooms %}
+  <div class="col-6 col-md-4 col-lg-3">
+    <div class="section-card" style="padding:16px;cursor:pointer;transition:.2s;{% if room.status == 'occupied' %}border-color:#fca5a5;{% elif room.status == 'maintenance' %}border-color:#fde68a;{% else %}border-color:#a7f3d0;{% endif %}">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span style="font-size:1.1rem;font-weight:700;">P.{{ room.room_number }}</span>
+        {% if room.floor %}<span style="font-size:11px;color:#888;">Tầng {{ room.floor }}</span>{% endif %}
+      </div>
+      <div style="font-size:12px;color:#555;margin-bottom:8px;">{{ room.room_type.name }}</div>
+      <span class="badge-status bs-{{ room.status }}">{{ room.get_status_display }}</span>
+
+      <!-- Status change buttons -->
+      <div class="mt-3 d-flex gap-1 flex-wrap">
+        {% if room.status != 'available' %}
+        <form method="post" action="{% url 'staff:room_status' room.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="available">
+          <button class="btn btn-sm" style="background:#d1fae5;color:#065f46;font-size:10px;border-radius:6px;padding:3px 8px;border:none;">✅ Trống</button>
+        </form>
+        {% endif %}
+        {% if room.status != 'maintenance' %}
+        <form method="post" action="{% url 'staff:room_status' room.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="status" value="maintenance">
+          <button class="btn btn-sm" style="background:#fef3c7;color:#92400e;font-size:10px;border-radius:6px;padding:3px 8px;border:none;">🔧 Bảo trì</button>
+        </form>
+        {% endif %}
+      </div>
+      {% if room.note %}
+      <div style="font-size:11px;color:#888;margin-top:8px;background:#f8f9fb;border-radius:6px;padding:6px 8px;">
+        📝 {{ room.note|truncatechars:50 }}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div style="text-align:center;padding:60px;color:#aaa;font-size:14px;">
+      🛏 Không tìm thấy phòng nào.
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

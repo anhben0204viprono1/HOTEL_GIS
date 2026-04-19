@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     'dashboard',
     'accounts',
     'bookings',
+    'staff', 
 ]
 
 MIDDLEWARE = [
@@ -76,9 +77,11 @@ CRISPY_TEMPLATE_PACK = 'bootstrap5'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/staff/'
 
 
 EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
-EMAIL_HOST_USER = '622441704f1d3b'
-EMAIL_HOST_PASSWORD = 'ce0b9871fa93e8'
+EMAIL_HOST_USER = 'eae47a6c0460f6'
+EMAIL_HOST_PASSWORD = 'ed744a6e79353a'
 EMAIL_PORT = '2525'

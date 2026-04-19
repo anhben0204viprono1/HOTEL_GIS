@@ -15,6 +15,7 @@ from hotels.models import Hotel, RoomType, Room, Amenity, HotelImage, RoomTypeIm
 from bookings.models import Booking, Payment, Review
 from django.contrib.auth.models import User
 from hotels.widgets import LeafletMapWidget
+from staff.models import StaffProfile
 
 
 # ── Guard: chỉ staff/superuser mới vào được ──────────────────────────────────
@@ -657,3 +658,216 @@ def api_stats(request):
             ),
         })
     return JsonResponse({'data': data})
+from staff.models import StaffProfile
+
+
+@login_required
+@staff_required
+def staff_list(request):
+    """Danh sách nhân viên, có thể lọc theo khách sạn."""
+    hotel_filter = request.GET.get('hotel', '')
+    q            = request.GET.get('q', '')
+
+    staff_qs = StaffProfile.objects.select_related('user', 'hotel').order_by('hotel', 'user__last_name')
+
+    if hotel_filter:
+        staff_qs = staff_qs.filter(hotel_id=hotel_filter)
+    if q:
+        staff_qs = staff_qs.filter(
+            Q(user__first_name__icontains=q) |
+            Q(user__last_name__icontains=q)  |
+            Q(user__email__icontains=q)      |
+            Q(user__username__icontains=q)
+        )
+
+    hotels = Hotel.objects.filter(is_active=True).order_by('name')
+
+    return render(request, 'dashboard/staff/list.html', {
+        'staff_list':    staff_qs,
+        'hotels':        hotels,
+        'filters':       {'hotel': hotel_filter, 'q': q},
+        'page':          'staff',
+    })
+
+
+@login_required
+@staff_required
+def staff_create(request):
+    """Tạo nhân viên mới: tạo User + StaffProfile cùng lúc."""
+    hotels = Hotel.objects.filter(is_active=True).order_by('name')
+
+    if request.method == 'POST':
+        # ── Lấy dữ liệu form ──
+        username   = request.POST.get('username', '').strip()
+        email      = request.POST.get('email', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name  = request.POST.get('last_name', '').strip()
+        password   = request.POST.get('password', '').strip()
+        hotel_id   = request.POST.get('hotel')
+        role       = request.POST.get('role', 'receptionist')
+        phone      = request.POST.get('phone', '').strip()
+        hired_at   = request.POST.get('hired_at') or None
+
+        # ── Validation ──
+        if not username or not password or not hotel_id:
+            messages.error(request, '⚠️ Username, mật khẩu và khách sạn là bắt buộc.')
+            return render(request, 'dashboard/staff/form.html', {
+                'hotels': hotels, 'page': 'staff', 'action': 'Thêm nhân viên',
+                'data': request.POST,
+            })
+
+        if User.objects.filter(username=username).exists():
+            messages.error(request, f'⚠️ Username "{username}" đã tồn tại.')
+            return render(request, 'dashboard/staff/form.html', {
+                'hotels': hotels, 'page': 'staff', 'action': 'Thêm nhân viên',
+                'data': request.POST,
+            })
+
+        try:
+            hotel = Hotel.objects.get(pk=hotel_id)
+        except Hotel.DoesNotExist:
+            messages.error(request, 'Khách sạn không hợp lệ.')
+            return redirect('dashboard:staff_list')
+
+        # ── Tạo User ──
+        user = User.objects.create_user(
+            username   = username,
+            email      = email,
+            password   = password,
+            first_name = first_name,
+            last_name  = last_name,
+        )
+
+        # ── Tạo StaffProfile ──
+        StaffProfile.objects.create(
+            user     = user,
+            hotel    = hotel,
+            role     = role,
+            phone    = phone,
+            hired_at = hired_at,
+        )
+
+        messages.success(request, f'✅ Đã tạo nhân viên "{user.get_full_name() or username}" cho {hotel.name}.')
+        return redirect('dashboard:staff_list')
+
+    return render(request, 'dashboard/staff/form.html', {
+        'hotels': hotels, 'page': 'staff', 'action': 'Thêm nhân viên',
+    })
+
+
+@login_required
+@staff_required
+def staff_edit(request, pk):
+    """Sửa thông tin nhân viên."""
+    profile = get_object_or_404(StaffProfile, pk=pk)
+    hotels  = Hotel.objects.filter(is_active=True).order_by('name')
+
+    if request.method == 'POST':
+        user = profile.user
+        user.first_name = request.POST.get('first_name', '').strip()
+        user.last_name  = request.POST.get('last_name', '').strip()
+        user.email      = request.POST.get('email', '').strip()
+
+        # Đổi mật khẩu nếu nhập
+        new_password = request.POST.get('password', '').strip()
+        if new_password:
+            user.set_password(new_password)
+
+        user.save()
+
+        hotel_id = request.POST.get('hotel')
+        try:
+            profile.hotel    = Hotel.objects.get(pk=hotel_id)
+        except Hotel.DoesNotExist:
+            pass
+
+        profile.role     = request.POST.get('role', profile.role)
+        profile.phone    = request.POST.get('phone', '').strip()
+        hired_at         = request.POST.get('hired_at')
+        profile.hired_at = hired_at if hired_at else None
+        profile.is_active = request.POST.get('is_active') == 'on'
+        profile.save()
+
+        messages.success(request, f'✅ Đã cập nhật nhân viên "{profile.full_name()}".')
+        return redirect('dashboard:staff_list')
+
+    return render(request, 'dashboard/staff/form.html', {
+        'profile': profile,
+        'hotels':  hotels,
+        'page':    'staff',
+        'action':  'Sửa nhân viên',
+    })
+
+
+@login_required
+@staff_required
+def staff_delete(request, pk):
+    """Xóa nhân viên (xóa cả User)."""
+    profile = get_object_or_404(StaffProfile, pk=pk)
+    if request.method == 'POST':
+        name = profile.full_name()
+        profile.user.delete()   # cascade → xóa StaffProfile luôn
+        messages.success(request, f'Đã xóa nhân viên "{name}".')
+    return redirect('dashboard:staff_list')
+
+
+@login_required
+@staff_required
+def staff_toggle(request, pk):
+    """Kích hoạt / vô hiệu hoá nhân viên."""
+    profile = get_object_or_404(StaffProfile, pk=pk)
+    if request.method == 'POST':
+        profile.is_active = not profile.is_active
+        profile.save()
+        state = 'kích hoạt' if profile.is_active else 'vô hiệu hoá'
+        messages.success(request, f'Đã {state} nhân viên "{profile.full_name()}".')
+    return redirect('dashboard:staff_list')
+
+
+# ═══════════════════════════════════════════════════════════
+# SERVICE REQUESTS — Admin xem tất cả yêu cầu dịch vụ
+# ═══════════════════════════════════════════════════════════
+
+@login_required
+@staff_required
+def service_request_list(request):
+    """Admin xem toàn bộ yêu cầu dịch vụ của tất cả khách sạn."""
+    from hotels.models import ServiceRequest
+
+    hotel_filter    = request.GET.get('hotel', '')
+    status_filter   = request.GET.get('status', '')
+    priority_filter = request.GET.get('priority', '')
+
+    reqs = ServiceRequest.objects.select_related(
+        'hotel', 'guest', 'room', 'booking'
+    ).order_by('-created_at')
+
+    if hotel_filter:
+        reqs = reqs.filter(hotel_id=hotel_filter)
+    if status_filter:
+        reqs = reqs.filter(status=status_filter)
+    if priority_filter:
+        reqs = reqs.filter(priority=priority_filter)
+
+    hotels = Hotel.objects.filter(is_active=True).order_by('name')
+
+    counts = {
+        'pending':     ServiceRequest.objects.filter(status='pending').count(),
+        'in_progress': ServiceRequest.objects.filter(status='in_progress').count(),
+        'resolved':    ServiceRequest.objects.filter(status='resolved').count(),
+        'urgent':      ServiceRequest.objects.filter(priority='urgent', status__in=['pending','in_progress']).count(),
+    }
+
+    return render(request, 'dashboard/service_requests/list.html', {
+        'requests':        reqs,
+        'hotels':          hotels,
+        'counts':          counts,
+        'status_choices':  ServiceRequest.STATUS_CHOICES,
+        'priority_choices':ServiceRequest.PRIORITY_CHOICES,
+        'filters': {
+            'hotel':    hotel_filter,
+            'status':   status_filter,
+            'priority': priority_filter,
+        },
+        'page': 'service_requests',
+    })

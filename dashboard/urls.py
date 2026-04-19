@@ -1,5 +1,9 @@
 from django.urls import path
 from . import views
+from django.contrib import admin
+from django.urls import path, include
+from django.conf import settings
+from django.conf.urls.static import static
 
 app_name = 'dashboard'
 
@@ -42,4 +46,12 @@ urlpatterns = [
 
     # ── API ───────────────────────────────────────────────────────
     path('api/stats/',                          views.api_stats,             name='api_stats'),
+    path('staff/',                    views.staff_list,    name='staff_list'),
+    path('staff/create/',             views.staff_create,  name='staff_create'),
+    path('staff/<int:pk>/edit/',      views.staff_edit,    name='staff_edit'),
+    path('staff/<int:pk>/delete/',    views.staff_delete,  name='staff_delete'),
+    path('staff/<int:pk>/toggle/',    views.staff_toggle,  name='staff_toggle'),
 ]
+
+# ── Service Requests (tất cả KS) ──────────────────────────
+path('service-requests/',         views.service_request_list, name='service_request_list'),

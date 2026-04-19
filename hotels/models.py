@@ -6,6 +6,7 @@ Thiết kế theo schema PostgreSQL:
 """
 from django.db import models
 from django.utils.text import slugify
+from django.conf import settings
 import math
 
 
@@ -320,3 +321,149 @@ class Room(models.Model):
 
     def __str__(self):
         return f'Phòng {self.room_number} ({self.hotel.name})'
+
+
+# (Hotel, Room đã được import từ models hiện tại)
+
+
+# ─── 7. HotelService — Dịch vụ khách sạn có thể đặt ─────────────────────────
+
+class HotelService(models.Model):
+    """
+    Các dịch vụ khách sạn mà khách đang ở phòng có thể gọi:
+    Room Service, Spa, Giặt ủi, Dọn phòng, Xe đưa đón, v.v.
+    """
+    CATEGORY_CHOICES = [
+        ('food',        '🍽 Ăn uống & Room Service'),
+        ('spa',         '💆 Spa & Thư giãn'),
+        ('laundry',     '👕 Giặt ủi'),
+        ('housekeeping','🧹 Dọn phòng'),
+        ('transport',   '🚗 Xe đưa đón'),
+        ('concierge',   '🔔 Concierge'),
+        ('tech',        '📱 Kỹ thuật & IT'),
+        ('other',       '✨ Khác'),
+    ]
+
+    hotel       = models.ForeignKey(
+        'Hotel', on_delete=models.CASCADE,
+        related_name='services', verbose_name='Khách sạn'
+    )
+    name        = models.CharField(max_length=150, verbose_name='Tên dịch vụ')
+    category    = models.CharField(
+        max_length=20, choices=CATEGORY_CHOICES,
+        default='other', verbose_name='Danh mục'
+    )
+    description = models.TextField(blank=True, verbose_name='Mô tả')
+    icon        = models.CharField(
+        max_length=10, default='✨',
+        verbose_name='Emoji icon', help_text='Emoji đại diện, vd: 🍔'
+    )
+    price       = models.DecimalField(
+        max_digits=12, decimal_places=2,
+        null=True, blank=True,
+        verbose_name='Giá (VNĐ)', help_text='Để trống nếu miễn phí'
+    )
+    is_available = models.BooleanField(default=True, verbose_name='Đang hoạt động')
+    requires_note = models.BooleanField(
+        default=False, verbose_name='Yêu cầu ghi chú',
+        help_text='Bật nếu dịch vụ cần thêm chi tiết từ khách'
+    )
+    # Thời gian phục vụ ước tính (phút)
+    eta_minutes  = models.SmallIntegerField(
+        null=True, blank=True,
+        verbose_name='Thời gian ước tính (phút)'
+    )
+    order        = models.SmallIntegerField(default=0, verbose_name='Thứ tự hiển thị')
+
+    class Meta:
+        verbose_name        = 'Dịch vụ khách sạn'
+        verbose_name_plural = 'Dịch vụ khách sạn'
+        ordering            = ['hotel', 'category', 'order', 'name']
+
+    def __str__(self):
+        return f'{self.icon} {self.name} ({self.hotel.name})'
+
+    def price_display(self):
+        if not self.price:
+            return 'Miễn phí'
+        return f'{int(self.price):,} ₫'
+
+
+# ─── 8. ServiceRequest — Yêu cầu dịch vụ từ khách ───────────────────────────
+
+class ServiceRequest(models.Model):
+    """
+    Yêu cầu dịch vụ từ khách đang ở trong phòng.
+    Gửi thẳng cho nhân viên xử lý.
+    """
+    STATUS_CHOICES = [
+        ('pending',    '⏳ Chờ xử lý'),
+        ('accepted',   '✅ Đã tiếp nhận'),
+        ('processing', '🔄 Đang thực hiện'),
+        ('done',       '✔️ Hoàn thành'),
+        ('cancelled',  '❌ Đã huỷ'),
+    ]
+    PRIORITY_CHOICES = [
+        ('normal', 'Thường'),
+        ('urgent', '🚨 Khẩn'),
+    ]
+
+    room        = models.ForeignKey(
+        'Room', on_delete=models.CASCADE,
+        related_name='service_requests', verbose_name='Phòng'
+    )
+    service     = models.ForeignKey(
+        HotelService, on_delete=models.CASCADE,
+        related_name='requests', verbose_name='Dịch vụ'
+    )
+    # Khách có thể không có tài khoản (guest vãng lai)
+    guest       = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='service_requests', verbose_name='Khách'
+    )
+    guest_name  = models.CharField(
+        max_length=100, blank=True,
+        verbose_name='Tên khách (nếu chưa đăng nhập)'
+    )
+    note        = models.TextField(blank=True, verbose_name='Ghi chú / yêu cầu thêm')
+    quantity    = models.SmallIntegerField(default=1, verbose_name='Số lượng')
+    status      = models.CharField(
+        max_length=15, choices=STATUS_CHOICES,
+        default='pending', verbose_name='Trạng thái'
+    )
+    priority    = models.CharField(
+        max_length=10, choices=PRIORITY_CHOICES,
+        default='normal', verbose_name='Ưu tiên'
+    )
+    # Nhân viên phụ trách
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='assigned_requests', verbose_name='Nhân viên phụ trách'
+    )
+    staff_note  = models.TextField(blank=True, verbose_name='Ghi chú nhân viên')
+
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+    done_at     = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name        = 'Yêu cầu dịch vụ'
+        verbose_name_plural = 'Yêu cầu dịch vụ'
+        ordering            = ['-created_at']
+        indexes = [
+            models.Index(fields=['status'],     name='idx_sreq_status'),
+            models.Index(fields=['room'],       name='idx_sreq_room'),
+            models.Index(fields=['created_at'], name='idx_sreq_created'),
+        ]
+
+    def __str__(self):
+        return f'#{self.pk} {self.service.name} — Phòng {self.room.room_number}'
+
+    def requester_name(self):
+        if self.guest:
+            return self.guest.get_full_name() or self.guest.username
+        return self.guest_name or 'Khách vãng lai'

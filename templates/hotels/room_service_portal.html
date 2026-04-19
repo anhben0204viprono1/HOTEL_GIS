@@ -1,0 +1,704 @@
+{% extends 'base.html' %}
+{% block title %}Dịch vụ phòng {{ room.room_number }} — {{ hotel.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ══════════════════════════════════════════════════
+   ROOM PORTAL DESIGN — Luxury Dark Theme
+══════════════════════════════════════════════════ */
+:root {
+  --gold: #C9A84C;
+  --dark: #0D0D0D;
+  --surface: #161616;
+  --surface2: #1e1e1e;
+  --border: rgba(201,168,76,.2);
+}
+
+body { background: #111; color: #e8e8e8; }
+
+/* Header */
+.portal-header {
+  background: linear-gradient(135deg, #0d0d0d 0%, #1a1a0d 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 20px 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(10px);
+}
+.room-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(201,168,76,.12);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--gold);
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+.hotel-name-header {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.4rem;
+  color: #fff;
+  font-weight: 300;
+}
+.hotel-name-header em { color: var(--gold); font-style: italic; }
+
+/* Category tabs */
+.cat-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.cat-tabs::-webkit-scrollbar { display: none; }
+.cat-tab {
+  flex-shrink: 0;
+  padding: 8px 18px;
+  border: 1.5px solid rgba(255,255,255,.1);
+  border-radius: 20px;
+  background: transparent;
+  color: #888;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.cat-tab:hover { border-color: var(--gold); color: #e8e8e8; }
+.cat-tab.active { border-color: var(--gold); background: rgba(201,168,76,.12); color: var(--gold); }
+
+/* Service grid */
+.service-section { margin-bottom: 40px; }
+.service-section-title {
+  font-size: 10px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.service-card {
+  background: var(--surface2);
+  border: 1.5px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  padding: 20px 16px;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+.service-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(201,168,76,.05) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity .2s;
+}
+.service-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,.4);
+}
+.service-card:hover::after { opacity: 1; }
+.service-card.selected {
+  border-color: var(--gold);
+  background: rgba(201,168,76,.1);
+}
+.service-icon { font-size: 2rem; display: block; margin-bottom: 10px; }
+.service-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8e8e8;
+  margin-bottom: 4px;
+}
+.service-desc {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+.service-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.service-price {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+}
+.service-eta {
+  font-size: 10px;
+  color: #555;
+  background: rgba(255,255,255,.05);
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+.service-select-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,.2);
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: transparent;
+  transition: all .15s;
+}
+.service-card.selected .service-select-btn {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #0d0d0d;
+}
+
+/* Order panel */
+.order-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  position: sticky;
+  top: 90px;
+}
+.order-panel-title {
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 20px;
+}
+.order-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+.order-item-icon { font-size: 1.3rem; flex-shrink: 0; }
+.order-item-name { font-size: 12px; font-weight: 600; color: #e8e8e8; flex-grow: 1; }
+.order-item-qty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.qty-btn {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.15);
+  background: transparent;
+  color: #aaa;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+  line-height: 1;
+}
+.qty-btn:hover { border-color: var(--gold); color: var(--gold); }
+.qty-num { font-size: 13px; font-weight: 700; color: #e8e8e8; min-width: 16px; text-align: center; }
+.order-remove {
+  background: none; border: none;
+  color: #444; font-size: 14px; cursor: pointer;
+  padding: 0 2px; transition: color .15s;
+}
+.order-remove:hover { color: #ef4444; }
+
+.note-field {
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  color: #e8e8e8;
+  font-size: 12px;
+  resize: vertical;
+  transition: border-color .2s;
+}
+.note-field:focus { outline: none; border-color: var(--gold); background: rgba(201,168,76,.05); }
+.note-field::placeholder { color: #444; }
+
+.guest-name-input {
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  color: #e8e8e8;
+  font-size: 12px;
+  transition: border-color .2s;
+}
+.guest-name-input:focus { outline: none; border-color: var(--gold); background: rgba(201,168,76,.05); box-shadow: none; }
+.guest-name-input::placeholder { color: #444; }
+
+.priority-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.prio-btn {
+  flex: 1;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(255,255,255,.1);
+  background: transparent;
+  color: #666;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.prio-btn.active-normal { border-color: #3b82f6; color: #60a5fa; background: rgba(59,130,246,.1); }
+.prio-btn.active-urgent { border-color: #ef4444; color: #f87171; background: rgba(239,68,68,.1); }
+
+.btn-submit {
+  background: var(--gold);
+  color: #0d0d0d;
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  width: 100%;
+  cursor: pointer;
+  transition: background .15s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-submit:hover { background: #d4b05a; }
+.btn-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Toast notifications */
+#toastContainer {
+  position: fixed;
+  bottom: 24px; right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.toast-msg {
+  background: #1e1e1e;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 18px;
+  font-size: 13px;
+  color: #e8e8e8;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  animation: slideIn .3s ease;
+  max-width: 320px;
+}
+.toast-msg.success { border-color: #22c55e; }
+.toast-msg.error   { border-color: #ef4444; }
+@keyframes slideIn {
+  from { transform: translateX(100px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+/* Request history */
+.req-history-item {
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.req-status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-pending    .req-status-dot { background: #f59e0b; }
+.status-accepted   .req-status-dot { background: #3b82f6; }
+.status-processing .req-status-dot { background: #8b5cf6; animation: pulse 1.5s infinite; }
+.status-done       .req-status-dot { background: #22c55e; }
+.status-cancelled  .req-status-dot { background: #ef4444; }
+@keyframes pulse {
+  0%,100% { opacity: 1; } 50% { opacity: .3; }
+}
+.req-name { font-size: 12px; font-weight: 600; color: #e8e8e8; flex-grow: 1; }
+.req-status-text { font-size: 10px; color: #666; }
+.req-time { font-size: 10px; color: #444; }
+
+/* Empty state */
+.empty-order {
+  text-align: center;
+  padding: 32px 0;
+  color: #444;
+}
+.empty-order .icon { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+.empty-order p { font-size: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- PORTAL HEADER -->
+<div class="portal-header">
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+      <div>
+        <div class="hotel-name-header">🏨 <em>{{ hotel.name }}</em></div>
+        <div class="mt-1 d-flex align-items-center gap-2 flex-wrap">
+          <div class="room-badge">🚪 Phòng {{ room.room_number }}</div>
+          {% if room.floor %}
+            <span style="font-size:11px;color:#555;">Tầng {{ room.floor }}</span>
+          {% endif %}
+          <span style="font-size:11px;color:#555;">· {{ room.room_type.name }}</span>
+        </div>
+      </div>
+      <div class="text-end">
+        <div style="font-size:10px;color:#444;letter-spacing:2px;text-transform:uppercase;">Dịch vụ 24/7</div>
+        <div style="font-size:12px;color:#666;margin-top:2px;">📞 {{ hotel.phone|default:"Liên hệ lễ tân" }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container py-4">
+  <div class="row g-4">
+
+    <!-- LEFT: SERVICE CATALOG -->
+    <div class="col-lg-8">
+
+      <!-- Category Tabs -->
+      <div class="cat-tabs mb-4" id="catTabs">
+        <button class="cat-tab active" data-cat="all" onclick="filterCat('all')">✨ Tất cả</button>
+        {% for cat_key, cat_data in grouped_services.items %}
+          <button class="cat-tab" data-cat="{{ cat_key }}" onclick="filterCat('{{ cat_key }}')">
+            {{ cat_data.label }}
+          </button>
+        {% endfor %}
+      </div>
+
+      <!-- Services by Category -->
+      {% for cat_key, cat_data in grouped_services.items %}
+      <div class="service-section" data-section="{{ cat_key }}">
+        <div class="service-section-title">{{ cat_data.label }}</div>
+        <div class="service-grid">
+          {% for service in cat_data.items %}
+          <div class="service-card" data-id="{{ service.id }}" data-name="{{ service.name }}" data-icon="{{ service.icon }}" data-price="{{ service.price|default:'' }}" data-needs-note="{{ service.requires_note|yesno:'true,false' }}" onclick="toggleService(this)">
+            <div class="service-select-btn">✓</div>
+            <span class="service-icon">{{ service.icon }}</span>
+            <div class="service-name">{{ service.name }}</div>
+            {% if service.description %}
+              <div class="service-desc">{{ service.description|truncatechars:60 }}</div>
+            {% endif %}
+            <div class="service-meta">
+              <span class="service-price">{{ service.price_display }}</span>
+              {% if service.eta_minutes %}
+                <span class="service-eta">⏱ ~{{ service.eta_minutes }} phút</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% empty %}
+      <div style="text-align:center;padding:60px 0;color:#444;">
+        <div style="font-size:3rem;margin-bottom:12px;">🔔</div>
+        <p>Chưa có dịch vụ nào được cấu hình cho khách sạn này.</p>
+        <p style="font-size:12px;">Liên hệ lễ tân để được hỗ trợ.</p>
+      </div>
+      {% endfor %}
+
+    </div>
+
+    <!-- RIGHT: ORDER PANEL -->
+    <div class="col-lg-4">
+      <div class="order-panel">
+        <div class="order-panel-title">🛎 Đơn dịch vụ của bạn</div>
+
+        <!-- Order items -->
+        <div id="orderItems">
+          <div class="empty-order" id="emptyState">
+            <span class="icon">🛎</span>
+            <p>Chọn dịch vụ bên trái<br>để thêm vào đơn</p>
+          </div>
+        </div>
+
+        <!-- Guest name (nếu chưa đăng nhập) -->
+        {% if not user.is_authenticated %}
+        <div class="mb-3 mt-3">
+          <label style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#555;display:block;margin-bottom:6px;">Tên của bạn</label>
+          <input type="text" id="guestName" class="form-control guest-name-input" placeholder="Nhập tên để nhân viên biết...">
+        </div>
+        {% else %}
+        <div class="mb-3 mt-3" style="font-size:12px;color:#666;">
+          👤 {{ user.get_full_name|default:user.username }}
+        </div>
+        {% endif %}
+
+        <!-- Note -->
+        <div class="mb-3">
+          <label style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#555;display:block;margin-bottom:6px;">Ghi chú thêm</label>
+          <textarea id="orderNote" rows="2" class="form-control note-field" placeholder="VD: Không hành, thêm đá, dị ứng gluten..."></textarea>
+        </div>
+
+        <!-- Priority -->
+        <div class="mb-3">
+          <label style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#555;display:block;margin-bottom:6px;">Mức ưu tiên</label>
+          <div class="priority-toggle">
+            <button class="prio-btn active-normal" id="prioNormal" onclick="setPriority('normal')">🟢 Thường</button>
+            <button class="prio-btn" id="prioUrgent" onclick="setPriority('urgent')">🚨 Khẩn cấp</button>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button class="btn-submit" id="submitBtn" onclick="submitOrder()" disabled>
+          Gửi yêu cầu đến nhân viên →
+        </button>
+        <div style="font-size:10px;color:#444;text-align:center;margin-top:10px;">
+          Nhân viên sẽ nhận ngay lập tức
+        </div>
+
+        <!-- Recent requests -->
+        {% if recent_requests %}
+        <div class="mt-4">
+          <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#444;margin-bottom:12px;">Yêu cầu gần đây</div>
+          {% for req in recent_requests %}
+          <div class="req-history-item status-{{ req.status }}" id="reqItem-{{ req.pk }}">
+            <div class="req-status-dot"></div>
+            <div class="flex-grow-1">
+              <div class="req-name">{{ req.service.icon }} {{ req.service.name }}</div>
+              <div class="req-status-text">{{ req.get_status_display }}</div>
+              {% if req.staff_note %}
+                <div style="font-size:10px;color:#C9A84C;margin-top:2px;">💬 {{ req.staff_note }}</div>
+              {% endif %}
+            </div>
+            <div class="req-time">{{ req.created_at|time:"H:i" }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toastContainer"></div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const HOTEL_SLUG   = "{{ hotel.slug }}";
+const ROOM_NUMBER  = "{{ room.room_number }}";
+const SUBMIT_URL   = "/hotels/{{ hotel.slug }}/room/{{ room.room_number }}/services/request/";
+const CSRF_TOKEN   = "{{ csrf_token }}";
+
+let selectedServices = {}; // { id: { name, icon, qty, price, needsNote } }
+let currentPriority  = 'normal';
+
+// ── Category filter ──────────────────────────────────────
+function filterCat(cat) {
+  document.querySelectorAll('.cat-tab').forEach(t => t.classList.toggle('active', t.dataset.cat === cat));
+  document.querySelectorAll('.service-section').forEach(s => {
+    s.style.display = (cat === 'all' || s.dataset.section === cat) ? '' : 'none';
+  });
+}
+
+// ── Toggle service selection ─────────────────────────────
+function toggleService(card) {
+  const id   = parseInt(card.dataset.id);
+  const name = card.dataset.name;
+  const icon = card.dataset.icon;
+  const needsNote = card.dataset.needsNote === 'true';
+
+  if (selectedServices[id]) {
+    delete selectedServices[id];
+    card.classList.remove('selected');
+  } else {
+    selectedServices[id] = { name, icon, qty: 1, needsNote };
+    card.classList.add('selected');
+    if (needsNote) {
+      document.getElementById('orderNote').focus();
+      document.getElementById('orderNote').placeholder = `Ghi chú cho "${name}"...`;
+    }
+  }
+  renderOrder();
+}
+
+// ── Render order panel ───────────────────────────────────
+function renderOrder() {
+  const container = document.getElementById('orderItems');
+  const empty     = document.getElementById('emptyState');
+  const submitBtn = document.getElementById('submitBtn');
+  const ids = Object.keys(selectedServices);
+
+  if (!ids.length) {
+    empty.style.display = 'block';
+    submitBtn.disabled = true;
+    return;
+  }
+  empty.style.display = 'none';
+  submitBtn.disabled = false;
+
+  let html = '';
+  ids.forEach(id => {
+    const s = selectedServices[id];
+    html += `
+      <div class="order-item">
+        <span class="order-item-icon">${s.icon}</span>
+        <span class="order-item-name">${s.name}</span>
+        <div class="order-item-qty">
+          <button class="qty-btn" onclick="changeQty(${id}, -1)">−</button>
+          <span class="qty-num" id="qty-${id}">${s.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${id}, 1)">+</button>
+        </div>
+        <button class="order-remove" onclick="removeService(${id})" title="Xoá">✕</button>
+      </div>`;
+  });
+  container.innerHTML = html + (empty.outerHTML);
+  document.getElementById('emptyState').style.display = 'none';
+}
+
+function changeQty(id, delta) {
+  if (!selectedServices[id]) return;
+  selectedServices[id].qty = Math.max(1, Math.min(20, selectedServices[id].qty + delta));
+  document.getElementById(`qty-${id}`).textContent = selectedServices[id].qty;
+}
+
+function removeService(id) {
+  delete selectedServices[id];
+  const card = document.querySelector(`.service-card[data-id="${id}"]`);
+  if (card) card.classList.remove('selected');
+  renderOrder();
+}
+
+// ── Priority ─────────────────────────────────────────────
+function setPriority(p) {
+  currentPriority = p;
+  document.getElementById('prioNormal').className = 'prio-btn' + (p === 'normal' ? ' active-normal' : '');
+  document.getElementById('prioUrgent').className = 'prio-btn' + (p === 'urgent' ? ' active-urgent' : '');
+}
+
+// ── Submit order ─────────────────────────────────────────
+async function submitOrder() {
+  const ids = Object.keys(selectedServices);
+  if (!ids.length) return;
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Đang gửi...';
+
+  const note       = document.getElementById('orderNote').value.trim();
+  const guestName  = document.getElementById('guestName')?.value.trim() || '';
+  const results    = [];
+
+  for (const id of ids) {
+    const s = selectedServices[id];
+    try {
+      const res = await fetch(SUBMIT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': CSRF_TOKEN,
+        },
+        body: JSON.stringify({
+          service_id: parseInt(id),
+          quantity:   s.qty,
+          note,
+          guest_name: guestName,
+          priority:   currentPriority,
+        }),
+      });
+      const data = await res.json();
+      results.push({ ok: data.success, service: s.name, msg: data.message || data.error, reqId: data.request_id });
+    } catch(e) {
+      results.push({ ok: false, service: s.name, msg: 'Lỗi kết nối' });
+    }
+  }
+
+  // Show results
+  results.forEach(r => {
+    toast(r.ok ? 'success' : 'error', r.ok
+      ? `✅ ${r.service} — Đã gửi! (ETA sẽ được thông báo)`
+      : `❌ ${r.service}: ${r.msg}`
+    );
+    if (r.ok && r.reqId) startPolling(r.reqId, r.service);
+  });
+
+  // Clear selection if all succeeded
+  if (results.every(r => r.ok)) {
+    selectedServices = {};
+    document.querySelectorAll('.service-card.selected').forEach(c => c.classList.remove('selected'));
+    document.getElementById('orderNote').value = '';
+    renderOrder();
+    setTimeout(() => location.reload(), 4000); // Refresh để hiện trong history
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Gửi yêu cầu đến nhân viên →';
+}
+
+// ── Toast ────────────────────────────────────────────────
+function toast(type, msg) {
+  const el = document.createElement('div');
+  el.className = `toast-msg ${type}`;
+  el.innerHTML = msg;
+  document.getElementById('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+
+// ── Polling — tự động cập nhật trạng thái ───────────────
+const pollingIntervals = {};
+function startPolling(reqId, serviceName) {
+  if (pollingIntervals[reqId]) return;
+  pollingIntervals[reqId] = setInterval(async () => {
+    try {
+      const res  = await fetch(`/hotels/service-request/${reqId}/status/`);
+      const data = await res.json();
+      // Cập nhật item nếu tồn tại trong DOM
+      const item = document.getElementById(`reqItem-${reqId}`);
+      if (item) {
+        item.className = `req-history-item status-${data.status}`;
+        item.querySelector('.req-status-text').textContent = data.status_display;
+        if (data.staff_note) {
+          let noteEl = item.querySelector('.staff-note');
+          if (!noteEl) {
+            noteEl = document.createElement('div');
+            noteEl.className = 'staff-note';
+            noteEl.style.cssText = 'font-size:10px;color:#C9A84C;margin-top:2px;';
+            item.querySelector('.flex-grow-1').appendChild(noteEl);
+          }
+          noteEl.textContent = `💬 ${data.staff_note}`;
+        }
+      }
+      if (['done','cancelled'].includes(data.status)) {
+        clearInterval(pollingIntervals[reqId]);
+        delete pollingIntervals[reqId];
+        toast('success', `${serviceName}: ${data.status_display}`);
+      }
+    } catch(e) {}
+  }, 10000); // Poll mỗi 10 giây
+}
+
+// Tự bắt đầu poll cho các request đang pending/processing
+document.querySelectorAll('.req-history-item').forEach(item => {
+  const m = item.id.match(/reqItem-(\d+)/);
+  if (!m) return;
+  const reqId = parseInt(m[1]);
+  if (item.classList.contains('status-pending') || item.classList.contains('status-processing') || item.classList.contains('status-accepted')) {
+    const nameEl = item.querySelector('.req-name');
+    startPolling(reqId, nameEl ? nameEl.textContent.trim() : 'Dịch vụ');
+  }
+});
+</script>
+{% endblock %}

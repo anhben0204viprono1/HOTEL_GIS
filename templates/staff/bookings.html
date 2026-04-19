@@ -1,0 +1,66 @@
+{% extends 'staff/base.html' %}
+{% block title %}Đặt phòng{% endblock %}
+{% block page_title %}📅 Đặt phòng — {{ hotel.name }}{% endblock %}
+
+{% block content %}
+<!-- Filter bar -->
+<form method="get" class="filter-bar">
+  <input type="text" name="q" class="form-control" placeholder="🔍 Tìm khách / số phòng..." value="{{ filters.q }}" style="max-width:220px;">
+  <select name="status" class="form-select" style="max-width:190px;" onchange="this.form.submit()">
+    <option value="">-- Tất cả trạng thái --</option>
+    {% for val, label in status_choices %}
+    <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <input type="date" name="date" class="form-control" value="{{ filters.date }}" style="max-width:160px;" title="Lọc theo ngày check-in">
+  <button class="btn btn-teal" style="border-radius:8px;font-size:13px;">Tìm</button>
+  {% if filters.q or filters.status or filters.date %}
+  <a href="{% url 'staff:bookings' %}" class="btn btn-outline-secondary" style="border-radius:8px;font-size:13px;">✕ Xóa</a>
+  {% endif %}
+</form>
+
+<div class="dash-table">
+  <table class="table table-borderless mb-0">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Khách hàng</th>
+        <th>Phòng</th>
+        <th>Check-in</th>
+        <th>Check-out</th>
+        <th>Tổng tiền</th>
+        <th>Trạng thái</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in bookings %}
+      <tr>
+        <td style="color:#888;font-size:12px;">#{{ b.id }}</td>
+        <td>
+          <div style="font-weight:600;font-size:13px;">{{ b.user.get_full_name|default:b.user.username }}</div>
+          <div style="font-size:11px;color:#888;">{{ b.user.email }}</div>
+        </td>
+        <td>
+          <strong>P.{{ b.room.room_number }}</strong>
+          <div style="font-size:11px;color:#888;">{{ b.room.room_type.name }}</div>
+        </td>
+        <td style="font-size:13px;">{{ b.check_in|date:"d/m/Y" }}</td>
+        <td style="font-size:13px;">{{ b.check_out|date:"d/m/Y" }}</td>
+        <td style="font-size:13px;font-weight:600;">{{ b.total_price|floatformat:0 }} ₫</td>
+        <td><span class="badge-status bs-{{ b.status }}">{{ b.get_status_display }}</span></td>
+        <td>
+          <a href="{% url 'staff:booking_detail' b.pk %}" class="btn btn-icon" style="background:#f0fdfa;color:#0d9488;" title="Chi tiết">👁</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="8" style="text-align:center;color:#aaa;padding:40px;font-size:14px;">
+          📅 Không có booking nào.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,160 +1,386 @@
 {% extends 'base.html' %}
-{% block title %}Danh sách khách sạn — Hotel GIS{% endblock %}
+{% block title %}Khám Phá Khách Sạn — Hotel GIS{% endblock %}
 
 {% block extra_css %}
 <style>
-  #hero {
-    background: linear-gradient(135deg,rgba(13,13,13,.85),rgba(13,13,13,.5)),
-      url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1600&q=80') center/cover;
-    min-height: 380px; display:flex; align-items:center;
-  }
-  #map { height: 480px; border-radius: 12px; }
-  .filter-card { background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+/* ══════════════════════════════════════════════════
+   HERO
+══════════════════════════════════════════════════ */
+#hero {
+  background:
+    linear-gradient(160deg, rgba(13,13,13,.92) 0%, rgba(13,13,13,.55) 60%, rgba(13,13,13,.8) 100%),
+    url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1800&q=80') center/cover;
+  min-height: 440px;
+  display: flex;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+}
+#hero::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 80px;
+  background: linear-gradient(transparent, #f8f7f4);
+}
+.hero-tagline {
+  font-size: 10px;
+  letter-spacing: 6px;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.hero-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2.2rem, 5.5vw, 3.8rem);
+  font-weight: 300;
+  line-height: 1.15;
+  color: #fff;
+}
+.hero-title em { color: var(--gold); font-style: italic; }
+.hero-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(201,168,76,.3);
+  border-radius: 20px;
+  padding: 6px 16px;
+  font-size: 12px;
+  color: rgba(255,255,255,.7);
+  margin-top: 16px;
+}
+.hero-stat strong { color: var(--gold); }
 
-  /* ── User locate panel ── */
-  .user-locate-panel {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.12);
-    padding: 16px;
-    margin-bottom: 10px;
-    border: 1.5px solid #e8e9ec;
-    display: none;
-  }
-  .user-locate-panel.show { display: block; }
-  .ul-tabs { display:flex; gap:4px; margin-bottom:12px; }
-  .ul-tab {
-    flex:1; padding:7px 4px; border:1.5px solid #e8e9ec; border-radius:8px;
-    background:#fff; font-size:11px; font-weight:600; cursor:pointer;
-    text-align:center; color:#888; transition:all .15s;
-  }
-  .ul-tab.active { border-color:#C9A84C; background:#fff9ec; color:#856404; }
-  .ul-addr-wrap { position:relative; }
-  #ulAddrSug {
-    position:absolute; top:100%; left:0; right:0; z-index:9999;
-    background:#fff; border:1.5px solid #C9A84C; border-top:none;
-    border-radius:0 0 8px 8px; max-height:200px; overflow-y:auto;
-    display:none; box-shadow:0 6px 18px rgba(0,0,0,.1);
-  }
-  .ul-sug-item {
-    padding:9px 12px; cursor:pointer; font-size:12px;
-    border-bottom:1px solid #f3f0eb; transition:background .1s;
-  }
-  .ul-sug-item:hover { background:#fffdf5; }
-  .ul-pin-hint {
-    font-size:12px; color:#555; text-align:center; padding:8px 0;
-  }
-  .ul-pin-hint.active { color:#C9A84C; font-weight:600; }
+/* ══════════════════════════════════════════════════
+   AMENITY SHOWCASE SECTION
+══════════════════════════════════════════════════ */
+.amenity-showcase {
+  padding: 64px 0 48px;
+  background: #fff;
+  border-bottom: 1px solid #f0ede8;
+}
+.section-label {
+  font-size: 10px;
+  letter-spacing: 5px;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-weight: 600;
+}
+.section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 400;
+  color: #1a1a1a;
+  margin: 8px 0 0;
+}
 
-  /* ── Radius + Sort panel ── */
-  .map-toolbar {
-    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
-    margin-bottom: 10px;
-  }
-  .radius-select {
-    background:#fff; border:1.5px solid #e8e9ec; border-radius:8px;
-    padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer;
-    color:#1a1d27; transition:border-color .15s;
-  }
-  .radius-select:focus { outline:none; border-color:#C9A84C; }
-  .sort-btn {
-    background:#fff; border:1.5px solid #e8e9ec; border-radius:8px;
-    padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer;
-    color:#666; transition:all .15s; white-space:nowrap;
-  }
-  .sort-btn:hover  { border-color:#C9A84C; color:#C9A84C; }
-  .sort-btn.active { border-color:#C9A84C; background:#fff9ec; color:#856404; }
-  .radius-info {
-    font-size:11px; color:#888; background:#f8f7f4;
-    border-radius:6px; padding:4px 10px; display:none;
-  }
-  .radius-info.show { display:block; }
-  /* Leaflet circle style */
-  .leaflet-radius-circle path { stroke:#C9A84C!important; fill:#C9A84C!important; fill-opacity:.06!important; }
+/* Amenity cards */
+.amenity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  margin-top: 36px;
+}
+.amenity-tile {
+  background: #fafaf8;
+  border: 1.5px solid #ede9e0;
+  border-radius: 14px;
+  padding: 24px 16px 20px;
+  text-align: center;
+  transition: all .2s;
+  cursor: default;
+}
+.amenity-tile:hover {
+  border-color: var(--gold);
+  background: #fffdf5;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(201,168,76,.12);
+}
+.amenity-tile .icon { font-size: 2rem; display: block; margin-bottom: 10px; }
+.amenity-tile .label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2a2a2a;
+  letter-spacing: .5px;
+}
+.amenity-tile .cat {
+  font-size: 10px;
+  color: #aaa;
+  margin-top: 4px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
 
-  /* ── Map Search Control ── */
-  .map-search-wrap {
-    position: absolute;
-    top: 12px; left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-    width: min(420px, 90%);
-  }
-  .map-search-box {
-    display: flex; align-items: center;
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.18);
-    padding: 0 6px 0 14px;
-    border: 2px solid transparent;
-    transition: border-color .2s;
-  }
-  .map-search-box:focus-within { border-color: #C9A84C; }
-  .map-search-input {
-    flex: 1; border: none; outline: none;
-    font-size: 13px; padding: 10px 4px;
-    background: transparent; font-family: 'Jost', sans-serif;
-  }
-  .map-search-btn {
-    background: #C9A84C; border: none; border-radius: 7px;
-    color: #0D0D0D; font-size: 14px; font-weight: 700;
-    padding: 6px 12px; cursor: pointer; flex-shrink: 0;
-    transition: background .15s;
-  }
-  .map-search-btn:hover { background: #d4b05a; }
-  .map-search-btn.clear-btn {
-    background: transparent; color: #aaa; font-size: 16px;
-    padding: 6px 8px; margin-right: 2px;
-  }
-  .map-search-btn.clear-btn:hover { color: #555; background: #f5f5f5; }
+/* Service categories */
+.service-cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-top: 32px;
+}
+.service-cat-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2a20 100%);
+  border: 1px solid rgba(201,168,76,.2);
+  border-radius: 14px;
+  padding: 22px 16px;
+  text-align: center;
+  color: #fff;
+  transition: all .2s;
+}
+.service-cat-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 28px rgba(0,0,0,.2);
+}
+.service-cat-card .icon { font-size: 2rem; display: block; margin-bottom: 10px; }
+.service-cat-card .name { font-size: 12px; font-weight: 600; color: #e8e8e8; }
+.service-cat-card .desc { font-size: 10px; color: #888; margin-top: 4px; }
 
-  /* Dropdown kết quả */
-  .map-search-results {
-    background: #fff;
-    border-radius: 10px;
-    margin-top: 6px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.14);
-    overflow: hidden;
-    display: none;
-  }
-  .map-search-results.show { display: block; }
-  .search-section-title {
-    font-size: 10px; font-weight: 700; color: #aaa;
-    letter-spacing: 1.5px; text-transform: uppercase;
-    padding: 10px 14px 4px;
-  }
-  .search-result-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 14px; cursor: pointer;
-    transition: background .12s; font-size: 13px;
-  }
-  .search-result-item:hover { background: #fffdf5; }
-  .search-result-item .icon { font-size: 16px; flex-shrink: 0; }
-  .search-result-item .name { font-weight: 600; color: #1a1d27; }
-  .search-result-item .sub  { font-size: 11px; color: #aaa; margin-top: 1px; }
-  .search-result-item .badge {
-    margin-left: auto; background: #fff9ec; color: #856404;
-    font-size: 10px; font-weight: 700; padding: 2px 7px;
-    border-radius: 20px; flex-shrink: 0;
-  }
-  .search-divider { border: none; border-top: 1px solid #f3f0eb; margin: 4px 0; }
-  .search-no-result { padding: 14px; text-align: center; color: #aaa; font-size: 13px; }
+/* ══════════════════════════════════════════════════
+   MAP / FILTER SECTION
+══════════════════════════════════════════════════ */
+#map { height: 500px; border-radius: 14px; }
+.filter-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.06);
+  border: 1px solid #f0ede8;
+}
+
+/* ── User locate panel ── */
+.user-locate-panel {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.12);
+  padding: 16px;
+  margin-bottom: 10px;
+  border: 1.5px solid #e8e9ec;
+  display: none;
+}
+.user-locate-panel.show { display: block; }
+.ul-tabs { display:flex; gap:4px; margin-bottom:12px; }
+.ul-tab {
+  flex:1; padding:7px 4px; border:1.5px solid #e8e9ec; border-radius:8px;
+  background:#fff; font-size:11px; font-weight:600; cursor:pointer;
+  text-align:center; color:#888; transition:all .15s;
+}
+.ul-tab.active { border-color:#C9A84C; background:#fff9ec; color:#856404; }
+.ul-addr-wrap { position:relative; }
+#ulAddrSug {
+  position:absolute; top:100%; left:0; right:0; z-index:9999;
+  background:#fff; border:1.5px solid #C9A84C; border-top:none;
+  border-radius:0 0 8px 8px; max-height:200px; overflow-y:auto;
+  display:none; box-shadow:0 6px 18px rgba(0,0,0,.1);
+}
+.ul-sug-item {
+  padding:9px 12px; cursor:pointer; font-size:12px;
+  border-bottom:1px solid #f3f0eb; transition:background .1s;
+}
+.ul-sug-item:hover { background:#fffdf5; }
+.ul-pin-hint {
+  font-size:12px; color:#555; text-align:center; padding:8px 0;
+}
+.ul-pin-hint.active { color:#C9A84C; font-weight:600; }
+
+/* ── Radius + Sort panel ── */
+.map-toolbar {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 10px;
+}
+.radius-select {
+  background:#fff; border:1.5px solid #e8e9ec; border-radius:8px;
+  padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer;
+  color:#1a1d27; transition:border-color .15s;
+}
+.radius-select:focus { outline:none; border-color:#C9A84C; }
+.sort-btn {
+  background:#fff; border:1.5px solid #e8e9ec; border-radius:8px;
+  padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer;
+  color:#666; transition:all .15s; white-space:nowrap;
+}
+.sort-btn:hover  { border-color:#C9A84C; color:#C9A84C; }
+.sort-btn.active { border-color:#C9A84C; background:#fff9ec; color:#856404; }
+.radius-info {
+  font-size:11px; color:#888; background:#f8f7f4;
+  border-radius:6px; padding:4px 10px; display:none;
+}
+.radius-info.show { display:block; }
+.leaflet-radius-circle path { stroke:#C9A84C!important; fill:#C9A84C!important; fill-opacity:.06!important; }
+
+/* ── Map Search Control ── */
+.map-search-wrap {
+  position: absolute;
+  top: 12px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: min(420px, 90%);
+}
+.map-search-box {
+  display: flex; align-items: center;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.18);
+  padding: 0 6px 0 14px;
+  border: 2px solid transparent;
+  transition: border-color .2s;
+}
+.map-search-box:focus-within { border-color: #C9A84C; }
+.map-search-input {
+  flex: 1; border: none; outline: none;
+  font-size: 13px; padding: 10px 4px;
+  background: transparent; font-family: 'Jost', sans-serif;
+}
+.map-search-btn {
+  background: #C9A84C; border: none; border-radius: 7px;
+  color: #0D0D0D; font-size: 14px; font-weight: 700;
+  padding: 6px 12px; cursor: pointer; flex-shrink: 0;
+  transition: background .15s;
+}
+.map-search-btn:hover { background: #d4b05a; }
+.map-search-btn.clear-btn {
+  background: transparent; color: #aaa; font-size: 16px;
+  padding: 6px 8px; margin-right: 2px;
+}
+.map-search-btn.clear-btn:hover { color: #555; background: #f5f5f5; }
+.map-search-results {
+  background: #fff;
+  border-radius: 10px;
+  margin-top: 6px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.14);
+  overflow: hidden;
+  display: none;
+}
+.map-search-results.show { display: block; }
+.search-section-title {
+  font-size: 10px; font-weight: 700; color: #aaa;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 10px 14px 4px;
+}
+.search-result-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 14px; cursor: pointer;
+  transition: background .12s; font-size: 13px;
+}
+.search-result-item:hover { background: #fffdf5; }
+.search-result-item .icon { font-size: 16px; flex-shrink: 0; }
+.search-result-item .name { font-weight: 600; color: #1a1d27; }
+.search-result-item .sub  { font-size: 11px; color: #aaa; margin-top: 1px; }
+.search-result-item .badge {
+  margin-left: auto; background: #fff9ec; color: #856404;
+  font-size: 10px; font-weight: 700; padding: 2px 7px;
+  border-radius: 20px; flex-shrink: 0;
+}
+.search-divider { border: none; border-top: 1px solid #f3f0eb; margin: 4px 0; }
+.search-no-result { padding: 14px; text-align: center; color: #aaa; font-size: 13px; }
+
+/* Hotel cards */
+.hotel-card { transition: transform .25s, box-shadow .25s; border: none; overflow: hidden; border-radius: 12px !important; }
+.hotel-card:hover { transform: translateY(-4px); box-shadow: 0 14px 36px rgba(0,0,0,.13) !important; }
+.hotel-card .btn-gold { font-size: 11px; padding: 5px 14px; border-radius: 8px; }
+
+/* ── CTA Banner ── */
+.cta-banner {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2a1e 50%, #1a1a1a 100%);
+  border-radius: 20px;
+  padding: 48px 40px;
+  position: relative;
+  overflow: hidden;
+}
+.cta-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 70% 50%, rgba(201,168,76,.15) 0%, transparent 65%);
+}
+.cta-banner h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1.6rem, 3vw, 2.5rem);
+  font-weight: 300;
+  color: #fff;
+}
+.cta-banner h2 em { color: var(--gold); font-style: italic; }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<!-- HERO -->
-<section id="hero" class="text-white text-center px-3">
-  <div>
-    <p style="font-size:11px;letter-spacing:5px;color:#C9A84C;text-transform:uppercase;">Hệ thống GIS · Tích hợp bản đồ</p>
-    <h1 style="font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,5vw,3.5rem);font-weight:300;">
-      Khám Phá <em style="color:#C9A84C;">Khách Sạn</em> Tốt Nhất
+<!-- ══════════ HERO ══════════ -->
+<section id="hero" class="px-3">
+  <div class="container text-center position-relative" style="z-index:1;">
+    <p class="hero-tagline">Hệ thống GIS · Tích hợp bản đồ · Dịch vụ phòng</p>
+    <h1 class="hero-title">
+      Khám Phá <em>Khách Sạn</em><br>Tốt Nhất Việt Nam
     </h1>
-    <p class="text-white-50 mt-2">{{ total }} khách sạn đang hiển thị trên bản đồ</p>
+    <div class="hero-stat">
+      <span>🏨</span>
+      <span><strong>{{ total }}</strong> khách sạn đang hiển thị</span>
+      <span style="color:rgba(255,255,255,.3)">·</span>
+      <span>📍 TP. Hồ Chí Minh & lân cận</span>
+    </div>
   </div>
 </section>
 
+<!-- ══════════ AMENITY SHOWCASE ══════════ -->
+<section class="amenity-showcase">
+  <div class="container">
+    <div class="row align-items-end mb-2">
+      <div class="col-md-6">
+        <p class="section-label">Tiện Ích Nổi Bật</p>
+        <h2 class="section-title">Trải Nghiệm <em style="color:var(--gold);font-style:italic;">Đẳng Cấp</em></h2>
+        <p class="text-muted mt-2" style="font-size:13px;">Hàng trăm tiện ích được tích hợp sẵn trong từng phòng khách sạn.</p>
+      </div>
+    </div>
+
+    <!-- Amenity tiles -->
+    <div class="amenity-grid">
+      <div class="amenity-tile"><span class="icon">📶</span><div class="label">WiFi Tốc Độ Cao</div><div class="cat">Kết nối</div></div>
+      <div class="amenity-tile"><span class="icon">❄️</span><div class="label">Điều Hoà Trung Tâm</div><div class="cat">Nhiệt độ</div></div>
+      <div class="amenity-tile"><span class="icon">🛁</span><div class="label">Bồn Tắm Cao Cấp</div><div class="cat">Phòng tắm</div></div>
+      <div class="amenity-tile"><span class="icon">📺</span><div class="label">Smart TV 55"</div><div class="cat">Giải trí</div></div>
+      <div class="amenity-tile"><span class="icon">☕</span><div class="label">Pha Cà Phê Mini</div><div class="cat">Bếp & Ăn uống</div></div>
+      <div class="amenity-tile"><span class="icon">🛏</span><div class="label">Giường King Size</div><div class="cat">Phòng ngủ</div></div>
+      <div class="amenity-tile"><span class="icon">🧴</span><div class="label">Mỹ Phẩm 5 Sao</div><div class="cat">Phòng tắm</div></div>
+      <div class="amenity-tile"><span class="icon">🪟</span><div class="label">View Thành Phố</div><div class="cat">Phòng ngủ</div></div>
+    </div>
+
+    <!-- Dịch vụ có thể gọi -->
+    <div class="mt-5">
+      <p class="section-label">Dịch Vụ Trong Phòng</p>
+      <h2 class="section-title">Gọi Dịch Vụ <em style="color:var(--gold);font-style:italic;">Ngay Tại Phòng</em></h2>
+      <p class="text-muted mt-2 mb-0" style="font-size:13px;">
+        Khách đang lưu trú có thể yêu cầu dịch vụ trực tiếp — nhân viên nhận ngay lập tức.
+      </p>
+      <div class="service-cat-grid">
+        <div class="service-cat-card"><span class="icon">🍽</span><div class="name">Room Service</div><div class="desc">Ăn uống tại phòng</div></div>
+        <div class="service-cat-card"><span class="icon">💆</span><div class="name">Spa & Thư Giãn</div><div class="desc">Massage tại phòng</div></div>
+        <div class="service-cat-card"><span class="icon">👕</span><div class="name">Giặt Ủi</div><div class="desc">Nhận & trả trong ngày</div></div>
+        <div class="service-cat-card"><span class="icon">🧹</span><div class="name">Dọn Phòng</div><div class="desc">Theo yêu cầu</div></div>
+        <div class="service-cat-card"><span class="icon">🚗</span><div class="name">Xe Đưa Đón</div><div class="desc">Sân bay · Nội thành</div></div>
+        <div class="service-cat-card"><span class="icon">🔔</span><div class="name">Concierge</div><div class="desc">Mọi yêu cầu đặc biệt</div></div>
+        <div class="service-cat-card"><span class="icon">📱</span><div class="name">Kỹ Thuật</div><div class="desc">TV · WiFi · Thiết bị</div></div>
+        <div class="service-cat-card"><span class="icon">🍷</span><div class="name">Minibar</div><div class="desc">Bổ sung đồ uống</div></div>
+      </div>
+
+      <!-- CTA cho khách đang ở phòng -->
+      <div class="mt-4 p-4" style="background:#fff9ec;border:1.5px dashed #C9A84C;border-radius:14px;">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <div style="font-size:2rem;">🏨</div>
+          <div class="flex-grow-1">
+            <div style="font-size:13px;font-weight:700;color:#1a1a1a;">Bạn đang lưu trú tại khách sạn?</div>
+            <div style="font-size:12px;color:#666;margin-top:2px;">Nhập số phòng để truy cập trang gọi dịch vụ riêng của bạn</div>
+          </div>
+          <div class="d-flex gap-2">
+            <input type="text" id="guestRoomInput" placeholder="VD: 101" class="form-control form-control-sm" style="width:100px;border-color:#C9A84C;font-weight:600;">
+            <button class="btn btn-gold btn-sm" onclick="goToRoomPortal()">Vào Phòng →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ MAIN CONTENT: FILTER + MAP + HOTELS ══════════ -->
 <div class="container my-5">
 
   <!-- FILTERS -->
@@ -162,11 +388,11 @@
     <form method="get">
       <div class="row g-3 align-items-end">
         <div class="col-md-3">
-          <label class="form-label fw-semibold" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">Tìm kiếm</label>
+          <label class="form-label fw-semibold" style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#C9A84C;">Tìm kiếm</label>
           <input type="text" name="q" class="form-control" placeholder="Tên / địa chỉ..." value="{{ filters.q }}">
         </div>
         <div class="col-md-2">
-          <label class="form-label fw-semibold" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">Thành phố</label>
+          <label class="form-label fw-semibold" style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#C9A84C;">Thành phố</label>
           <select name="city" class="form-select">
             <option value="">Tất cả</option>
             {% for c in cities %}
@@ -175,73 +401,86 @@
           </select>
         </div>
         <div class="col-md-2">
-          <label class="form-label fw-semibold" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">Số sao</label>
+          <label class="form-label fw-semibold" style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#C9A84C;">Số sao</label>
           <select name="stars" class="form-select">
             <option value="">Tất cả</option>
-            <option value="5" {% if filters.stars == '5' %}selected{% endif %}>5 ⭐</option>
-            <option value="4" {% if filters.stars == '4' %}selected{% endif %}>4 ⭐</option>
-            <option value="3" {% if filters.stars == '3' %}selected{% endif %}>3 ⭐</option>
-            <option value="2" {% if filters.stars == '2' %}selected{% endif %}>2 ⭐</option>
-            <option value="1" {% if filters.stars == '1' %}selected{% endif %}>1 ⭐</option>
+            <option value="5" {% if filters.stars == '5' %}selected{% endif %}>⭐⭐⭐⭐⭐</option>
+            <option value="4" {% if filters.stars == '4' %}selected{% endif %}>⭐⭐⭐⭐</option>
+            <option value="3" {% if filters.stars == '3' %}selected{% endif %}>⭐⭐⭐</option>
+            <option value="2" {% if filters.stars == '2' %}selected{% endif %}>⭐⭐</option>
+            <option value="1" {% if filters.stars == '1' %}selected{% endif %}>⭐</option>
           </select>
         </div>
         <div class="col-md-2">
-          <label class="form-label fw-semibold" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">Giá tối đa</label>
+          <label class="form-label fw-semibold" style="font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:#C9A84C;">Giá tối đa</label>
           <select name="max_price" class="form-select">
             <option value="">Tất cả</option>
-            <option value="1000000" {% if filters.max_price == '1000000' %}selected{% endif %}>≤ 1.000.000</option>
-            <option value="2000000" {% if filters.max_price == '2000000' %}selected{% endif %}>≤ 2.000.000</option>
-            <option value="5000000" {% if filters.max_price == '5000000' %}selected{% endif %}>≤ 5.000.000</option>
+            <option value="1000000" {% if filters.max_price == '1000000' %}selected{% endif %}>≤ 1.000.000 ₫</option>
+            <option value="2000000" {% if filters.max_price == '2000000' %}selected{% endif %}>≤ 2.000.000 ₫</option>
+            <option value="5000000" {% if filters.max_price == '5000000' %}selected{% endif %}>≤ 5.000.000 ₫</option>
           </select>
         </div>
         <div class="col-md-3 d-flex gap-2">
-          <button type="submit" class="btn btn-gold flex-grow-1">🔍 Lọc</button>
-          <a href="/" class="btn btn-outline-secondary">✕</a>
+          <button type="submit" class="btn btn-gold flex-grow-1">🔍 Tìm Kiếm</button>
+          <a href="/" class="btn btn-outline-secondary px-3">✕</a>
         </div>
       </div>
     </form>
   </div>
 
-  <div class="row">
+  <div class="row g-4">
     <!-- HOTELS LIST -->
     <div class="col-lg-5">
-      <h5 class="mb-3" style="font-family:'Cormorant Garamond',serif;">{{ total }} Khách Sạn</h5>
-      <div style="max-height:520px;overflow-y:auto;padding-right:4px;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 style="font-family:'Cormorant Garamond',serif;font-size:1.3rem;margin:0;">
+          {{ total }} <span style="color:var(--gold);">Khách Sạn</span>
+        </h5>
+        <span style="font-size:11px;color:#aaa;letter-spacing:1px;">ĐANG HIỂN THỊ</span>
+      </div>
+      <div style="max-height:560px;overflow-y:auto;padding-right:4px;" id="hotelListContainer">
         {% for hotel in hotels %}
-        <div class="card hotel-card mb-3 shadow-sm" data-id="{{ hotel.id }}" data-lat="{{ hotel.latitude|stringformat:'f' }}" data-lng="{{ hotel.longitude|stringformat:'f' }}" onclick="focusHotelEl(this)" style="cursor:pointer;">
+        <div class="card hotel-card mb-3 shadow-sm" data-id="{{ hotel.id }}"
+             data-lat="{{ hotel.latitude|stringformat:'f' }}"
+             data-lng="{{ hotel.longitude|stringformat:'f' }}"
+             onclick="focusHotelEl(this)" style="cursor:pointer;">
           <div class="row g-0">
             <div class="col-4">
               {% if hotel.image %}
-                <img src="{{ hotel.image.url }}" class="img-fluid h-100" style="object-fit:cover;border-radius:8px 0 0 8px;">
+                <img src="{{ hotel.image.url }}" class="img-fluid h-100" style="object-fit:cover;border-radius:12px 0 0 12px;min-height:110px;">
               {% else %}
-                <div class="h-100 d-flex align-items-center justify-content-center bg-light" style="border-radius:8px 0 0 8px;min-height:100px;">
-                  <span style="font-size:2rem;">🏨</span>
+                <div class="h-100 d-flex align-items-center justify-content-center" style="background:linear-gradient(135deg,#f5f0e8,#ede9df);border-radius:12px 0 0 12px;min-height:110px;">
+                  <span style="font-size:2.2rem;">🏨</span>
                 </div>
               {% endif %}
             </div>
             <div class="col-8">
               <div class="card-body p-3">
-                <div class="d-flex justify-content-between align-items-start">
-                  <h6 class="card-title mb-1 fw-semibold">{{ hotel.name }}</h6>
-                  <span class="badge-star rounded ms-1">{{ hotel.star_rating }}★</span>
+                <div class="d-flex justify-content-between align-items-start gap-1">
+                  <h6 class="card-title mb-1 fw-semibold" style="font-size:13px;line-height:1.3;">{{ hotel.name }}</h6>
+                  <span class="badge-star rounded flex-shrink-0" style="font-size:10px;">{{ hotel.star_rating }}★</span>
                 </div>
-                <p class="text-muted mb-1" style="font-size:12px;">📍 {{ hotel.city }}</p>
-                <p class="mb-2" style="font-size:11px;color:#666;">{{ hotel.address|truncatechars:50 }}</p>
+                <p class="text-muted mb-1" style="font-size:11px;">📍 {{ hotel.city }}</p>
+                <p class="mb-2" style="font-size:11px;color:#888;">{{ hotel.address|truncatechars:48 }}</p>
                 <div class="d-flex justify-content-between align-items-center">
-                  <span style="font-size:13px;font-weight:600;color:#C9A84C;">
-                    {% if hotel.min_price %}từ {{ hotel.min_price|floatformat:0 }} ₫{% else %}—{% endif %}
-                    <span style="font-size:10px;color:#999;font-weight:400;">/đêm</span>
-                  </span>
-                  <a href="{% url 'hotels:detail' hotel.slug %}" class="btn btn-sm btn-gold" onclick="event.stopPropagation()">Xem</a>
+                  <div>
+                    <span style="font-size:13px;font-weight:700;color:var(--gold);">
+                      {% if hotel.min_price %}{{ hotel.min_price|floatformat:0 }} ₫{% else %}—{% endif %}
+                    </span>
+                    <span style="font-size:10px;color:#bbb;">/đêm</span>
+                  </div>
+                  <a href="{% url 'hotels:detail' hotel.slug %}" class="btn btn-sm btn-gold" onclick="event.stopPropagation()">Xem →</a>
                 </div>
+                <!-- Dist badge placeholder -->
+                <span class="dist-badge" style="display:none;font-size:10px;color:#1d4ed8;background:#eff6ff;padding:2px 8px;border-radius:10px;margin-top:4px;display:inline-block;"></span>
               </div>
             </div>
           </div>
         </div>
         {% empty %}
           <div class="text-center py-5 text-muted">
-            <div style="font-size:3rem;">🔍</div>
-            <p>Không tìm thấy khách sạn phù hợp</p>
+            <div style="font-size:3.5rem;">🔍</div>
+            <p class="mt-3">Không tìm thấy khách sạn phù hợp</p>
+            <a href="/" class="btn btn-sm btn-outline-secondary">Xoá bộ lọc</a>
           </div>
         {% endfor %}
       </div>
@@ -249,12 +488,10 @@
 
     <!-- MAP -->
     <div class="col-lg-7">
-      <!-- ── Map Toolbar ── -->
+      <!-- Map Toolbar -->
       <div class="map-toolbar">
         <button class="btn btn-sm btn-gold" id="ulToggleBtn" onclick="toggleUserPanel()">📍 Vị trí của tôi</button>
-
-        <!-- Bán kính -->
-        <select class="radius-select" id="radiusSelect" onchange="onRadiusChange()" disabled title="Cần xác định vị trí trước">
+        <select class="radius-select" id="radiusSelect" onchange="onRadiusChange()" disabled>
           <option value="0">⭕ Bán kính</option>
           <option value="1">1 km</option>
           <option value="2">2 km</option>
@@ -263,544 +500,392 @@
           <option value="20">20 km</option>
           <option value="50">50 km</option>
         </select>
-
-        <!-- Sắp xếp -->
-        <button class="sort-btn" id="sortNearest" onclick="sortHotels('nearest')" disabled>📍 Gần nhất</button>
+        <button class="sort-btn" id="sortNearest"  onclick="sortHotels('nearest')"  disabled>📍 Gần nhất</button>
         <button class="sort-btn" id="sortCheapest" onclick="sortHotels('cheapest')" disabled>💰 Rẻ nhất</button>
-
         <button class="btn btn-sm btn-outline-secondary" onclick="resetMap()">✕ Đặt lại</button>
         <span id="mapStatus" class="radius-info"></span>
       </div>
-      <!-- ── User Locate Panel ── -->
+
+      <!-- User Locate Panel -->
       <div class="user-locate-panel" id="userLocatePanel">
-        <!-- Tabs -->
         <div class="ul-tabs">
           <div class="ul-tab active" id="ulTab-gps"    onclick="ulSwitchTab('gps')">📡 GPS</div>
-          <div class="ul-tab"        id="ulTab-search" onclick="ulSwitchTab('search')">🔍 Tìm địa chỉ</div>
-          <div class="ul-tab"        id="ulTab-pin"    onclick="ulSwitchTab('pin')">📌 Ghim bản đồ</div>
+          <div class="ul-tab"        id="ulTab-search" onclick="ulSwitchTab('search')">🔍 Địa chỉ</div>
+          <div class="ul-tab"        id="ulTab-pin"    onclick="ulSwitchTab('pin')">📌 Ghim</div>
           <div class="ul-tab"        id="ulTab-coord"  onclick="ulSwitchTab('coord')">📐 Tọa độ</div>
         </div>
-
         <!-- Tab GPS -->
         <div id="ulMode-gps">
-          <p style="font-size:12px;color:#555;margin-bottom:10px;">
-            Tự động lấy vị trí hiện tại của bạn qua GPS / mạng.
-          </p>
-          <button class="btn btn-gold w-100" id="ulGpsBtn" onclick="ulDoGps()">
-            📡 Lấy vị trí GPS
-          </button>
+          <p style="font-size:12px;color:#555;margin-bottom:10px;">Tự động lấy vị trí qua GPS / mạng.</p>
+          <button class="btn btn-gold w-100" id="ulGpsBtn" onclick="ulDoGps()">📡 Lấy vị trí GPS</button>
           <div id="ulGpsStatus" style="font-size:12px;margin-top:8px;display:none;"></div>
         </div>
-
         <!-- Tab Tìm địa chỉ -->
         <div id="ulMode-search" style="display:none;">
-          <p style="font-size:12px;color:#555;margin-bottom:8px;">
-            Tìm địa chỉ của bạn — hỗ trợ toàn thế giới.
-          </p>
+          <p style="font-size:12px;color:#555;margin-bottom:8px;">Tìm địa chỉ của bạn.</p>
           <div class="ul-addr-wrap">
-            <div style="display:flex;gap:6px;">
-              <input type="text" id="ulAddrInput" class="form-control form-control-sm"
-                     placeholder="VD: 22 Nguyễn Huệ, Quận 1 hoặc Seoul, Korea"
-                     autocomplete="off"
-                     oninput="ulAddrInput(this.value)"
-                     onkeydown="if(event.key==='Enter'){event.preventDefault();ulDoSearch();}">
-              <button class="btn btn-sm btn-gold" onclick="ulDoSearch()" style="white-space:nowrap;padding:5px 12px;">Tìm</button>
-            </div>
+            <input type="text" id="ulAddrInput" class="form-control form-control-sm" placeholder="Nhập địa chỉ..." oninput="ulAddrSearch(this.value)">
             <div id="ulAddrSug"></div>
           </div>
-          <p style="font-size:10px;color:#aaa;margin-top:6px;margin-bottom:0;">
-            Nhập địa chỉ chi tiết để ghim vị trí bạn trên bản đồ
-          </p>
         </div>
-
-        <!-- Tab Ghim bản đồ -->
+        <!-- Tab Pin -->
         <div id="ulMode-pin" style="display:none;">
-          <div class="ul-pin-hint" id="ulPinHint">
-            👆 Click trực tiếp lên bản đồ để ghim vị trí của bạn
-          </div>
-          <div id="ulPinResult" style="font-size:11px;color:#10b981;margin-top:6px;display:none;text-align:center;"></div>
+          <div class="ul-pin-hint" id="ulPinHint">👆 Click trực tiếp lên bản đồ để ghim vị trí</div>
+          <button class="btn btn-gold btn-sm w-100 mt-2" id="ulPinBtn" onclick="ulStartPin()">📌 Bắt đầu ghim</button>
+          <div id="ulPinResult" style="font-size:12px;margin-top:8px;display:none;"></div>
         </div>
-
-        <!-- Tab Tọa độ -->
+        <!-- Tab Coordinates -->
         <div id="ulMode-coord" style="display:none;">
-          <p style="font-size:12px;color:#555;margin-bottom:8px;">Nhập tọa độ hoặc dùng preset thành phố.</p>
+          <p style="font-size:12px;color:#555;margin-bottom:8px;">Nhập tọa độ GPS thủ công.</p>
           <div class="row g-2">
             <div class="col-6">
-              <label style="font-size:10px;color:#888;font-weight:700;letter-spacing:1px;">VĨ ĐỘ (LAT)</label>
-              <input type="number" id="ulCoordLat" class="form-control form-control-sm"
-                     placeholder="VD: 10.7769" step="0.00001">
+              <input type="number" id="ulCoordLat" class="form-control form-control-sm" placeholder="Vĩ độ (lat)" step="any">
             </div>
             <div class="col-6">
-              <label style="font-size:10px;color:#888;font-weight:700;letter-spacing:1px;">KINH ĐỘ (LNG)</label>
-              <input type="number" id="ulCoordLng" class="form-control form-control-sm"
-                     placeholder="VD: 106.7009" step="0.00001">
+              <input type="number" id="ulCoordLng" class="form-control form-control-sm" placeholder="Kinh độ (lng)" step="any">
             </div>
           </div>
-          <div style="display:flex;gap:6px;margin-top:8px;">
-            <button class="btn btn-sm btn-gold flex-grow-1" onclick="ulApplyCoord()">✅ Xác nhận</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="ulPreset(21.0285,105.8542,'Hà Nội')" style="font-size:11px;">Hà Nội</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="ulPreset(10.7769,106.7009,'TP.HCM')" style="font-size:11px;">TP.HCM</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="ulPreset(16.0544,108.2022,'Đà Nẵng')" style="font-size:11px;">Đà Nẵng</button>
-          </div>
+          <button class="btn btn-gold btn-sm w-100 mt-2" onclick="ulDoCoord()">📐 Xác nhận tọa độ</button>
         </div>
       </div>
 
+      <!-- Map -->
       <div style="position:relative;">
-        <!-- ── Map Search Control ── -->
+        <div id="map"></div>
         <div class="map-search-wrap">
           <div class="map-search-box">
-            <span style="font-size:15px;margin-right:4px;color:#C9A84C;">🔍</span>
-            <input type="text" id="mapSearchInput" class="map-search-input"
-                   placeholder="Tìm khách sạn hoặc địa điểm trên bản đồ..."
-                   autocomplete="off">
-            <button class="map-search-btn clear-btn" id="mapSearchClear"
-                    onclick="clearMapSearch()" style="display:none;">✕</button>
+            <input type="text" id="mapSearchInput" class="map-search-input" placeholder="🔍 Tìm khách sạn hoặc địa điểm...">
+            <button class="map-search-btn clear-btn" id="mapSearchClear" onclick="clearMapSearch()" style="display:none;">✕</button>
             <button class="map-search-btn" onclick="runMapSearch()">Tìm</button>
           </div>
           <div class="map-search-results" id="mapSearchResults"></div>
         </div>
-        <div id="map"></div>
       </div>
-      <div class="mt-2 p-3 bg-white rounded shadow-sm" id="routeInfo" style="display:none;font-size:13px;">
-        <strong>🗺 Tuyến đường:</strong> <span id="routeDetails"></span>
+
+      <!-- Route info -->
+      <div id="routeInfo" class="mt-2 p-3 rounded" style="background:#fff;border:1.5px solid #C9A84C;display:none;font-size:13px;">
+        <strong>🗺 Đường đi:</strong> <span id="routeDistance"></span> · <span id="routeDuration"></span>
+        <button class="btn btn-sm btn-outline-secondary ms-3" onclick="clearRoute()">✕ Đóng</button>
       </div>
     </div>
   </div>
+
+  <!-- CTA Banner -->
+  <div class="cta-banner mt-5">
+    <div class="row align-items-center">
+      <div class="col-md-8 position-relative">
+        <h2>Đang ở trong phòng?<br><em>Gọi dịch vụ ngay tức thì</em></h2>
+        <p style="color:#888;font-size:13px;margin-top:12px;">Nhập tên khách sạn và số phòng — yêu cầu của bạn sẽ được gửi trực tiếp đến nhân viên trong vài giây.</p>
+      </div>
+      <div class="col-md-4 text-md-end mt-3 mt-md-0 position-relative">
+        <div style="background:rgba(255,255,255,.05);border:1px solid rgba(201,168,76,.3);border-radius:12px;padding:20px;">
+          <div style="font-size:11px;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Truy cập nhanh</div>
+          <input type="text" id="ctaRoomInput" placeholder="Số phòng (vd: 301)" class="form-control mb-2" style="background:rgba(255,255,255,.1);border-color:rgba(201,168,76,.4);color:#fff;font-weight:600;">
+          <input type="text" id="ctaHotelSlug" placeholder="Slug khách sạn" class="form-control mb-3" style="background:rgba(255,255,255,.1);border-color:rgba(201,168,76,.4);color:#fff;font-size:11px;">
+          <button class="btn btn-gold w-100" onclick="goToRoomPortalCta()">🔔 Vào Trang Dịch Vụ →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
+
+<!-- ══════════ GEOJSON DATA ══════════ -->
+<script>
+const geojson = {{ geojson|safe }};
+</script>
 
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const geojson = {{ geojson|safe }};
-let map, userMarker, routingControl, radiusCircle;
-let userLat = null, userLng = null;
-let currentSort = null;       // 'nearest' | 'cheapest' | null
-let currentRadius = 0;        // km, 0 = tắt
-const hotelMarkers = {};
-const allCards = [];          // cache DOM cards để sort/filter
+// ════════════════════════════════════════════════════════
+// ROOM PORTAL NAVIGATION
+// ════════════════════════════════════════════════════════
+function goToRoomPortal() {
+  const room = document.getElementById('guestRoomInput').value.trim();
+  if (!room) { alert('Vui lòng nhập số phòng'); return; }
+  // Chuyển sang trang portal — cần slug khách sạn; nếu chưa có dùng page search
+  alert('Tính năng này hoạt động khi bạn đã được check-in và có link QR từ lễ tân.\nSố phòng: ' + room);
+}
+function goToRoomPortalCta() {
+  const room = document.getElementById('ctaRoomInput').value.trim();
+  const slug = document.getElementById('ctaHotelSlug').value.trim();
+  if (!room || !slug) { alert('Vui lòng nhập đủ thông tin'); return; }
+  window.location.href = `/hotels/${slug}/room/${room}/services/`;
+}
 
-// ══════════════════════════════════════════════════
-// KHỞI TẠO BẢN ĐỒ
-// ══════════════════════════════════════════════════
-map = L.map('map').setView([10.7769, 106.7009], 12);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> &copy; <a href="https://carto.com">CARTO</a>',
-    subdomains: 'abcd', maxZoom: 19,
+// ════════════════════════════════════════════════════════
+// MAP INIT
+// ════════════════════════════════════════════════════════
+const map = L.map('map').setView([10.7769, 106.7009], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '© OpenStreetMap',
+  maxZoom: 19
 }).addTo(map);
 
-// Dữ liệu khách sạn từ GeoJSON
-const hotelData = geojson.features.map(f => ({
-  id:      f.properties.id,
-  name:    f.properties.name,
-  address: f.properties.address,
-  city:    f.properties.city,
-  stars:   f.properties.stars,
-  price:   parseFloat(f.properties.price) || 0,
-  url:     f.properties.url,
-  lat:     f.geometry.coordinates[1],
-  lng:     f.geometry.coordinates[0],
-  dist:    null,   // fill khi có userLat/Lng
-}));
+const hotelIcon = L.divIcon({
+  html: `<div style="background:#C9A84C;color:#0D0D0D;padding:4px 9px;border-radius:12px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25);">🏨</div>`,
+  className: '', iconAnchor: [20, 20]
+});
 
-// Vẽ markers
+let hotelMarkers = {};
+let hotelData    = [];
+let allCards     = [];
+let userMarker   = null, userLat = null, userLng = null;
+let radiusCircle = null;
+let routingControl = null;
+let ulPinMode    = false;
+let currentSort  = null, currentRadius = 0;
+
+// Parse GeoJSON
 geojson.features.forEach(f => {
   const p = f.properties;
   const [lng, lat] = f.geometry.coordinates;
-  const icon = L.divIcon({
-    html: `<div style="background:#C9A84C;color:#0D0D0D;padding:4px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.3);">${p.stars}★ ${p.name.length > 12 ? p.name.substring(0,12)+'…' : p.name}</div>`,
-    className: '', iconAnchor: [0, 0]
+  hotelData.push({ id: p.id, name: p.name, stars: p.stars, lat, lng, address: p.address, city: p.city, price: parseFloat(p.price) || 0, dist: null });
+  const marker = L.marker([lat, lng], { icon: hotelIcon }).addTo(map);
+  marker.bindPopup(`
+    <div style="min-width:180px;font-family:'Jost',sans-serif;">
+      <strong style="font-size:13px;">${p.name}</strong>
+      <div style="font-size:11px;color:#aaa;margin:3px 0;">📍 ${p.city}</div>
+      <div style="font-size:12px;color:#C9A84C;font-weight:700;">${p.price ? parseInt(p.price).toLocaleString('vi-VN') + ' ₫' : '—'}/đêm</div>
+      <a href="${p.url}" style="display:block;margin-top:8px;background:#C9A84C;color:#0D0D0D;text-align:center;padding:5px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;">Xem chi tiết →</a>
+    </div>
+  `);
+  marker.on('click', () => {
+    const card = document.querySelector(`.hotel-card[data-id="${p.id}"]`);
+    if (card) {
+      card.style.border = '2px solid #C9A84C';
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      setTimeout(() => card.style.border = '', 2000);
+    }
   });
-  const m = L.marker([lat, lng], {icon}).addTo(map)
-    .bindPopup(`
-      <div style="font-family:Jost,sans-serif;min-width:180px;">
-        <strong style="color:#C9A84C;">${'★'.repeat(p.stars)} ${p.name}</strong><br>
-        <small>📍 ${p.address}</small><br>
-        <span id="popup-dist-${p.id}" style="font-size:11px;color:#888;"></span><br>
-        <span style="font-weight:600;">${parseInt(p.price).toLocaleString('vi')} ₫/đêm</span><br>
-        <a href="${p.url}" style="color:#C9A84C;">Xem chi tiết →</a>
-      </div>
-    `);
-  hotelMarkers[p.id] = {marker: m, lat, lng, price: parseFloat(p.price)||0};
+  hotelMarkers[p.id] = { marker, lat, lng };
 });
 
-// Cache cards
-document.querySelectorAll('.hotel-card').forEach(c => allCards.push(c));
+allCards = Array.from(document.querySelectorAll('.hotel-card'));
 
-// ══════════════════════════════════════════════════
-// VỊ TRÍ NGƯỜI DÙNG — Panel với 4 cách
-// ══════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// FOCUS HOTEL
+// ════════════════════════════════════════════════════════
+function focusHotelEl(card) {
+  const id  = parseInt(card.dataset.id);
+  const lat = parseFloat(card.dataset.lat);
+  const lng = parseFloat(card.dataset.lng);
+  map.setView([lat, lng], 16);
+  if (hotelMarkers[id]) hotelMarkers[id].marker.openPopup();
+  document.querySelectorAll('.hotel-card').forEach(c => c.style.border = '');
+  card.style.border = '2px solid #C9A84C';
+  if (userLat && userLng) drawRoute(userLat, userLng, lat, lng);
+}
 
-let ulPinMode    = false;  // đang chờ click ghim
-let ulGeoResults = [];
-let ulGeoTimer   = null;
-let currentUlTab = 'gps';
-
-// ── Toggle panel ──────────────────────────────────
+// ════════════════════════════════════════════════════════
+// USER LOCATE PANEL
+// ════════════════════════════════════════════════════════
 function toggleUserPanel() {
   const panel = document.getElementById('userLocatePanel');
-  const isOpen = panel.classList.contains('show');
-  panel.classList.toggle('show', !isOpen);
-  document.getElementById('ulToggleBtn').textContent = isOpen
-    ? '📍 Vị trí của tôi'
-    : '✕ Đóng vị trí';
-  if (!isOpen) ulSwitchTab('gps');
-  if (isOpen) { ulPinMode = false; map.getContainer().style.cursor = ''; }
+  const show  = !panel.classList.contains('show');
+  panel.classList.toggle('show', show);
+  document.getElementById('ulToggleBtn').textContent = show ? '✕ Đóng' : '📍 Vị trí của tôi';
 }
 
-// ── Switch tab ────────────────────────────────────
 function ulSwitchTab(tab) {
-  currentUlTab = tab;
   ['gps','search','pin','coord'].forEach(t => {
-    document.getElementById(`ulMode-${t}`).style.display  = t === tab ? 'block' : 'none';
     document.getElementById(`ulTab-${t}`).classList.toggle('active', t === tab);
+    document.getElementById(`ulMode-${t}`).style.display = t === tab ? '' : 'none';
   });
-  // Bật/tắt pin mode
-  ulPinMode = (tab === 'pin');
-  map.getContainer().style.cursor = ulPinMode ? 'crosshair' : '';
-  if (ulPinMode) {
-    document.getElementById('ulPinHint').classList.add('active');
-  } else {
-    document.getElementById('ulPinHint').classList.remove('active');
-  }
+  if (tab !== 'pin' && ulPinMode) { ulPinMode = false; map.getContainer().style.cursor = ''; }
 }
 
-// ── Áp dụng vị trí (dùng chung cho tất cả tab) ───
-function applyUserLocation(lat, lng, label) {
-  userLat = lat; userLng = lng;
-
-  if (userMarker) map.removeLayer(userMarker);
-  userMarker = L.marker([lat, lng], {
-    icon: L.divIcon({
-      html:`<div style="background:#2563eb;color:#fff;width:34px;height:34px;border-radius:50%;
-        display:flex;align-items:center;justify-content:center;font-size:17px;
-        border:3px solid #fff;box-shadow:0 0 0 4px rgba(37,99,235,.2);">📍</div>`,
-      className:'', iconSize:[34,34], iconAnchor:[17,17]
-    })
-  }).addTo(map).bindPopup(`📍 ${label}`).openPopup();
-
-  // Tính khoảng cách cho tất cả KS
-  hotelData.forEach(h => {
-    h.dist = haversine(lat, lng, h.lat, h.lng);
-    const el = document.getElementById(`popup-dist-${h.id}`);
-    if (el) el.textContent = `📏 Cách ${h.dist < 1 ? Math.round(h.dist*1000)+'m' : h.dist.toFixed(1)+'km'}`;
-  });
-
-  // Mở khoá bán kính + sort
-  document.getElementById('radiusSelect').disabled = false;
-  document.getElementById('sortNearest').disabled  = false;
-  document.getElementById('sortCheapest').disabled = false;
-
-  // Zoom đến vị trí
-  map.setView([lat, lng], 13);
-  setStatus(`📍 ${label}`);
-
-  // Re-apply radius/sort nếu đang bật
-  if (currentRadius > 0) onRadiusChange();
-  if (currentSort) sortHotels(currentSort, false);
-}
-
-// ── Tab GPS ───────────────────────────────────────
 function ulDoGps() {
-  if (!navigator.geolocation) {
-    document.getElementById('ulGpsStatus').style.display = 'block';
-    document.getElementById('ulGpsStatus').innerHTML = '❌ Trình duyệt không hỗ trợ GPS';
-    return;
-  }
   const btn = document.getElementById('ulGpsBtn');
-  btn.disabled = true; btn.textContent = '⏳ Đang định vị...';
-  const statusEl = document.getElementById('ulGpsStatus');
-  statusEl.style.display = 'block';
-  statusEl.style.color = '#888';
-  statusEl.textContent = '⏳ Đang lấy vị trí GPS...';
-
+  const status = document.getElementById('ulGpsStatus');
+  btn.disabled = true; btn.textContent = '⏳ Đang lấy...';
+  status.style.display = 'block'; status.textContent = '⏳ Đang yêu cầu GPS...'; status.style.color = '#888';
   navigator.geolocation.getCurrentPosition(
     pos => {
-      btn.disabled = false; btn.textContent = '📡 Lấy vị trí GPS';
-      applyUserLocation(pos.coords.latitude, pos.coords.longitude, 'Vị trí GPS của bạn');
-      statusEl.style.color = '#10b981';
-      statusEl.innerHTML = `✅ GPS: ${pos.coords.latitude.toFixed(5)}°N, ${pos.coords.longitude.toFixed(5)}°E`;
+      setUserPos(pos.coords.latitude, pos.coords.longitude, 'GPS');
+      status.textContent = `✅ Đã lấy vị trí GPS!`; status.style.color = '#166534';
+      btn.disabled = false; btn.textContent = '📡 Cập nhật GPS';
     },
     err => {
+      status.textContent = `❌ Không lấy được: ${err.message}`; status.style.color = '#991b1b';
       btn.disabled = false; btn.textContent = '📡 Lấy vị trí GPS';
-      statusEl.style.color = '#dc2626';
-      statusEl.innerHTML = '❌ Không lấy được GPS. Thử tab <strong>Tìm địa chỉ</strong> hoặc <strong>Ghim bản đồ</strong>.';
     },
-    { enableHighAccuracy: true, timeout: 15000 }
+    { enableHighAccuracy: true, timeout: 10000 }
   );
 }
 
-// ── Tab Tìm địa chỉ ───────────────────────────────
-function ulAddrInput(q) {
-  clearTimeout(ulGeoTimer);
-  if (q.length < 4) { document.getElementById('ulAddrSug').style.display = 'none'; return; }
-  ulGeoTimer = setTimeout(() => ulFetchGeo(q, false), 400);
-}
-
-function ulDoSearch() {
-  ulFetchGeo(document.getElementById('ulAddrInput').value.trim(), true);
-}
-
-async function ulFetchGeo(q, autoApply) {
-  if (!q) return;
+let addrDebounce = null;
+function ulAddrSearch(val) {
   const sug = document.getElementById('ulAddrSug');
-  sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#888;">⏳ Đang tìm...</div>';
-  sug.style.display = 'block';
-  try {
-    // Không giới hạn quốc gia — người dùng có thể ở bất kỳ đâu
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6&accept-language=vi&addressdetails=1`;
-    const data = await (await fetch(url, { headers: { 'Accept-Language': 'vi' } })).json();
-
-    if (!data.length) {
-      sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#888;">Không tìm thấy kết quả</div>';
-      return;
-    }
-    ulGeoResults = data;
-    if (autoApply && data.length === 1) { ulApplyGeo(data[0]); return; }
-
-    sug.innerHTML = data.map((item, i) => {
-      const p       = item.address || {};
-      const houseNo = p.house_number || '';
-      const road    = p.road || p.pedestrian || p.footway || '';
-      const ward    = p.suburb || p.quarter || p.neighbourhood || '';
-      const dist2   = p.city_district || p.district || '';
-      const city    = p.city || p.town || p.county || '';
-      const country = p.country || '';
-      const main    = [houseNo, road].filter(Boolean).join(' ') || item.display_name.split(',')[0];
-      const sub     = [ward, dist2, city, country].filter(Boolean).join(', ');
-      return `<div class="ul-sug-item" onclick="ulApplyGeo(ulGeoResults[${i}])">
-        <div style="font-weight:600;color:#1a1d27;">📍 ${main}</div>
-        ${sub ? `<div style="font-size:10px;color:#aaa;">${sub}</div>` : ''}
-      </div>`;
-    }).join('');
-    sug.style.display = 'block';
-  } catch(e) {
-    sug.innerHTML = '<div style="padding:8px 12px;font-size:12px;color:#dc2626;">❌ Lỗi kết nối</div>';
-  }
+  clearTimeout(addrDebounce);
+  if (!val.trim()) { sug.style.display = 'none'; return; }
+  addrDebounce = setTimeout(async () => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(val)}&limit=5&accept-language=vi&countrycodes=vn`;
+      const data = await (await fetch(url)).json();
+      if (!data.length) { sug.style.display = 'none'; return; }
+      sug.innerHTML = data.map(d => `<div class="ul-sug-item" onclick="ulSelectAddr(${d.lat},${d.lon},'${d.display_name.replace(/'/g,"\\'")}')">📍 ${d.display_name.substring(0,60)}</div>`).join('');
+      sug.style.display = 'block';
+    } catch(e) { sug.style.display = 'none'; }
+  }, 350);
 }
 
-function ulApplyGeo(item) {
-  const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
-  const p   = item.address || {};
-  const houseNo = p.house_number || '';
-  const road    = p.road || p.pedestrian || p.footway || '';
-  const city    = p.city || p.town || p.county || '';
-  const label   = [houseNo, road, city].filter(Boolean).join(', ') || item.display_name.split(',')[0];
-  document.getElementById('ulAddrInput').value = item.display_name.split(',').slice(0,3).join(', ');
+function ulSelectAddr(lat, lng, name) {
+  document.getElementById('ulAddrInput').value = name.split(',')[0];
   document.getElementById('ulAddrSug').style.display = 'none';
-  applyUserLocation(lat, lng, label);
+  setUserPos(parseFloat(lat), parseFloat(lng), name.split(',')[0]);
 }
 
-document.addEventListener('click', e => {
-  if (!e.target.closest('#ulAddrSug') && !e.target.closest('#ulAddrInput')) {
-    const sug = document.getElementById('ulAddrSug');
-    if (sug) sug.style.display = 'none';
-  }
-});
+function ulStartPin() {
+  ulPinMode = true;
+  map.getContainer().style.cursor = 'crosshair';
+  const hint = document.getElementById('ulPinHint');
+  hint.textContent = '🎯 Click lên bản đồ để ghim vị trí của bạn';
+  hint.style.color = '#C9A84C'; hint.style.fontWeight = '600';
+}
 
-// ── Tab Ghim bản đồ ───────────────────────────────
-// Lắng nghe click trên map (chỉ khi ulPinMode=true)
-map.on('click', function(e) {
+map.on('click', e => {
   if (!ulPinMode) return;
-  const { lat, lng } = e.latlng;
-  applyUserLocation(lat, lng, `Vị trí ghim (${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E)`);
-  const res = document.getElementById('ulPinResult');
-  res.style.display = 'block';
-  res.textContent = `✅ Đã ghim: ${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E`;
-  // Tắt pin mode sau khi ghim
   ulPinMode = false;
   map.getContainer().style.cursor = '';
-  document.getElementById('ulPinHint').classList.remove('active');
-  document.getElementById('ulPinHint').textContent = '✅ Đã ghim! Click lại để ghim vị trí khác.';
-  document.getElementById('ulPinHint').style.color = '#10b981';
-  document.getElementById('ulPinHint').style.fontWeight = '600';
+  const { lat, lng } = e.latlng;
+  setUserPos(lat, lng, `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
+  const result = document.getElementById('ulPinResult');
+  result.style.display = 'block';
+  result.innerHTML = `✅ Đã ghim: <strong>${lat.toFixed(5)}, ${lng.toFixed(5)}</strong>`;
+  const hint = document.getElementById('ulPinHint');
+  hint.textContent = '👆 Click lại để đổi vị trí'; hint.style.color = ''; hint.style.fontWeight = '';
 });
 
-// ── Tab Tọa độ ────────────────────────────────────
-function ulApplyCoord() {
+function ulDoCoord() {
   const lat = parseFloat(document.getElementById('ulCoordLat').value);
   const lng = parseFloat(document.getElementById('ulCoordLng').value);
-  if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-    alert('Tọa độ không hợp lệ. Vui lòng kiểm tra lại.');
-    return;
-  }
-  applyUserLocation(lat, lng, `Tọa độ ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
+  if (isNaN(lat) || isNaN(lng)) { alert('Tọa độ không hợp lệ'); return; }
+  setUserPos(lat, lng, `${lat}, ${lng}`);
 }
 
-function ulPreset(lat, lng, name) {
-  document.getElementById('ulCoordLat').value = lat;
-  document.getElementById('ulCoordLng').value = lng;
-  applyUserLocation(lat, lng, name);
+function setUserPos(lat, lng, label) {
+  userLat = lat; userLng = lng;
+  if (userMarker) map.removeLayer(userMarker);
+  userMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      html: `<div style="background:#1d4ed8;color:#fff;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.3);">📍 Bạn</div>`,
+      className: '', iconAnchor: [20, 20]
+    })
+  }).addTo(map).bindPopup(`<strong>📍 ${label}</strong>`).openPopup();
+  map.setView([lat, lng], 14);
+  // Enable controls
+  document.getElementById('radiusSelect').disabled = false;
+  document.getElementById('sortNearest').disabled = false;
+  document.getElementById('sortCheapest').disabled = false;
+  // Calc distances
+  hotelData.forEach(h => h.dist = haversine(lat, lng, h.lat, h.lng));
+  updateDistBadges();
 }
 
-// ── Locator legacy alias ──────────────────────────
-function locateUser() { toggleUserPanel(); }
-
-// ══════════════════════════════════════════════════
-// BÁN KÍNH
-// ══════════════════════════════════════════════════
-function onRadiusChange() {
-  currentRadius = parseInt(document.getElementById('radiusSelect').value);
-
-  // Xóa circle cũ
-  if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
-
-  if (currentRadius > 0) {
-    // Vẽ circle bán kính
-    radiusCircle = L.circle([userLat, userLng], {
-      radius:      currentRadius * 1000,
-      color:       '#C9A84C',
-      weight:      2,
-      fillColor:   '#C9A84C',
-      fillOpacity: 0.07,
-      dashArray:   '8,5',
-      className:   'leaflet-radius-circle',
-    }).addTo(map);
-
-    // Zoom vừa khớp circle
-    map.fitBounds(radiusCircle.getBounds(), {padding:[20,20]});
-
-    // Lọc + hiển thị KS trong bán kính
-    applyRadiusFilter();
-  } else {
-    // Tắt lọc — hiện lại tất cả
-    showAllHotels();
-    if (currentSort) sortHotels(currentSort);
-  }
-}
-
-function applyRadiusFilter() {
-  if (!userLat || currentRadius === 0) return;
-
-  let inCount = 0;
-  hotelData.forEach(h => {
-    const inRadius = h.dist !== null && h.dist <= currentRadius;
-    // Marker
-    if (inRadius) {
-      if (!map.hasLayer(hotelMarkers[h.id].marker)) hotelMarkers[h.id].marker.addTo(map);
-    } else {
-      if (map.hasLayer(hotelMarkers[h.id].marker)) map.removeLayer(hotelMarkers[h.id].marker);
+function updateDistBadges() {
+  allCards.forEach(card => {
+    const id = parseInt(card.dataset.id);
+    const h = hotelData.find(x => x.id === id);
+    if (!h || h.dist === null) return;
+    let badge = card.querySelector('.dist-badge');
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'dist-badge';
+      badge.style.cssText = 'font-size:10px;color:#1d4ed8;background:#eff6ff;padding:2px 8px;border-radius:10px;margin-top:4px;display:inline-block;font-weight:600;';
+      card.querySelector('.card-body').appendChild(badge);
     }
-    // Card
-    const card = document.querySelector(`.hotel-card[data-id="${h.id}"]`);
-    if (card) {
-      card.style.display = inRadius ? '' : 'none';
-      if (inRadius) inCount++;
+    badge.textContent = h.dist < 1 ? `📍 ${Math.round(h.dist*1000)}m` : `📍 ${h.dist.toFixed(1)}km`;
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// RADIUS
+// ════════════════════════════════════════════════════════
+function onRadiusChange() {
+  const r = parseFloat(document.getElementById('radiusSelect').value);
+  currentRadius = r;
+  if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
+  if (r > 0 && userLat) {
+    radiusCircle = L.circle([userLat, userLng], { radius: r * 1000, className: 'leaflet-radius-circle' }).addTo(map);
+    filterByRadius(r);
+    setStatus(`⭕ Bán kính ${r} km — ${hotelData.filter(h => h.dist <= r).length} khách sạn`);
+  } else {
+    showAllHotels();
+    setStatus('');
+  }
+}
+
+function filterByRadius(r) {
+  allCards.forEach(card => {
+    const h = hotelData.find(x => x.id === parseInt(card.dataset.id));
+    const show = !h || h.dist <= r;
+    card.parentElement.style.display = show ? '' : 'none';
+    if (hotelMarkers[parseInt(card.dataset.id)]) {
+      const m = hotelMarkers[parseInt(card.dataset.id)].marker;
+      show ? m.addTo(map) : map.removeLayer(m);
     }
   });
-
-  setStatus(`🔵 Bán kính ${currentRadius}km — ${inCount} khách sạn`);
-  if (currentSort) sortHotels(currentSort, false);   // re-sort không reset filter
 }
 
 function showAllHotels() {
-  hotelData.forEach(h => {
-    if (!map.hasLayer(hotelMarkers[h.id].marker)) hotelMarkers[h.id].marker.addTo(map);
-    const card = document.querySelector(`.hotel-card[data-id="${h.id}"]`);
-    if (card) card.style.display = '';
-  });
+  allCards.forEach(c => c.parentElement.style.display = '');
+  Object.values(hotelMarkers).forEach(({ marker }) => marker.addTo(map));
 }
 
-// ══════════════════════════════════════════════════
-// SẮP XẾP
-// ══════════════════════════════════════════════════
-function sortHotels(type, toggleActive=true) {
-  if (toggleActive) {
-    currentSort = (currentSort === type) ? null : type;
-  } else {
-    // giữ currentSort, chỉ re-apply
-  }
-
-  // Update button styles
-  document.getElementById('sortNearest').classList.toggle('active',  currentSort === 'nearest');
-  document.getElementById('sortCheapest').classList.toggle('active', currentSort === 'cheapest');
-
-  const container = document.querySelector('.hotel-card')?.parentElement;
-  if (!container) return;
-
-  // Lấy cards đang visible
-  const visibleCards = [...container.querySelectorAll('.hotel-card')]
-    .filter(c => c.style.display !== 'none');
-
-  if (!currentSort) {
-    // Khôi phục thứ tự gốc
-    allCards.forEach(c => container.appendChild(c));
-    return;
-  }
-
-  visibleCards.sort((a, b) => {
-    const idA = parseInt(a.dataset.id), idB = parseInt(b.dataset.id);
-    const hA  = hotelData.find(h => h.id === idA);
-    const hB  = hotelData.find(h => h.id === idB);
-    if (!hA || !hB) return 0;
-
-    if (currentSort === 'nearest') {
-      const dA = hA.dist ?? Infinity;
-      const dB = hB.dist ?? Infinity;
-      return dA - dB;
-    }
-    if (currentSort === 'cheapest') {
-      const pA = hA.price || Infinity;
-      const pB = hB.price || Infinity;
-      return pA - pB;
-    }
+// ════════════════════════════════════════════════════════
+// SORT
+// ════════════════════════════════════════════════════════
+function sortHotels(mode) {
+  currentSort = mode;
+  document.getElementById('sortNearest').classList.toggle('active', mode === 'nearest');
+  document.getElementById('sortCheapest').classList.toggle('active', mode === 'cheapest');
+  const container = document.getElementById('hotelListContainer');
+  const sorted = [...allCards].sort((a, b) => {
+    const ha = hotelData.find(x => x.id === parseInt(a.dataset.id));
+    const hb = hotelData.find(x => x.id === parseInt(b.dataset.id));
+    if (!ha || !hb) return 0;
+    if (mode === 'nearest')  return (ha.dist ?? 9999) - (hb.dist ?? 9999);
+    if (mode === 'cheapest') return (ha.price || 9e9) - (hb.price || 9e9);
     return 0;
   });
-
-  visibleCards.forEach(c => container.appendChild(c));
-
-  // Scroll card đầu vào view
-  if (visibleCards[0]) visibleCards[0].scrollIntoView({behavior:'smooth', block:'nearest'});
-
-  // Thêm badge khoảng cách vào cards khi sort nearest
-  if (currentSort === 'nearest') {
-    visibleCards.forEach(c => {
-      const h = hotelData.find(h => h.id === parseInt(c.dataset.id));
-      if (h && h.dist !== null) {
-        let badge = c.querySelector('.dist-badge');
-        if (!badge) {
-          badge = document.createElement('span');
-          badge.className = 'dist-badge';
-          badge.style.cssText = 'font-size:10px;background:#eff6ff;color:#1d4ed8;padding:2px 7px;border-radius:10px;margin-left:6px;font-weight:600;';
-          c.querySelector('.card-title')?.appendChild(badge);
-        }
-        badge.textContent = h.dist < 1 ? Math.round(h.dist*1000)+'m' : h.dist.toFixed(1)+'km';
-      }
-    });
-  } else {
-    // Xóa badge khoảng cách nếu không sort nearest
-    document.querySelectorAll('.dist-badge').forEach(b => b.remove());
-  }
+  sorted.forEach(c => container.appendChild(c.parentElement));
 }
 
-// ══════════════════════════════════════════════════
-// FOCUS HOTEL
-// ══════════════════════════════════════════════════
-function focusHotel(id, lat, lng) {
-  map.setView([parseFloat(lat), parseFloat(lng)], 16);
-  if (hotelMarkers[id]) hotelMarkers[id].marker.openPopup();
-}
-
-function focusHotelEl(el) {
-  focusHotel(el.dataset.id, parseFloat(el.dataset.lat), parseFloat(el.dataset.lng));
-}
-
-// ══════════════════════════════════════════════════
-// RESET
-// ══════════════════════════════════════════════════
-function resetMap() {
-  // Xóa circle
-  if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
-  // Xóa user marker
-  if (userMarker)   { map.removeLayer(userMarker);   userMarker   = null; }
-  // Xóa routing
+// ════════════════════════════════════════════════════════
+// ROUTING
+// ════════════════════════════════════════════════════════
+function drawRoute(lat1, lng1, lat2, lng2) {
   if (routingControl) { map.removeControl(routingControl); routingControl = null; }
-  // Reset state
+  routingControl = L.Routing.control({
+    waypoints: [L.latLng(lat1, lng1), L.latLng(lat2, lng2)],
+    routeWhileDragging: false,
+    addWaypoints: false,
+    show: false,
+    createMarker: () => null,
+    lineOptions: { styles: [{ color: '#C9A84C', weight: 4, opacity: .8 }] }
+  }).addTo(map);
+  routingControl.on('routesfound', e => {
+    const r = e.routes[0].summary;
+    document.getElementById('routeDistance').textContent = (r.totalDistance / 1000).toFixed(1) + ' km';
+    document.getElementById('routeDuration').textContent = Math.round(r.totalTime / 60) + ' phút';
+    document.getElementById('routeInfo').style.display = 'block';
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// RESET
+// ════════════════════════════════════════════════════════
+function resetMap() {
+  if (radiusCircle) { map.removeLayer(radiusCircle); radiusCircle = null; }
+  if (userMarker)   { map.removeLayer(userMarker);   userMarker   = null; }
+  if (routingControl) { map.removeControl(routingControl); routingControl = null; }
   userLat = null; userLng = null;
   currentSort = null; currentRadius = 0;
   ulPinMode = false;
   map.getContainer().style.cursor = '';
-  // Reset UI
   document.getElementById('radiusSelect').value    = '0';
   document.getElementById('radiusSelect').disabled = true;
   document.getElementById('sortNearest').disabled  = true;
@@ -808,7 +893,6 @@ function resetMap() {
   document.getElementById('sortNearest').classList.remove('active');
   document.getElementById('sortCheapest').classList.remove('active');
   document.querySelectorAll('.dist-badge').forEach(b => b.remove());
-  // Reset user panel
   const panel = document.getElementById('userLocatePanel');
   panel.classList.remove('show');
   document.getElementById('ulToggleBtn').textContent = '📍 Vị trí của tôi';
@@ -816,17 +900,16 @@ function resetMap() {
   document.getElementById('ulAddrInput').value = '';
   document.getElementById('ulAddrSug').style.display = 'none';
   document.getElementById('ulPinResult').style.display = 'none';
-  document.getElementById('ulPinHint').textContent = '👆 Click trực tiếp lên bản đồ để ghim vị trí của bạn';
+  document.getElementById('ulPinHint').textContent = '👆 Click lên bản đồ để ghim vị trí';
   document.getElementById('ulPinHint').style.color = '';
   document.getElementById('ulPinHint').style.fontWeight = '';
   ulSwitchTab('gps');
-  // Hiện lại tất cả KS
   showAllHotels();
-  allCards.forEach(c => c.parentElement?.appendChild(c));
-  // Reset geocode tìm KS
+  allCards.forEach(c => c.parentElement.appendChild(c));
   clearMapSearch();
   map.setView([10.7769, 106.7009], 12);
   setStatus('');
+  document.getElementById('routeInfo').style.display = 'none';
 }
 
 function setStatus(msg) {
@@ -840,9 +923,6 @@ function clearRoute() {
   document.getElementById('routeInfo').style.display = 'none';
 }
 
-// ══════════════════════════════════════════════════
-// HAVERSINE
-// ══════════════════════════════════════════════════
 function haversine(la1, lo1, la2, lo2) {
   const R=6371, r=Math.PI/180;
   const dLa=(la2-la1)*r, dLo=(lo2-lo1)*r;
@@ -851,9 +931,8 @@ function haversine(la1, lo1, la2, lo2) {
 }
 
 // ════════════════════════════════════════════════════════
-// MAP SEARCH — Tìm kiếm trên bản đồ
+// MAP SEARCH
 // ════════════════════════════════════════════════════════
-
 const mapSearchInput   = document.getElementById('mapSearchInput');
 const mapSearchResults = document.getElementById('mapSearchResults');
 const mapSearchClear   = document.getElementById('mapSearchClear');
@@ -867,12 +946,10 @@ mapSearchInput.addEventListener('input', function() {
   if (!q) { hideResults(); return; }
   searchDebounce = setTimeout(() => showResults(q), 300);
 });
-
 mapSearchInput.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') { e.preventDefault(); runMapSearch(); }
   if (e.key === 'Escape') { clearMapSearch(); }
 });
-
 document.addEventListener('click', function(e) {
   if (!e.target.closest('.map-search-wrap')) hideResults();
 });
@@ -880,39 +957,27 @@ document.addEventListener('click', function(e) {
 function showResults(q) {
   const ql = q.toLowerCase();
   const matched = hotelData.filter(h =>
-    h.name.toLowerCase().includes(ql) ||
-    h.address.toLowerCase().includes(ql) ||
-    h.city.toLowerCase().includes(ql)
+    h.name.toLowerCase().includes(ql) || h.address.toLowerCase().includes(ql) || h.city.toLowerCase().includes(ql)
   ).slice(0, 5);
-
   let html = '';
   if (matched.length) {
     html += '<div class="search-section-title">🏨 Khách sạn</div>';
     matched.forEach(h => {
       const distTxt = h.dist !== null
-        ? `<span style="margin-left:auto;font-size:10px;background:#eff6ff;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-weight:600;">${h.dist < 1 ? Math.round(h.dist*1000)+'m' : h.dist.toFixed(1)+'km'}</span>`
+        ? `<span style="margin-left:auto;font-size:10px;background:#eff6ff;color:#1d4ed8;padding:2px 7px;border-radius:10px;font-weight:600;">${h.dist<1?Math.round(h.dist*1000)+'m':h.dist.toFixed(1)+'km'}</span>`
         : `<span class="badge">${h.stars}★</span>`;
-      html += `
-        <div class="search-result-item" onclick="selectHotel(${h.id}, ${h.lat}, ${h.lng})">
-          <span class="icon">🏨</span>
-          <div><div class="name">${h.name}</div><div class="sub">📍 ${h.city}</div></div>
-          ${distTxt}
-        </div>`;
+      html += `<div class="search-result-item" onclick="selectHotel(${h.id},${h.lat},${h.lng})"><span class="icon">🏨</span><div><div class="name">${h.name}</div><div class="sub">📍 ${h.city}</div></div>${distTxt}</div>`;
     });
   }
   if (q.length >= 3) {
     if (matched.length) html += '<hr class="search-divider">';
     html += '<div class="search-section-title">🗺 Tìm địa điểm</div>';
-    html += `<div class="search-result-item" onclick="geocodeSearch('${q.replace(/'/g,"\'")}')">
-      <span class="icon">📍</span>
-      <div><div class="name">Tìm "${q}" trên bản đồ</div><div class="sub">Tìm kiếm qua OpenStreetMap</div></div>
-    </div>`;
+    html += `<div class="search-result-item" onclick="geocodeSearch('${q.replace(/'/g,"\\'")}')"><span class="icon">📍</span><div><div class="name">Tìm "${q}" trên bản đồ</div><div class="sub">OpenStreetMap</div></div></div>`;
   }
   if (!html) html = '<div class="search-no-result">Không tìm thấy kết quả</div>';
   mapSearchResults.innerHTML = html;
   mapSearchResults.classList.add('show');
 }
-
 function hideResults() { mapSearchResults.classList.remove('show'); }
 
 function selectHotel(id, lat, lng) {
@@ -921,25 +986,22 @@ function selectHotel(id, lat, lng) {
   if (hotelMarkers[id]) hotelMarkers[id].marker.openPopup();
   document.querySelectorAll('.hotel-card').forEach(c => {
     c.style.border = c.dataset.id == id ? '2px solid #C9A84C' : '';
-    if (c.dataset.id == id) c.scrollIntoView({behavior:'smooth', block:'nearest'});
+    if (c.dataset.id == id) c.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   });
 }
 
 async function geocodeSearch(q) {
   hideResults();
-  mapSearchResults.innerHTML = '<div class="search-no-result">⏳ Đang tìm kiếm...</div>';
+  mapSearchResults.innerHTML = '<div class="search-no-result">⏳ Đang tìm...</div>';
   mapSearchResults.classList.add('show');
   try {
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=vi&countrycodes=vn`;
-    const data = await (await fetch(url, {headers:{'Accept-Language':'vi'}})).json();
+    const data = await (await fetch(url, { headers: { 'Accept-Language': 'vi' } })).json();
     if (!data.length) { mapSearchResults.innerHTML = '<div class="search-no-result">Không tìm thấy địa điểm</div>'; return; }
-    let html = '<div class="search-section-title">📍 Kết quả địa điểm</div>';
+    let html = '<div class="search-section-title">📍 Kết quả</div>';
     data.forEach(item => {
       const shortName = item.display_name.split(',').slice(0,2).join(', ');
-      html += `<div class="search-result-item" onclick="goToPlace(${item.lat}, ${item.lon}, '${shortName.replace(/'/g,"\'")}')">
-        <span class="icon">📍</span>
-        <div><div class="name">${shortName}</div><div class="sub">${item.display_name.substring(0,55)}...</div></div>
-      </div>`;
+      html += `<div class="search-result-item" onclick="goToPlace(${item.lat},${item.lon},'${shortName.replace(/'/g,"\\'")}')"><span class="icon">📍</span><div><div class="name">${shortName}</div><div class="sub">${item.display_name.substring(0,55)}...</div></div></div>`;
     });
     mapSearchResults.innerHTML = html;
   } catch(e) { mapSearchResults.innerHTML = '<div class="search-no-result">❌ Lỗi kết nối</div>'; }
@@ -950,10 +1012,7 @@ function goToPlace(lat, lng, name) {
   lat = parseFloat(lat); lng = parseFloat(lng);
   if (geocodeMarker) map.removeLayer(geocodeMarker);
   geocodeMarker = L.marker([lat, lng], {
-    icon: L.divIcon({
-      html: `<div style="background:#7c3aed;color:#fff;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.25);">📍 ${name}</div>`,
-      className:'', iconAnchor:[0,0],
-    })
+    icon: L.divIcon({ html: `<div style="background:#7c3aed;color:#fff;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.25);">📍 ${name}</div>`, className:'', iconAnchor:[0,0] })
   }).addTo(map).bindPopup(`<strong>📍 ${name}</strong>`).openPopup();
   map.setView([lat, lng], 16);
   mapSearchInput.value = name;
@@ -964,23 +1023,13 @@ function runMapSearch() {
   const q = mapSearchInput.value.trim();
   if (!q) return;
   const ql = q.toLowerCase();
-  const matched = hotelData.find(h =>
-    h.name.toLowerCase().includes(ql) || h.address.toLowerCase().includes(ql)
-  );
-  if (matched) {
-    selectHotel(matched.id, matched.lat, matched.lng);
-    mapSearchInput.value = matched.name;
-    mapSearchClear.style.display = 'block';
-    hideResults();
-  } else {
-    geocodeSearch(q);
-  }
+  const matched = hotelData.find(h => h.name.toLowerCase().includes(ql) || h.address.toLowerCase().includes(ql));
+  if (matched) { selectHotel(matched.id, matched.lat, matched.lng); mapSearchInput.value = matched.name; mapSearchClear.style.display = 'block'; hideResults(); }
+  else geocodeSearch(q);
 }
 
 function clearMapSearch() {
-  mapSearchInput.value = '';
-  mapSearchClear.style.display = 'none';
-  hideResults();
+  mapSearchInput.value = ''; mapSearchClear.style.display = 'none'; hideResults();
   if (geocodeMarker) { map.removeLayer(geocodeMarker); geocodeMarker = null; }
   document.querySelectorAll('.hotel-card').forEach(c => c.style.border = '');
 }

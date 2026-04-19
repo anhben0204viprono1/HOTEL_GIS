@@ -2,55 +2,328 @@
 {% block title %}{{ hotel.name }} — Hotel GIS{% endblock %}
 
 {% block extra_css %}
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  /* Hero */
-  .hero-detail {
-    background: linear-gradient(to right,rgba(13,13,13,.9),rgba(13,13,13,.3)),
-      url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1200&q=80') center/cover;
-    min-height:280px; display:flex; align-items:flex-end;
+  :root {
+    --gold: #C9A84C;
+    --gold-light: #e6c96a;
+    --gold-pale: #fff8e8;
+    --dark: #0D0D0D;
+    --surface: #fafaf8;
+    --border: #ece9e1;
+    --text-muted: #888880;
+    --radius: 16px;
+    --shadow: 0 4px 24px rgba(0,0,0,.07);
   }
-  /* Gallery lightbox */
-  .hotel-gallery { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:20px; border-radius:14px; overflow:hidden; }
-  .hotel-gallery .main-img { grid-column:1/3; height:260px; }
-  .hotel-gallery img { width:100%; height:160px; object-fit:cover; cursor:pointer; transition:opacity .2s; }
-  .hotel-gallery .main-img img { height:260px; }
-  .hotel-gallery img:hover { opacity:.88; }
-  .gallery-more { position:relative; }
-  .gallery-more-overlay { position:absolute; inset:0; background:rgba(13,13,13,.55); display:flex; align-items:center; justify-content:center; color:#fff; font-size:1.1rem; font-weight:700; cursor:pointer; }
 
-  /* Lightbox */
-  .lb-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.92); z-index:9999; align-items:center; justify-content:center; }
-  .lb-overlay.show { display:flex; }
-  .lb-img { max-width:90vw; max-height:88vh; border-radius:8px; object-fit:contain; }
-  .lb-close { position:absolute; top:18px; right:22px; color:#fff; font-size:2rem; cursor:pointer; line-height:1; }
-  .lb-prev,.lb-next { position:absolute; top:50%; transform:translateY(-50%); color:#fff; font-size:2rem; cursor:pointer; background:rgba(255,255,255,.1); border:none; border-radius:50%; width:48px; height:48px; display:flex; align-items:center; justify-content:center; transition:background .15s; }
-  .lb-prev { left:16px; }
-  .lb-next { right:16px; }
-  .lb-prev:hover,.lb-next:hover { background:rgba(255,255,255,.25); }
-  .lb-counter { position:absolute; bottom:16px; left:50%; transform:translateX(-50%); color:#fff; font-size:13px; background:rgba(0,0,0,.5); padding:4px 14px; border-radius:20px; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--surface); }
 
-  /* Room gallery */
-  .room-gallery { display:flex; gap:5px; margin-top:8px; overflow-x:auto; scrollbar-width:thin; }
-  .room-gallery img { height:70px; width:90px; object-fit:cover; border-radius:6px; cursor:pointer; flex-shrink:0; transition:opacity .15s; }
-  .room-gallery img:hover { opacity:.82; }
+  /* ── HERO ── */
+  .hd-hero {
+    position: relative;
+    height: 70vh;
+    min-height: 440px;
+    max-height: 640px;
+    overflow: hidden;
+    background: #111;
+  }
+  .hd-hero-bg {
+    position: absolute; inset: 0;
+    background-image: linear-gradient(to right, rgba(13,13,13,.9) 0%, rgba(13,13,13,.3) 100%),
+      url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1400&q=80');
+    background-size: cover; background-position: center;
+    transition: background-image .3s;
+  }
+  .hd-hero-content {
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column; justify-content: flex-end;
+    height: 100%; padding: 0 0 48px;
+  }
+  .hd-breadcrumb { display: flex; gap: 8px; align-items: center; font-size: 12px; color: rgba(255,255,255,.5); margin-bottom: 20px; }
+  .hd-breadcrumb a { color: var(--gold); text-decoration: none; }
+  .hd-breadcrumb a:hover { color: var(--gold-light); }
+  .hd-breadcrumb span { color: rgba(255,255,255,.35); }
+  .hd-hotel-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    font-weight: 300;
+    color: #fff;
+    line-height: 1.15;
+    margin-bottom: 12px;
+  }
+  .hd-stars span { color: var(--gold); font-size: 16px; }
+  .hd-address { color: rgba(255,255,255,.6); font-size: 14px; margin-left: 8px; }
+  .hd-price-tag {
+    display: inline-block;
+    background: var(--gold);
+    color: var(--dark);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 18px;
+    border-radius: 30px;
+    margin-top: 14px;
+  }
+  .hd-price-tag em { font-style: normal; font-weight: 300; font-size: 11px; margin-left: 4px; }
 
-  /* Map */
-  #map-detail { height:320px; border-radius:12px; overflow:hidden; z-index:1; }
-  #routeInfo { font-size:13px; color:#444; padding:8px 12px; background:#f8f7f4; border-radius:8px; }
+  /* ── GALLERY STRIP ── */
+  .hd-gallery-bar {
+    background: var(--dark);
+    padding: 10px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    white-space: nowrap;
+    border-bottom: 1px solid #222;
+  }
+  .hd-gallery-bar::-webkit-scrollbar { display: none; }
+  .hd-gallery-bar .container { display: flex; gap: 6px; }
+  .hd-gthumb {
+    width: 80px; height: 60px;
+    border-radius: 6px; overflow: hidden;
+    cursor: pointer; flex-shrink: 0;
+    border: 2px solid transparent;
+    transition: border-color .15s, opacity .15s;
+  }
+  .hd-gthumb:hover, .hd-gthumb.active { border-color: var(--gold); }
+  .hd-gthumb img { width: 100%; height: 100%; object-fit: cover; }
+  .hd-gthumb-more {
+    width: 80px; height: 60px;
+    border-radius: 6px; background: rgba(201,168,76,.15);
+    border: 1.5px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+    font-size: 12px; font-weight: 600; color: var(--gold);
+    flex-direction: column; gap: 2px;
+  }
 
-  /* User locate panel */
-  .locate-panel { background:#f8f7f4; border:1px solid #e5e1d8; border-radius:10px; padding:12px; margin-top:8px; }
-  .locate-tabs { display:flex; gap:4px; margin-bottom:10px; }
-  .locate-tab { flex:1; padding:6px; border:1.5px solid #e5e1d8; border-radius:6px; background:#fff; font-size:11px; font-weight:600; cursor:pointer; text-align:center; color:#888; transition:all .15s; }
-  .locate-tab.active { border-color:#C9A84C; background:#fff9ec; color:#856404; }
+  /* ── MAIN LAYOUT ── */
+  .hd-body { padding: 48px 0 80px; }
+  .hd-section-label {
+    font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+    color: var(--gold); font-weight: 600; margin-bottom: 10px;
+  }
+  .hd-card {
+    background: #fff; border-radius: var(--radius);
+    border: 1px solid var(--border); padding: 28px;
+    margin-bottom: 28px; box-shadow: var(--shadow);
+  }
+  .hd-card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem; font-weight: 400; margin-bottom: 14px; color: var(--dark);
+  }
 
-  /* Amenity */
-  .amenity-badge { display:inline-block; background:#fff3cd; color:#856404; padding:5px 12px; border-radius:20px; font-size:12px; margin:3px; }
+  /* ── INFO GRID ── */
+  .hd-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; }
+  .hd-info-item { display: flex; align-items: center; gap: 8px; color: #444; }
+  .hd-info-item a { color: inherit; text-decoration: none; }
+  .hd-info-item a:hover { color: var(--gold); }
+  .hd-info-icon { width: 32px; height: 32px; background: var(--gold-pale); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 15px; }
+  .hd-check-times { display: flex; gap: 16px; padding: 16px 0 0; border-top: 1px solid var(--border); margin-top: 14px; }
+  .hd-check-time { flex: 1; text-align: center; }
+  .hd-check-time .label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); }
+  .hd-check-time .val { font-size: 1.2rem; font-weight: 600; color: var(--dark); }
 
-  /* Addr search */
-  #userAddrSug { position:absolute; top:100%; left:0; right:0; z-index:999; background:#fff; border:1.5px solid #C9A84C; border-top:none; border-radius:0 0 8px 8px; max-height:180px; overflow-y:auto; display:none; box-shadow:0 6px 18px rgba(0,0,0,.1); }
-  .user-sug-item { padding:8px 12px; cursor:pointer; font-size:12px; border-bottom:1px solid #f3f0eb; }
-  .user-sug-item:hover { background:#fffdf5; }
+  /* ── AMENITIES ── */
+  .hd-amenity-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+  .hd-amenity-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--gold-pale); color: #6b4f00;
+    border: 1px solid rgba(201,168,76,.3);
+    padding: 6px 14px; border-radius: 30px; font-size: 12px; font-weight: 500;
+  }
+  .hd-amenity-group { margin-bottom: 16px; }
+  .hd-amenity-group-title { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+
+  /* ── ROOM CARDS ── */
+  .hd-room-card {
+    background: #fff; border-radius: var(--radius);
+    border: 1px solid var(--border);
+    overflow: hidden; margin-bottom: 28px;
+    box-shadow: var(--shadow);
+    transition: box-shadow .2s, transform .2s;
+  }
+  .hd-room-card:hover { box-shadow: 0 8px 40px rgba(0,0,0,.1); transform: translateY(-2px); }
+  .hd-room-hero {
+    position: relative; height: 240px; overflow: hidden;
+    background: #f5f5f0;
+  }
+  .hd-room-hero img {
+    width: 100%; height: 100%; object-fit: cover;
+    transition: transform .4s;
+  }
+  .hd-room-card:hover .hd-room-hero img { transform: scale(1.03); }
+  .hd-room-hero-placeholder {
+    height: 100%; display: flex; align-items: center;
+    justify-content: center; font-size: 4rem; color: #ccc;
+  }
+  .hd-room-photo-count {
+    position: absolute; bottom: 10px; right: 12px;
+    background: rgba(13,13,13,.65); backdrop-filter: blur(4px);
+    color: #fff; font-size: 11px; font-weight: 500;
+    padding: 4px 12px; border-radius: 20px; cursor: pointer;
+    border: 1px solid rgba(255,255,255,.15);
+  }
+  .hd-room-photo-count:hover { background: rgba(201,168,76,.85); color: var(--dark); }
+  .hd-room-thumbs {
+    display: flex; gap: 4px; padding: 6px 12px 0;
+    overflow-x: auto; scrollbar-width: none;
+    background: #f8f7f5;
+    border-bottom: 1px solid var(--border);
+  }
+  .hd-room-thumbs::-webkit-scrollbar { display: none; }
+  .hd-room-thumbs img {
+    width: 64px; height: 48px; object-fit: cover;
+    border-radius: 5px; flex-shrink: 0; cursor: pointer;
+    border: 2px solid transparent; transition: border-color .15s;
+  }
+  .hd-room-thumbs img:hover { border-color: var(--gold); }
+
+  .hd-room-body { padding: 22px 24px; }
+  .hd-room-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.35rem; font-weight: 400; color: var(--dark); margin-bottom: 8px;
+  }
+  .hd-room-meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 12px; color: #666; margin-bottom: 12px; }
+  .hd-room-meta-item { display: flex; align-items: center; gap: 5px; }
+  .hd-room-desc { font-size: 13px; color: #555; line-height: 1.7; margin-bottom: 16px; }
+  .hd-room-amenities { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+  .hd-room-amenity {
+    font-size: 11px; background: #f5f4f0; color: #555;
+    padding: 4px 10px; border-radius: 20px;
+    border: 1px solid var(--border);
+  }
+  .hd-room-footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 16px; border-top: 1px solid var(--border);
+  }
+  .hd-room-price .amount {
+    font-size: 1.5rem; font-weight: 600; color: var(--gold);
+    font-family: 'Cormorant Garamond', serif;
+  }
+  .hd-room-price .per { font-size: 11px; color: var(--text-muted); }
+  .hd-room-avail { font-size: 11px; color: #10b981; font-weight: 500; }
+  .hd-room-avail.none { color: #ef4444; }
+  .btn-book {
+    background: var(--gold); color: var(--dark);
+    border: none; font-weight: 600; font-size: 13px;
+    padding: 10px 24px; border-radius: 30px;
+    cursor: pointer; text-decoration: none;
+    transition: background .15s, transform .1s;
+    display: inline-block;
+  }
+  .btn-book:hover { background: var(--gold-light); transform: scale(1.02); color: var(--dark); }
+  .btn-book-outline {
+    border: 1.5px solid var(--border); color: #555; background: transparent;
+    font-size: 12px; padding: 9px 18px; border-radius: 30px;
+    text-decoration: none; transition: border-color .15s, color .15s;
+    display: inline-block;
+  }
+  .btn-book-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* ── STICKY SIDEBAR ── */
+  .hd-sidebar { position: sticky; top: 80px; }
+  .hd-map-card {
+    background: #fff; border-radius: var(--radius);
+    border: 1px solid var(--border); overflow: hidden;
+    box-shadow: var(--shadow); margin-bottom: 20px;
+  }
+  .hd-map-head { padding: 16px 20px 12px; border-bottom: 1px solid var(--border); }
+  .hd-map-title { font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold); font-weight: 600; }
+  #map-detail { height: 260px; }
+  .hd-map-actions { padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .btn-map {
+    width: 100%; padding: 9px 14px; border-radius: 10px;
+    font-size: 12px; font-weight: 500; cursor: pointer; border: none;
+    transition: all .15s; text-align: left;
+  }
+  .btn-map-primary { background: var(--gold); color: var(--dark); }
+  .btn-map-primary:hover { background: var(--gold-light); }
+  .btn-map-outline { background: #f5f4f0; color: #444; border: 1px solid var(--border); }
+  .btn-map-outline:hover { border-color: var(--gold); color: var(--dark); }
+  .btn-map-danger { background: #fff0f0; color: #b91c1c; border: 1px solid #fecaca; }
+  .btn-map-danger:hover { background: #fee2e2; }
+  .hd-map-coords { padding: 10px 16px 14px; text-align: center; font-size: 11px; color: var(--text-muted); }
+
+  /* ── LOCATE PANEL ── */
+  .hd-locate-panel { padding: 12px; border-top: 1px solid var(--border); background: #fafaf8; }
+  .hd-locate-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+  .hd-locate-tab {
+    flex: 1; padding: 6px 8px; border: 1.5px solid var(--border);
+    border-radius: 8px; background: #fff; font-size: 10px; font-weight: 600;
+    cursor: pointer; text-align: center; color: #999; transition: all .15s;
+  }
+  .hd-locate-tab.active { border-color: var(--gold); background: var(--gold-pale); color: #6b4f00; }
+  #userAddrSug {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 999;
+    background: #fff; border: 1.5px solid var(--gold);
+    border-top: none; border-radius: 0 0 8px 8px;
+    max-height: 180px; overflow-y: auto; display: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,.1);
+  }
+  .user-sug-item { padding: 8px 12px; cursor: pointer; font-size: 12px; border-bottom: 1px solid #f5f3ef; }
+  .user-sug-item:hover { background: var(--gold-pale); }
+  #routeInfo {
+    font-size: 12px; color: #444; padding: 8px 14px;
+    background: var(--gold-pale); border-radius: 10px;
+    margin: 8px 12px; display: none; text-align: center;
+    border: 1px solid rgba(201,168,76,.25);
+  }
+
+  /* ── LIGHTBOX ── */
+  .lb-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.95); z-index: 9999;
+    align-items: center; justify-content: center;
+  }
+  .lb-overlay.show { display: flex; }
+  .lb-img { max-width: 90vw; max-height: 85vh; border-radius: 10px; object-fit: contain; }
+  .lb-close {
+    position: absolute; top: 18px; right: 22px;
+    color: rgba(255,255,255,.7); font-size: 28px; cursor: pointer;
+    width: 40px; height: 40px; display: flex; align-items: center;
+    justify-content: center; border-radius: 50%;
+    background: rgba(255,255,255,.1); border: none; transition: background .15s;
+  }
+  .lb-close:hover { background: rgba(255,255,255,.2); color: #fff; }
+  .lb-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    color: rgba(255,255,255,.8); font-size: 1.5rem; cursor: pointer;
+    background: rgba(255,255,255,.12); border: none; border-radius: 50%;
+    width: 50px; height: 50px; display: flex; align-items: center;
+    justify-content: center; transition: background .15s;
+  }
+  .lb-nav:hover { background: rgba(255,255,255,.25); }
+  .lb-prev { left: 16px; }
+  .lb-next { right: 16px; }
+  .lb-counter {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.6); font-size: 12px;
+    background: rgba(0,0,0,.4); padding: 4px 16px; border-radius: 20px;
+  }
+  .lb-caption {
+    position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+    color: rgba(255,255,255,.7); font-size: 13px; max-width: 80%; text-align: center;
+  }
+
+  /* ── TABS ── */
+  .hd-room-tabs { border-bottom: 1.5px solid var(--border); margin-bottom: 28px; display: flex; gap: 0; }
+  .hd-room-tab {
+    padding: 12px 20px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: none; background: none; color: var(--text-muted);
+    border-bottom: 2.5px solid transparent; margin-bottom: -1.5px;
+    transition: color .15s;
+  }
+  .hd-room-tab.active { color: var(--dark); border-bottom-color: var(--gold); }
+  .hd-room-tab:hover { color: var(--dark); }
+
+  /* ── AVAILABILITY BADGE ── */
+  .hd-avail-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+  .hd-avail-dot.green { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,.2); }
+  .hd-avail-dot.red { background: #ef4444; box-shadow: 0 0 0 2px rgba(239,68,68,.2); }
+
+  @media (max-width: 767px) {
+    .hd-hero { height: 56vw; min-height: 320px; }
+    .hd-info-grid { grid-template-columns: 1fr; }
+  }
 </style>
 {% endblock %}
 
@@ -58,255 +331,384 @@
 
 {% if hotel.image %}
 <style>
-.hero-detail {
-  background-image:linear-gradient(to right,rgba(13,13,13,.85),rgba(13,13,13,.3)),
+.hd-hero-bg {
+  background-image: linear-gradient(to right, rgba(13,13,13,.9) 0%, rgba(13,13,13,.25) 100%),
     url('{{ hotel.image.url }}') !important;
-  background-size:cover !important; background-position:center !important;
+  background-size: cover !important; background-position: center !important;
+}
+</style>
+{% endif %}
+{% if gallery %}
+<style>
+.hd-hero-bg {
+  background-image: linear-gradient(to right, rgba(13,13,13,.9) 0%, rgba(13,13,13,.25) 100%),
+    url('{{ gallery.0.image.url }}') !important;
+  background-size: cover !important; background-position: center !important;
 }
 </style>
 {% endif %}
 
-<!-- HERO -->
-<div class="hero-detail text-white px-0">
-  <div class="container pb-4">
-    <nav aria-label="breadcrumb">
-      <ol class="breadcrumb mb-2">
-        <li class="breadcrumb-item"><a href="/" style="color:#C9A84C;">Trang chủ</a></li>
-        <li class="breadcrumb-item active text-white-50">{{ hotel.name }}</li>
-      </ol>
+<!-- ══ HERO ══════════════════════════════════════════════════ -->
+<div class="hd-hero">
+  <div class="hd-hero-bg" id="heroBg"></div>
+  <div class="hd-hero-content container">
+    <nav class="hd-breadcrumb">
+      <a href="/">Trang chủ</a>
+      <span>/</span>
+      <a href="{% url 'hotels:list' %}">Khách sạn</a>
+      <span>/</span>
+      <span style="color:rgba(255,255,255,.6);">{{ hotel.name }}</span>
     </nav>
-    <h1 style="font-family:'Cormorant Garamond',serif;font-size:clamp(1.8rem,4vw,2.8rem);font-weight:300;">
-      {{ hotel.name }}
-    </h1>
-    <p class="mb-1">
-      {% for i in hotel.star_range %}<span style="color:#C9A84C;">★</span>{% endfor %}
-      <span class="ms-2 text-white-50" style="font-size:13px;">📍 {{ hotel.address }}, {{ hotel.city }}</span>
+    <div class="hd-stars">
+      {% for i in hotel.star_range %}<span>★</span>{% endfor %}
+    </div>
+    <h1 class="hd-hotel-name">{{ hotel.name }}</h1>
+    <p style="margin:0;">
+      <span class="hd-address">📍 {{ hotel.address }}, {{ hotel.city }}</span>
     </p>
     {% if cheapest %}
-    <p style="font-size:1.2rem;color:#C9A84C;font-weight:500;">
-      từ {{ cheapest.price_per_night|floatformat:0 }} ₫<span style="font-size:12px;color:#aaa;font-weight:300;">/đêm</span>
-    </p>
+    <div class="hd-price-tag">
+      từ {{ cheapest.price_per_night|floatformat:0 }} ₫<em>/đêm</em>
+    </div>
     {% endif %}
   </div>
 </div>
 
-<div class="container my-5">
-  <div class="row g-4">
-
-    <!-- ── CỘT TRÁI ── -->
-    <div class="col-lg-7">
-
-      <!-- Gallery ảnh khách sạn -->
-      {% with all_imgs=gallery %}
-      {% if all_imgs %}
-      <div class="hotel-gallery mb-4" id="hotelGallery">
-        {% for img in all_imgs %}
-          {% if forloop.counter == 1 %}
-          <div class="main-img" onclick="openLightbox({{ forloop.counter0 }})">
-            <img src="{{ img.image.url }}" alt="{{ img.caption }}">
-          </div>
-          {% elif forloop.counter <= 5 %}
-            {% if forloop.counter == 5 and all_imgs|length > 5 %}
-            <div class="gallery-more" onclick="openLightbox(4)">
-              <img src="{{ img.image.url }}" alt="">
-              <div class="gallery-more-overlay">+{{ all_imgs|length|add:"-4" }} ảnh</div>
-            </div>
-            {% else %}
-            <div onclick="openLightbox({{ forloop.counter0 }})"><img src="{{ img.image.url }}" alt="{{ img.caption }}"></div>
-            {% endif %}
-          {% endif %}
-        {% endfor %}
-      </div>
-      {% elif hotel.image %}
-      <div class="mb-4" style="border-radius:14px;overflow:hidden;cursor:pointer;" onclick="openLightbox(0)">
-        <img src="{{ hotel.image.url }}" style="width:100%;height:280px;object-fit:cover;">
+<!-- ══ GALLERY STRIP ══════════════════════════════════════════ -->
+{% if gallery %}
+<div class="hd-gallery-bar" id="galleryBar">
+  <div class="container">
+    {% for img in gallery %}
+      {% if forloop.counter <= 12 %}
+      <div class="hd-gthumb {% if forloop.first %}active{% endif %}" onclick="selectHeroImg('{{ img.image.url }}', this, {{ forloop.counter0 }})">
+        <img src="{{ img.image.url }}" alt="{{ img.caption }}">
       </div>
       {% endif %}
-      {% endwith %}
+    {% endfor %}
+    {% if gallery|length > 12 %}
+    <div class="hd-gthumb-more" onclick="openLightbox(12)">
+      <span style="font-size:18px;">📷</span>
+      <span>+{{ gallery|length|add:"-12" }}</span>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
-      <!-- Mô tả -->
-      <div class="bg-white p-4 rounded-3 shadow-sm mb-4">
-        <h4 style="font-family:'Cormorant Garamond',serif;">Mô tả</h4>
-        <p class="text-muted">{{ hotel.description|default:"Chưa có mô tả." }}</p>
-        <hr class="my-2">
-        <div class="row g-2" style="font-size:13px;">
-          {% if hotel.phone %}<div class="col-sm-6">📞 <a href="tel:{{ hotel.phone }}" style="color:inherit;">{{ hotel.phone }}</a></div>{% endif %}
-          {% if hotel.email %}<div class="col-sm-6">✉️ <a href="mailto:{{ hotel.email }}" style="color:inherit;">{{ hotel.email }}</a></div>{% endif %}
-          {% if hotel.website %}<div class="col-sm-6">🌐 <a href="{{ hotel.website }}" target="_blank" style="color:#C9A84C;">Website</a></div>{% endif %}
-          <div class="col-sm-6">🕐 Nhận phòng: <strong>{{ hotel.check_in_time|time:"H:i" }}</strong></div>
-          <div class="col-sm-6">🕛 Trả phòng: <strong>{{ hotel.check_out_time|time:"H:i" }}</strong></div>
+<!-- ══ BODY ══════════════════════════════════════════════════ -->
+<div class="hd-body">
+  <div class="container">
+    <div class="row g-4">
+
+      <!-- ── CỘT TRÁI ─────────────────────────────────────── -->
+      <div class="col-lg-8">
+
+        <!-- Mô tả + Thông tin liên hệ -->
+        <div class="hd-card">
+          <p class="hd-section-label">Giới thiệu</p>
+          <h2 class="hd-card-title">{{ hotel.name }}</h2>
+          <p style="color:#555; line-height:1.8; font-size:14px;">
+            {{ hotel.description|default:"Chưa có mô tả cho khách sạn này." }}
+          </p>
+          <div class="hd-info-grid mt-4">
+            {% if hotel.phone %}
+            <div class="hd-info-item">
+              <div class="hd-info-icon">📞</div>
+              <a href="tel:{{ hotel.phone }}">{{ hotel.phone }}</a>
+            </div>
+            {% endif %}
+            {% if hotel.email %}
+            <div class="hd-info-item">
+              <div class="hd-info-icon">✉️</div>
+              <a href="mailto:{{ hotel.email }}">{{ hotel.email }}</a>
+            </div>
+            {% endif %}
+            {% if hotel.website %}
+            <div class="hd-info-item">
+              <div class="hd-info-icon">🌐</div>
+              <a href="{{ hotel.website }}" target="_blank" style="color:var(--gold);">Truy cập website ↗</a>
+            </div>
+            {% endif %}
+            <div class="hd-info-item">
+              <div class="hd-info-icon">🏙️</div>
+              <span>{{ hotel.city }}</span>
+            </div>
+          </div>
+          <div class="hd-check-times">
+            <div class="hd-check-time">
+              <div class="label">Nhận phòng</div>
+              <div class="val">{{ hotel.check_in_time|time:"H:i" }}</div>
+            </div>
+            <div style="width:1px; background:var(--border);"></div>
+            <div class="hd-check-time">
+              <div class="label">Trả phòng</div>
+              <div class="val">{{ hotel.check_out_time|time:"H:i" }}</div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- Tiện nghi -->
-      {% if amenities %}
-      <div class="bg-white p-4 rounded-3 shadow-sm mb-4">
-        <h5 class="mb-3" style="font-family:'Cormorant Garamond',serif;">Tiện nghi</h5>
-        {% for a in amenities %}<span class="amenity-badge">{{ a.name }}</span>{% endfor %}
-      </div>
-      {% endif %}
-
-      <!-- Loại phòng -->
-      <h4 class="mb-3" style="font-family:'Cormorant Garamond',serif;">Loại phòng</h4>
-      {% for room in room_types %}
-      <div class="card mb-4 bg-white shadow-sm" style="border-radius:14px;overflow:hidden;">
-
-        <!-- Ảnh đại diện phòng -->
-        {% with room_imgs=room.images.all %}
-        {% if room_imgs %}
-          <div style="position:relative;height:200px;overflow:hidden;">
-            <img src="{{ room_imgs.0.image.url }}" style="width:100%;height:200px;object-fit:cover;cursor:pointer;" onclick="openRoomLightbox('room{{ room.id }}',0)">
-            {% if room_imgs|length > 1 %}
-            <div style="position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:12px;cursor:pointer;" onclick="openRoomLightbox('room{{ room.id }}',0)">
-              📷 {{ room_imgs|length }} ảnh
+        <!-- Tiện nghi tổng hợp -->
+        {% if amenities %}
+        <div class="hd-card">
+          <p class="hd-section-label">Tiện nghi</p>
+          <h3 class="hd-card-title">Các tiện ích nổi bật</h3>
+          {% regroup amenities by category as amenity_groups %}
+          {% for group in amenity_groups %}
+          <div class="hd-amenity-group">
+            <div class="hd-amenity-group-title">
+              {% if group.grouper == 'bedroom' %}🛏 Phòng ngủ
+              {% elif group.grouper == 'bathroom' %}🚿 Phòng tắm
+              {% elif group.grouper == 'entertainment' %}📺 Giải trí
+              {% elif group.grouper == 'kitchen' %}🍳 Bếp & Ăn uống
+              {% elif group.grouper == 'climate' %}❄️ Nhiệt độ
+              {% elif group.grouper == 'accessibility' %}♿ Tiếp cận
+              {% else %}📦 Khác{% endif %}
             </div>
+            <div class="hd-amenity-grid">
+              {% for a in group.list %}
+              <span class="hd-amenity-chip">
+                {% if a.icon_url %}<img src="{{ a.icon_url }}" width="14" height="14" style="border-radius:2px;">{% endif %}
+                {{ a.name }}
+              </span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Loại phòng -->
+        <p class="hd-section-label">Phòng</p>
+        <h3 style="font-family:'Cormorant Garamond',serif; font-size:1.8rem; font-weight:300; color:var(--dark); margin-bottom:24px;">
+          Các loại phòng
+        </h3>
+
+        {% for room in room_types %}
+        {% with room_imgs=room.images.all %}
+        <div class="hd-room-card" id="room-card-{{ room.id }}">
+
+          <!-- Ảnh hero phòng -->
+          <div class="hd-room-hero">
+            {% if room_imgs %}
+              <img src="{{ room_imgs.0.image.url }}" alt="{{ room.name }}" id="roomHeroImg{{ room.id }}"
+                   onclick="openRoomLightbox('room{{ room.id }}', 0)" style="cursor:pointer;">
+              {% if room_imgs|length > 1 %}
+              <div class="hd-room-photo-count" onclick="openRoomLightbox('room{{ room.id }}', 0)">
+                📷 {{ room_imgs|length }} ảnh
+              </div>
+              {% endif %}
+            {% elif room.image %}
+              <img src="{{ room.image.url }}" alt="{{ room.name }}" id="roomHeroImg{{ room.id }}"
+                   onclick="openRoomLightbox('room{{ room.id }}', 0)" style="cursor:pointer;">
+            {% else %}
+              <div class="hd-room-hero-placeholder">🛏️</div>
             {% endif %}
           </div>
+
           <!-- Thumbnail strip -->
           {% if room_imgs|length > 1 %}
-          <div class="room-gallery px-3 py-2" id="roomGal{{ room.id }}">
+          <div class="hd-room-thumbs" id="roomGal{{ room.id }}">
             {% for img in room_imgs %}
-              <img src="{{ img.image.url }}" alt="{{ img.caption }}" onclick="openRoomLightbox('room{{ room.id }}',{{ forloop.counter0 }})">
+            <img src="{{ img.image.url }}" alt="{{ img.caption }}"
+                 onclick="selectRoomThumb('{{ room.id }}', '{{ img.image.url }}', this, {{ forloop.counter0 }})"
+                 class="{% if forloop.first %}active-thumb{% endif %}"
+                 style="{% if forloop.first %}border-color:var(--gold);{% endif %}">
             {% endfor %}
           </div>
           {% endif %}
-        {% elif room.image %}
-          <img src="{{ room.image.url }}" style="width:100%;height:180px;object-fit:cover;">
-        {% else %}
-          <div style="height:120px;background:#f8f7f4;display:flex;align-items:center;justify-content:center;font-size:3rem;">🛏️</div>
-        {% endif %}
-        {% endwith %}
 
-        <div class="p-3">
-          <h6 class="fw-semibold mb-1">{{ room.name }}</h6>
-          <p class="text-muted mb-1" style="font-size:12px;">
-            👥 Tối đa {{ room.max_occupancy }} khách
-            {% if room.area_sqm %}&nbsp;|&nbsp; 📐 {{ room.area_sqm }}m²{% endif %}
-            {% if room.bed_type %}&nbsp;|&nbsp; 🛏 {{ room.get_bed_type_display }}{% endif %}
-          </p>
-          <p class="mb-1" style="font-size:11px;color:#888;">✅ {{ room.available_rooms_count }} phòng còn trống</p>
-          {% if room.description %}<p style="font-size:12px;color:#666;">{{ room.description|truncatechars:90 }}</p>{% endif %}
-          <div class="d-flex justify-content-between align-items-center mt-2">
-            <span style="color:#C9A84C;font-weight:600;">{{ room.price_per_night|floatformat:0 }} ₫/đêm</span>
-            {% if user.is_authenticated %}
-              {% if room.available_rooms_count > 0 %}
-                <a href="{% url 'bookings:create' room.id %}" class="btn btn-sm btn-gold">Đặt ngay</a>
-              {% else %}
-                <span class="btn btn-sm btn-secondary disabled" style="opacity:.6;">Hết phòng</span>
-              {% endif %}
-            {% else %}
-              <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-sm btn-outline-secondary">Đăng nhập để đặt</a>
+          <!-- Nội dung phòng -->
+          <div class="hd-room-body">
+
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h4 class="hd-room-name">{{ room.name }}</h4>
+                <div class="hd-room-meta">
+                  <span class="hd-room-meta-item">👥 Tối đa {{ room.max_occupancy }} khách</span>
+                  {% if room.area_sqm %}<span class="hd-room-meta-item">📐 {{ room.area_sqm }} m²</span>{% endif %}
+                  {% if room.bed_type %}<span class="hd-room-meta-item">🛏 {{ room.get_bed_type_display }}</span>{% endif %}
+                </div>
+              </div>
+              <div style="text-align:right;">
+                {% if room.available_rooms_count > 0 %}
+                <span class="hd-room-avail">
+                  <span class="hd-avail-dot green"></span>{{ room.available_rooms_count }} phòng còn trống
+                </span>
+                {% else %}
+                <span class="hd-room-avail none">
+                  <span class="hd-avail-dot red"></span>Hết phòng
+                </span>
+                {% endif %}
+              </div>
+            </div>
+
+            {% if room.description %}
+            <p class="hd-room-desc">{{ room.description }}</p>
             {% endif %}
+
+            <!-- Tiện ích riêng của phòng -->
+            {% if room.amenities.all %}
+            <div class="hd-room-amenities">
+              {% for a in room.amenities.all %}
+              <span class="hd-room-amenity">
+                {% if a.icon_url %}<img src="{{ a.icon_url }}" width="12" height="12" style="vertical-align:middle;margin-right:3px;">{% endif %}
+                {{ a.name }}
+              </span>
+              {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Footer -->
+            <div class="hd-room-footer">
+              <div class="hd-room-price">
+                <div class="amount">{{ room.price_per_night|floatformat:0 }} ₫</div>
+                <div class="per">mỗi đêm · chưa gồm thuế</div>
+              </div>
+              <div style="display:flex; gap:10px; align-items:center;">
+                {% if user.is_authenticated %}
+                  {% if room.available_rooms_count > 0 %}
+                  <a href="{% url 'bookings:create' room.id %}" class="btn-book">Đặt ngay →</a>
+                  {% else %}
+                  <span class="btn-book" style="opacity:.45; cursor:default;">Hết phòng</span>
+                  {% endif %}
+                {% else %}
+                <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn-book-outline">Đăng nhập để đặt</a>
+                {% endif %}
+              </div>
+            </div>
+
           </div>
+        </div>
+        {% endwith %}
+        {% empty %}
+        <div style="background:#fff; border-radius:var(--radius); border:1px solid var(--border); padding:40px; text-align:center; color:var(--text-muted);">
+          <div style="font-size:3rem; margin-bottom:12px;">🏨</div>
+          <p>Chưa có thông tin loại phòng.</p>
+        </div>
+        {% endfor %}
+
+      </div>
+
+      <!-- ── CỘT PHẢI: Bản đồ ──────────────────────────────── -->
+      <div class="col-lg-4">
+        <div class="hd-sidebar">
+
+          <!-- Map card -->
+          <div class="hd-map-card">
+            <div class="hd-map-head">
+              <div class="hd-map-title">📍 Vị trí khách sạn</div>
+            </div>
+            <div id="map-detail"
+                 data-lat="{{ hotel_lat|stringformat:'f' }}"
+                 data-lng="{{ hotel_lng|stringformat:'f' }}"
+                 data-name="{{ hotel.name|escapejs }}"
+                 data-addr="{{ hotel.address|escapejs }}"></div>
+            <div class="hd-map-actions">
+              <button class="btn-map btn-map-primary" id="btn-locate" onclick="locateUser()">📍 Xác định vị trí của tôi</button>
+              <button class="btn-map btn-map-outline" id="btn-userpanel" onclick="toggleUserPanel()">📌 Ghim / Tìm vị trí của tôi</button>
+              <button class="btn-map btn-map-outline" id="btn-route" onclick="findRoute()">🗺 Tìm đường đến đây</button>
+              <button class="btn-map btn-map-danger" onclick="clearRoute()">✕ Xóa đường đi</button>
+            </div>
+
+            <!-- Locate panel -->
+            <div id="userPanel" class="hd-locate-panel" style="display:none;">
+              <div class="hd-locate-tabs">
+                <div class="hd-locate-tab active" id="tabSearch" onclick="switchTab('search')">🔍 Tìm địa chỉ</div>
+                <div class="hd-locate-tab" id="tabPin" onclick="switchTab('pin')">🗺 Ghim</div>
+                <div class="hd-locate-tab" id="tabCoord" onclick="switchTab('coord')">📐 Tọa độ</div>
+              </div>
+              <!-- Tab tìm địa chỉ -->
+              <div id="modeSearch">
+                <div style="position:relative;">
+                  <div style="display:flex; gap:6px;">
+                    <input type="text" id="userAddrInput" class="form-control form-control-sm"
+                           placeholder="Nhập địa chỉ của bạn..." autocomplete="off"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();doUserGeocode();}"
+                           oninput="onUserAddrInput(this.value)">
+                    <button class="btn-book" onclick="doUserGeocode()" style="padding:6px 14px;border-radius:8px;white-space:nowrap;font-size:12px;">Tìm</button>
+                  </div>
+                  <div id="userAddrSug"></div>
+                </div>
+              </div>
+              <!-- Tab ghim -->
+              <div id="modePin" style="display:none;">
+                <p style="font-size:12px;color:#555;margin:0;">👆 <strong>Click lên bản đồ</strong> để ghim vị trí.</p>
+                <div id="pinStatus" style="font-size:11px;color:#10b981;margin-top:6px;display:none;"></div>
+              </div>
+              <!-- Tab tọa độ -->
+              <div id="modeCoord" style="display:none;">
+                <div class="row g-2">
+                  <div class="col-6">
+                    <label style="font-size:10px;color:#888;">Vĩ độ (Lat)</label>
+                    <input type="number" id="manualLat" class="form-control form-control-sm" placeholder="10.7769" step="0.00001">
+                  </div>
+                  <div class="col-6">
+                    <label style="font-size:10px;color:#888;">Kinh độ (Lng)</label>
+                    <input type="number" id="manualLng" class="form-control form-control-sm" placeholder="106.7009" step="0.00001">
+                  </div>
+                </div>
+                <div style="display:flex;gap:6px;margin-top:8px;">
+                  <button class="btn-book flex-grow-1" onclick="applyManualCoord()" style="padding:7px;border-radius:8px;font-size:12px;">✅ Xác nhận</button>
+                  <button class="btn-book-outline" onclick="useHanoiPreset()" style="padding:7px 10px;">HN</button>
+                  <button class="btn-book-outline" onclick="useHCMPreset()" style="padding:7px 10px;">HCM</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="routeInfo"></div>
+            <div class="hd-map-coords">
+              {{ hotel_lat|floatformat:6 }}°N, {{ hotel_lng|floatformat:6 }}°E · {{ hotel.address }}
+            </div>
+          </div>
+
+          <!-- Quick summary card -->
+          <div class="hd-card" style="margin-bottom:0;">
+            <p class="hd-section-label" style="margin-bottom:8px;">Tóm tắt</p>
+            <div style="display:flex; flex-direction:column; gap:10px; font-size:13px;">
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-muted);">Số loại phòng</span>
+                <strong>{{ room_types|length }}</strong>
+              </div>
+              {% if cheapest %}
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-muted);">Giá từ</span>
+                <strong style="color:var(--gold);">{{ cheapest.price_per_night|floatformat:0 }} ₫</strong>
+              </div>
+              {% endif %}
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-muted);">Xếp hạng</span>
+                <span>{% for i in hotel.star_range %}★{% endfor %}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span style="color:var(--text-muted);">Nhận / Trả phòng</span>
+                <span>{{ hotel.check_in_time|time:"H:i" }} / {{ hotel.check_out_time|time:"H:i" }}</span>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
-      {% empty %}
-        <div class="alert alert-light text-muted">Chưa có thông tin loại phòng.</div>
-      {% endfor %}
-    </div>
 
-    <!-- ── CỘT PHẢI: Bản đồ ── -->
-    <div class="col-lg-5">
-      <div class="bg-white p-3 rounded-3 shadow-sm sticky-top" style="top:80px;">
-        <h6 class="mb-2" style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#C9A84C;">📍 Vị trí khách sạn</h6>
-
-        <div id="map-detail"
-             data-lat="{{ hotel_lat|stringformat:'f' }}"
-             data-lng="{{ hotel_lng|stringformat:'f' }}"
-             data-name="{{ hotel.name|escapejs }}"
-             data-addr="{{ hotel.address|escapejs }}"></div>
-
-        <!-- Nút chính -->
-        <div class="mt-3 d-grid gap-2">
-          <button class="btn btn-gold btn-sm" id="btn-locate" onclick="locateUser()">📍 Xác định vị trí của tôi</button>
-          <button class="btn btn-outline-secondary btn-sm" id="btn-userpanel" onclick="toggleUserPanel()">📌 Ghim / Tìm vị trí của tôi</button>
-          <button class="btn btn-outline-secondary btn-sm" id="btn-route" onclick="findRoute()">🗺 Tìm đường đến đây</button>
-          <button class="btn btn-outline-danger btn-sm" onclick="clearRoute()">✕ Xóa đường đi</button>
-        </div>
-
-        <!-- Panel ghim / tìm vị trí người dùng -->
-        <div id="userPanel" class="locate-panel" style="display:none;">
-          <!-- Tab chọn mode -->
-          <div class="locate-tabs">
-            <div class="locate-tab active" id="tabSearch" onclick="switchTab('search')">🔍 Tìm địa chỉ</div>
-            <div class="locate-tab" id="tabPin" onclick="switchTab('pin')">🗺 Ghim trên bản đồ</div>
-            <div class="locate-tab" id="tabCoord" onclick="switchTab('coord')">📐 Nhập tọa độ</div>
-          </div>
-
-          <!-- Tab 1: Tìm địa chỉ -->
-          <div id="modeSearch">
-            <div style="position:relative;">
-              <div style="display:flex;gap:6px;">
-                <input type="text" id="userAddrInput" class="form-control form-control-sm"
-                       placeholder="VD: 22 Nguyễn Huệ, Quận 1, TP.HCM"
-                       autocomplete="off"
-                       onkeydown="if(event.key==='Enter'){event.preventDefault();doUserGeocode();}"
-                       oninput="onUserAddrInput(this.value)">
-                <button class="btn btn-sm btn-gold" onclick="doUserGeocode()" style="white-space:nowrap;padding:4px 10px;">Tìm</button>
-              </div>
-              <div id="userAddrSug"></div>
-            </div>
-            <p style="font-size:10px;color:#aaa;margin-top:5px;margin-bottom:0;">Kết quả sẽ ghim vị trí bạn trên bản đồ</p>
-          </div>
-
-          <!-- Tab 2: Ghim trên bản đồ -->
-          <div id="modePin" style="display:none;">
-            <p style="font-size:12px;color:#555;margin:0;">
-              👆 <strong>Click trực tiếp lên bản đồ</strong> để ghim vị trí của bạn.
-            </p>
-            <p style="font-size:10px;color:#aaa;margin-top:4px;margin-bottom:0;">Đang chờ bạn click vào bản đồ...</p>
-            <div id="pinStatus" style="font-size:11px;color:#10b981;margin-top:6px;display:none;"></div>
-          </div>
-
-          <!-- Tab 3: Nhập tọa độ -->
-          <div id="modeCoord" style="display:none;">
-            <div class="row g-2">
-              <div class="col-6">
-                <label style="font-size:10px;color:#888;">Vĩ độ (Lat)</label>
-                <input type="number" id="manualLat" class="form-control form-control-sm" placeholder="VD: 10.7769" step="0.00001">
-              </div>
-              <div class="col-6">
-                <label style="font-size:10px;color:#888;">Kinh độ (Lng)</label>
-                <input type="number" id="manualLng" class="form-control form-control-sm" placeholder="VD: 106.7009" step="0.00001">
-              </div>
-            </div>
-            <div class="d-flex gap-2 mt-2">
-              <button class="btn btn-sm btn-gold flex-grow-1" onclick="applyManualCoord()">✅ Xác nhận</button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="useHanoiPreset()">Hà Nội</button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="useHCMPreset()">HCM</button>
-            </div>
-            <p style="font-size:10px;color:#aaa;margin-top:5px;margin-bottom:0;">💡 Google Maps: click chuột phải → copy tọa độ</p>
-          </div>
-        </div>
-
-        <div id="routeInfo" class="mt-2 text-center d-none"></div>
-
-        <hr class="my-2">
-        <div class="text-center" style="font-size:12px;color:#888;">
-          <div>🌐 {{ hotel_lat|floatformat:6 }}°N, {{ hotel_lng|floatformat:6 }}°E</div>
-          <div class="mt-1">{{ hotel.address }}, {{ hotel.city }}</div>
-        </div>
-      </div>
-    </div>
-
-  </div>
+    </div><!-- /row -->
+  </div><!-- /container -->
 </div>
 
-<!-- ── Lightbox khách sạn ── -->
+<!-- ══ LIGHTBOX — Khách sạn ══════════════════════════════════ -->
 <div class="lb-overlay" id="hotelLb" onclick="closeLbIfBg(event,'hotelLb')">
   <button class="lb-close" onclick="closeLb('hotelLb')">✕</button>
-  <button class="lb-prev" onclick="lbNav('hotelLb',-1)">‹</button>
+  <button class="lb-nav lb-prev" onclick="lbNav('hotelLb',-1)">‹</button>
   <img class="lb-img" id="hotelLbImg" src="" alt="">
-  <button class="lb-next" onclick="lbNav('hotelLb',1)">›</button>
+  <button class="lb-nav lb-next" onclick="lbNav('hotelLb',1)">›</button>
+  <div class="lb-caption" id="hotelLbCaption"></div>
   <div class="lb-counter" id="hotelLbCounter"></div>
 </div>
 
-<!-- ── Lightbox phòng (template, clone qua JS) ── -->
-<div class="lb-overlay" id="roomLbTpl" style="display:none;" onclick="closeLbIfBg(event,currentRoomLb)">
-  <button class="lb-close" onclick="closeLb(currentRoomLb)">✕</button>
-  <button class="lb-prev" onclick="lbNav(currentRoomLb,-1)">‹</button>
+<!-- ══ LIGHTBOX — Phòng ══════════════════════════════════════ -->
+<div class="lb-overlay" id="roomLbOverlay" onclick="closeLbIfBg(event,'roomLbOverlay')">
+  <button class="lb-close" onclick="closeLb('roomLbOverlay')">✕</button>
+  <button class="lb-nav lb-prev" onclick="lbNav('roomLbOverlay',-1)">‹</button>
   <img class="lb-img" id="roomLbImg" src="" alt="">
-  <button class="lb-next" onclick="lbNav(currentRoomLb,1)">›</button>
+  <button class="lb-nav lb-next" onclick="lbNav('roomLbOverlay',1)">›</button>
   <div class="lb-counter" id="roomLbCounter"></div>
 </div>
 
@@ -314,113 +716,158 @@
 
 {% block extra_js %}
 <script>
-// ══════════════════════════════════════════════════
-// LIGHTBOX — Khách sạn
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════════════════
 const hotelImgs = [
   {% for img in gallery %}"{{ img.image.url }}"{% if not forloop.last %},{% endif %}{% endfor %}
   {% if not gallery and hotel.image %}"{{ hotel.image.url }}"{% endif %}
 ];
-let hotelLbIdx = 0;
+const hotelCaptions = [
+  {% for img in gallery %}"{{ img.caption|default:''|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}
+  {% if not gallery and hotel.image %}""{% endif %}
+];
 
+const roomImgSets = {};
+const roomLbIdxes = {};
+let hotelLbIdx = 0;
+let currentRoomId = null;
+
+// Collect room images from DOM
+document.querySelectorAll('[id^="roomGal"]').forEach(gal => {
+  const id = gal.id.replace('roomGal', '');
+  roomImgSets['room' + id] = [...gal.querySelectorAll('img')].map(i => i.src);
+  roomLbIdxes['room' + id] = 0;
+});
+// Rooms with only a hero image
+{% for room in room_types %}
+  {% if room.images.all %}
+    {% with room_imgs=room.images.all %}
+    if (!roomImgSets['room{{ room.id }}']) {
+      roomImgSets['room{{ room.id }}'] = [{% for img in room_imgs %}"{{ img.image.url }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+      roomLbIdxes['room{{ room.id }}'] = 0;
+    }
+    {% endwith %}
+  {% elif room.image %}
+    roomImgSets['room{{ room.id }}'] = ['{{ room.image.url }}'];
+    roomLbIdxes['room{{ room.id }}'] = 0;
+  {% endif %}
+{% endfor %}
+
+// ══════════════════════════════════════════════════════════════
+// HERO GALLERY STRIP
+// ══════════════════════════════════════════════════════════════
+function selectHeroImg(url, el, idx) {
+  const bg = document.getElementById('heroBg');
+  bg.style.backgroundImage = `linear-gradient(to right, rgba(13,13,13,.9) 0%, rgba(13,13,13,.25) 100%), url('${url}')`;
+  document.querySelectorAll('.hd-gthumb').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  hotelLbIdx = idx;
+}
+
+// ══════════════════════════════════════════════════════════════
+// ROOM THUMBNAIL SELECT
+// ══════════════════════════════════════════════════════════════
+function selectRoomThumb(roomId, url, el, idx) {
+  const hero = document.getElementById('roomHeroImg' + roomId);
+  if (hero) hero.src = url;
+  const gal = document.getElementById('roomGal' + roomId);
+  if (gal) gal.querySelectorAll('img').forEach(i => i.style.borderColor = '');
+  el.style.borderColor = 'var(--gold)';
+  roomLbIdxes['room' + roomId] = idx;
+}
+
+// ══════════════════════════════════════════════════════════════
+// LIGHTBOX — Hotel
+// ══════════════════════════════════════════════════════════════
 function openLightbox(idx) {
   if (!hotelImgs.length) return;
   hotelLbIdx = idx;
-  document.getElementById('hotelLbImg').src = hotelImgs[idx];
-  document.getElementById('hotelLbCounter').textContent = `${idx+1} / ${hotelImgs.length}`;
+  updateHotelLb();
   document.getElementById('hotelLb').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
 
+function updateHotelLb() {
+  document.getElementById('hotelLbImg').src = hotelImgs[hotelLbIdx];
+  document.getElementById('hotelLbCounter').textContent = `${hotelLbIdx + 1} / ${hotelImgs.length}`;
+  document.getElementById('hotelLbCaption').textContent = hotelCaptions[hotelLbIdx] || '';
+}
+
+// ══════════════════════════════════════════════════════════════
+// LIGHTBOX — Room
+// ══════════════════════════════════════════════════════════════
+function openRoomLightbox(roomId, idx) {
+  const imgs = roomImgSets[roomId];
+  if (!imgs || !imgs.length) return;
+  currentRoomId = roomId;
+  roomLbIdxes[roomId] = idx;
+  updateRoomLb();
+  document.getElementById('roomLbOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+
+function updateRoomLb() {
+  const imgs = roomImgSets[currentRoomId];
+  const idx = roomLbIdxes[currentRoomId];
+  document.getElementById('roomLbImg').src = imgs[idx];
+  document.getElementById('roomLbCounter').textContent = `${idx + 1} / ${imgs.length}`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// SHARED LIGHTBOX CONTROLS
+// ══════════════════════════════════════════════════════════════
 function closeLb(id) {
   document.getElementById(id).classList.remove('show');
   document.body.style.overflow = '';
 }
-
 function closeLbIfBg(e, id) {
   if (e.target === document.getElementById(id)) closeLb(id);
 }
-
-function lbNav(id, dir) {
-  if (id === 'hotelLb') {
+function lbNav(lbId, dir) {
+  if (lbId === 'hotelLb') {
     hotelLbIdx = (hotelLbIdx + dir + hotelImgs.length) % hotelImgs.length;
-    document.getElementById('hotelLbImg').src = hotelImgs[hotelLbIdx];
-    document.getElementById('hotelLbCounter').textContent = `${hotelLbIdx+1} / ${hotelImgs.length}`;
+    updateHotelLb();
   } else {
-    const imgs = roomImgSets[id];
-    roomLbIdxes[id] = (roomLbIdxes[id] + dir + imgs.length) % imgs.length;
-    document.getElementById('roomLbImg').src = imgs[roomLbIdxes[id]];
-    document.getElementById('roomLbCounter').textContent = `${roomLbIdxes[id]+1} / ${imgs.length}`;
+    const imgs = roomImgSets[currentRoomId];
+    roomLbIdxes[currentRoomId] = (roomLbIdxes[currentRoomId] + dir + imgs.length) % imgs.length;
+    updateRoomLb();
   }
 }
-
-// Keyboard nav
 document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowRight') lbNav(document.querySelector('.lb-overlay.show')?.id || 'hotelLb', 1);
-  if (e.key === 'ArrowLeft')  lbNav(document.querySelector('.lb-overlay.show')?.id || 'hotelLb', -1);
-  if (e.key === 'Escape') { const open = document.querySelector('.lb-overlay.show'); if (open) closeLb(open.id); }
+  const open = document.querySelector('.lb-overlay.show');
+  if (!open) return;
+  if (e.key === 'ArrowRight') lbNav(open.id, 1);
+  if (e.key === 'ArrowLeft')  lbNav(open.id, -1);
+  if (e.key === 'Escape') closeLb(open.id);
 });
 
-// ══════════════════════════════════════════════════
-// LIGHTBOX — Phòng
-// ══════════════════════════════════════════════════
-const roomImgSets  = {};
-const roomLbIdxes  = {};
-let   currentRoomLb = null;
-
-// Thu thập ảnh phòng từ DOM
-document.querySelectorAll('[id^="roomGal"]').forEach(gal => {
-  const roomId = 'room' + gal.id.replace('roomGal','');
-  roomImgSets[roomId] = [...gal.querySelectorAll('img')].map(i => i.src);
-  roomLbIdxes[roomId] = 0;
-});
-// Phòng chỉ có ảnh đại diện (không có gallery)
-{% for room in room_types %}
-{% if room.image and not room.images.all %}
-roomImgSets['room{{ room.id }}'] = ['{{ room.image.url }}'];
-roomLbIdxes['room{{ room.id }}'] = 0;
-{% endif %}
-{% endfor %}
-
-function openRoomLightbox(roomId, idx) {
-  const imgs = roomImgSets[roomId];
-  if (!imgs || !imgs.length) return;
-  currentRoomLb = roomId;
-  roomLbIdxes[roomId] = idx;
-  document.getElementById('roomLbImg').src = imgs[idx];
-  document.getElementById('roomLbCounter').textContent = `${idx+1} / ${imgs.length}`;
-  document.getElementById('roomLbTpl').classList.add('show');
-  document.body.style.overflow = 'hidden';
-}
-
-// ══════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════
 // BẢN ĐỒ
-// ══════════════════════════════════════════════════
-const _el      = document.getElementById('map-detail');
+// ══════════════════════════════════════════════════════════════
+const _el = document.getElementById('map-detail');
 const HOTEL_LAT  = parseFloat(_el.dataset.lat);
 const HOTEL_LNG  = parseFloat(_el.dataset.lng);
 const HOTEL_NAME = _el.dataset.name;
 const HOTEL_ADDR = _el.dataset.addr;
 
 let detailMap, userMarker, routingCtrl;
-let userLat = null, userLng = null;
-let pinMode = false;
+let userLat = null, userLng = null, pinMode = false;
 
 (function initMap() {
   detailMap = L.map('map-detail').setView([HOTEL_LAT, HOTEL_LNG], 15);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-    attribution:'© OpenStreetMap © CARTO', subdomains:'abcd', maxZoom:19,
+    attribution: '© OpenStreetMap © CARTO', subdomains: 'abcd', maxZoom: 19,
   }).addTo(detailMap);
 
   const hotelIcon = L.divIcon({
-    html:`<div style="background:#C9A84C;color:#0D0D0D;padding:5px 11px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 2px 10px rgba(0,0,0,.35);border:1.5px solid #0D0D0D;">🏨 ${HOTEL_NAME.length>18?HOTEL_NAME.substring(0,18)+'…':HOTEL_NAME}</div>`,
-    className:'', iconAnchor:[0,0],
+    html: `<div style="background:#C9A84C;color:#0D0D0D;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;box-shadow:0 3px 12px rgba(0,0,0,.3);border:1.5px solid #0D0D0D;">🏨 ${HOTEL_NAME.length > 18 ? HOTEL_NAME.substring(0, 18) + '…' : HOTEL_NAME}</div>`,
+    className: '', iconAnchor: [0, 0],
   });
-  L.marker([HOTEL_LAT,HOTEL_LNG],{icon:hotelIcon}).addTo(detailMap)
+  L.marker([HOTEL_LAT, HOTEL_LNG], { icon: hotelIcon }).addTo(detailMap)
     .bindPopup(`<strong>${HOTEL_NAME}</strong><br>${HOTEL_ADDR}`).openPopup();
 
-  // Click map → ghim vị trí người dùng nếu đang ở tab Pin
-  detailMap.on('click', function(e) {
+  detailMap.on('click', function (e) {
     if (pinMode) {
       setUserLocation(e.latlng.lat, e.latlng.lng, 'Vị trí bạn đã ghim');
       const ps = document.getElementById('pinStatus');
@@ -433,21 +880,18 @@ let pinMode = false;
 function setUserLocation(lat, lng, label) {
   userLat = lat; userLng = lng;
   if (userMarker) detailMap.removeLayer(userMarker);
-
   const userIcon = L.divIcon({
-    html:`<div style="background:#2563eb;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);">📍</div>`,
-    className:'', iconSize:[34,34], iconAnchor:[17,17],
+    html: `<div style="background:#2563eb;color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.3);">📍</div>`,
+    className: '', iconSize: [36, 36], iconAnchor: [18, 18],
   });
-  userMarker = L.marker([lat,lng],{icon:userIcon}).addTo(detailMap)
+  userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(detailMap)
     .bindPopup(`📍 ${label}`).openPopup();
-
   const dist = haversine(lat, lng, HOTEL_LAT, HOTEL_LNG);
-  const distTxt = dist<1 ? Math.round(dist*1000)+'m' : dist.toFixed(1)+'km';
+  const distTxt = dist < 1 ? Math.round(dist * 1000) + 'm' : dist.toFixed(1) + 'km';
   showInfo(`✅ Bạn cách <strong>${HOTEL_NAME}</strong> khoảng <strong>${distTxt}</strong>`);
-  detailMap.fitBounds([[lat,lng],[HOTEL_LAT,HOTEL_LNG]],{padding:[50,50]});
+  detailMap.fitBounds([[lat, lng], [HOTEL_LAT, HOTEL_LNG]], { padding: [50, 50] });
 }
 
-// ── GPS ──
 function locateUser() {
   if (!navigator.geolocation) { showInfo('❌ Trình duyệt không hỗ trợ GPS'); return; }
   const btn = document.getElementById('btn-locate');
@@ -461,35 +905,32 @@ function locateUser() {
       btn.disabled = false; btn.textContent = '📍 Xác định vị trí của tôi';
       showInfo('❌ Không lấy được GPS. Dùng "Ghim / Tìm vị trí" bên dưới.');
     },
-    {enableHighAccuracy:true, timeout:15000}
+    { enableHighAccuracy: true, timeout: 15000 }
   );
 }
 
-// ── Toggle panel ──
 function toggleUserPanel() {
   const panel = document.getElementById('userPanel');
   const isOpen = panel.style.display !== 'none';
   panel.style.display = isOpen ? 'none' : 'block';
-  document.getElementById('btn-userpanel').textContent = isOpen ? '📌 Ghim / Tìm vị trí của tôi' : '✕ Đóng';
+  document.getElementById('btn-userpanel').textContent = isOpen ? '📌 Ghim / Tìm vị trí của tôi' : '✕ Đóng panel';
 }
 
-// ── Tab switch ──
 function switchTab(tab) {
-  ['search','pin','coord'].forEach(t => {
-    document.getElementById('mode'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab ? 'block' : 'none';
-    document.getElementById('tab'+t.charAt(0).toUpperCase()+t.slice(1)).classList.toggle('active', t===tab);
+  ['search', 'pin', 'coord'].forEach(t => {
+    const key = t.charAt(0).toUpperCase() + t.slice(1);
+    document.getElementById('mode' + key).style.display = t === tab ? 'block' : 'none';
+    document.getElementById('tab' + key).classList.toggle('active', t === tab);
   });
   pinMode = (tab === 'pin');
-  if (pinMode) detailMap.getContainer().style.cursor = 'crosshair';
-  else         detailMap.getContainer().style.cursor = '';
+  detailMap.getContainer().style.cursor = pinMode ? 'crosshair' : '';
 }
 
-// ── Tìm địa chỉ người dùng (Nominatim, cả VN lẫn ngoài nước) ──
 let userGeoTimer = null, userGeoResults = [];
 
 function onUserAddrInput(q) {
   clearTimeout(userGeoTimer);
-  if (q.length < 4) { document.getElementById('userAddrSug').style.display='none'; return; }
+  if (q.length < 4) { document.getElementById('userAddrSug').style.display = 'none'; return; }
   userGeoTimer = setTimeout(() => fetchUserGeo(q, false), 400);
 }
 
@@ -500,27 +941,25 @@ async function doUserGeocode() {
 async function fetchUserGeo(q, autoApply) {
   if (!q) return;
   try {
-    // Không giới hạn countrycodes — người dùng có thể ở bất kỳ đâu
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=6&accept-language=vi&addressdetails=1`;
-    const data = await (await fetch(url, {headers:{'Accept-Language':'vi'}})).json();
+    const data = await (await fetch(url, { headers: { 'Accept-Language': 'vi' } })).json();
     if (!data.length) { showUserSug('<div style="padding:10px;font-size:12px;color:#888;">Không tìm thấy địa chỉ</div>'); return; }
     userGeoResults = data;
     if (autoApply && data.length === 1) { applyUserGeo(data[0]); return; }
     showUserSugList(data);
-  } catch(e) { showUserSug('<div style="padding:10px;font-size:12px;color:#f00;">Lỗi kết nối</div>'); }
+  } catch (e) { showUserSug('<div style="padding:10px;font-size:12px;color:red;">Lỗi kết nối</div>'); }
 }
 
 function showUserSugList(results) {
-  const html = results.map((item,i) => {
+  const html = results.map((item, i) => {
     const p = item.address || {};
-    // Ưu tiên: số nhà + đường + quận/huyện + thành phố
-    const road    = p.road || p.pedestrian || p.footway || '';
+    const road = p.road || p.pedestrian || p.footway || '';
     const houseNo = p.house_number || '';
-    const district= p.suburb || p.district || p.city_district || p.quarter || '';
-    const city    = p.city || p.town || p.county || '';
+    const district = p.suburb || p.district || p.city_district || p.quarter || '';
+    const city = p.city || p.town || p.county || '';
     const country = p.country || '';
-    const main    = [houseNo, road].filter(Boolean).join(' ') || item.display_name.split(',')[0];
-    const sub     = [district, city, country].filter(Boolean).join(', ');
+    const main = [houseNo, road].filter(Boolean).join(' ') || item.display_name.split(',')[0];
+    const sub = [district, city, country].filter(Boolean).join(', ');
     return `<div class="user-sug-item" onclick="applyUserGeo(userGeoResults[${i}])">
       <div style="font-weight:600;color:#1a1d27;">📍 ${main}</div>
       ${sub ? `<div style="font-size:10px;color:#aaa;">${sub}</div>` : ''}
@@ -536,11 +975,11 @@ function showUserSug(html) {
 
 function applyUserGeo(item) {
   const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
-  const p   = item.address || {};
-  const road    = p.road || p.pedestrian || p.footway || '';
+  const p = item.address || {};
+  const road = p.road || p.pedestrian || '';
   const houseNo = p.house_number || '';
-  const main    = [houseNo, road].filter(Boolean).join(' ') || item.display_name.split(',')[0];
-  document.getElementById('userAddrInput').value = item.display_name.split(',').slice(0,3).join(', ');
+  const main = [houseNo, road].filter(Boolean).join(' ') || item.display_name.split(',')[0];
+  document.getElementById('userAddrInput').value = item.display_name.split(',').slice(0, 3).join(', ');
   document.getElementById('userAddrSug').style.display = 'none';
   setUserLocation(lat, lng, main || 'Địa chỉ tìm kiếm');
 }
@@ -549,58 +988,51 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#modeSearch')) document.getElementById('userAddrSug').style.display = 'none';
 });
 
-// ── Nhập tọa độ thủ công ──
 function applyManualCoord() {
   const lat = parseFloat(document.getElementById('manualLat').value);
   const lng = parseFloat(document.getElementById('manualLng').value);
   if (isNaN(lat) || isNaN(lng)) { showInfo('❌ Tọa độ không hợp lệ.'); return; }
   setUserLocation(lat, lng, `Tọa độ ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`);
 }
-function useHanoiPreset(){ document.getElementById('manualLat').value='21.0285'; document.getElementById('manualLng').value='105.8542'; }
-function useHCMPreset()  { document.getElementById('manualLat').value='10.7769'; document.getElementById('manualLng').value='106.7009'; }
 
-// ── Tìm đường ──
+function useHanoiPreset() { document.getElementById('manualLat').value = '21.0285'; document.getElementById('manualLng').value = '105.8542'; }
+function useHCMPreset() { document.getElementById('manualLat').value = '10.7769'; document.getElementById('manualLng').value = '106.7009'; }
+
 function findRoute() {
-  if (!userLat || !userLng) {
-    toggleUserPanel();
-    showInfo('⚠️ Hãy xác định vị trí của bạn trước.');
-    return;
-  }
-  drawRoute();
-}
-
-function drawRoute() {
+  if (!userLat || !userLng) { toggleUserPanel(); showInfo('⚠️ Hãy xác định vị trí của bạn trước.'); return; }
   if (routingCtrl) detailMap.removeControl(routingCtrl);
   routingCtrl = L.Routing.control({
-    waypoints:[L.latLng(userLat,userLng),L.latLng(HOTEL_LAT,HOTEL_LNG)],
-    lineOptions:{styles:[{color:'#C9A84C',weight:5,opacity:.9}]},
-    createMarker:()=>null, addWaypoints:false, show:false,
+    waypoints: [L.latLng(userLat, userLng), L.latLng(HOTEL_LAT, HOTEL_LNG)],
+    lineOptions: { styles: [{ color: '#C9A84C', weight: 5, opacity: .9 }] },
+    createMarker: () => null, addWaypoints: false, show: false,
   }).addTo(detailMap);
   routingCtrl.on('routesfound', e => {
     const s = e.routes[0].summary;
-    showInfo(`🗺 ${(s.totalDistance/1000).toFixed(1)} km · ~${Math.round(s.totalTime/60)} phút`);
+    showInfo(`🗺 ${(s.totalDistance / 1000).toFixed(1)} km · ~${Math.round(s.totalTime / 60)} phút`);
   });
 }
 
 function clearRoute() {
-  if (routingCtrl) { detailMap.removeControl(routingCtrl); routingCtrl=null; }
-  if (userMarker)  { detailMap.removeLayer(userMarker);   userMarker=null; }
-  userLat=null; userLng=null; pinMode=false;
-  detailMap.getContainer().style.cursor='';
+  if (routingCtrl) { detailMap.removeControl(routingCtrl); routingCtrl = null; }
+  if (userMarker) { detailMap.removeLayer(userMarker); userMarker = null; }
+  userLat = null; userLng = null; pinMode = false;
+  detailMap.getContainer().style.cursor = '';
   hideInfo();
-  detailMap.setView([HOTEL_LAT,HOTEL_LNG],15);
+  detailMap.setView([HOTEL_LAT, HOTEL_LNG], 15);
 }
 
 function showInfo(html) {
-  const el=document.getElementById('routeInfo'); el.innerHTML=html; el.classList.remove('d-none');
+  const el = document.getElementById('routeInfo');
+  el.innerHTML = html; el.style.display = 'block';
 }
-function hideInfo() { document.getElementById('routeInfo').classList.add('d-none'); }
 
-function haversine(la1,lo1,la2,lo2) {
-  const R=6371,r=Math.PI/180;
-  const dLa=(la2-la1)*r, dLo=(lo2-lo1)*r;
-  const a=Math.sin(dLa/2)**2+Math.cos(la1*r)*Math.cos(la2*r)*Math.sin(dLo/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+function hideInfo() { document.getElementById('routeInfo').style.display = 'none'; }
+
+function haversine(la1, lo1, la2, lo2) {
+  const R = 6371, r = Math.PI / 180;
+  const dLa = (la2 - la1) * r, dLo = (lo2 - lo1) * r;
+  const a = Math.sin(dLa / 2) ** 2 + Math.cos(la1 * r) * Math.cos(la2 * r) * Math.sin(dLo / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 </script>
 {% endblock %}

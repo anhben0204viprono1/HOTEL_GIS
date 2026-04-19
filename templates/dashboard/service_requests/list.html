@@ -1,0 +1,117 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Yêu cầu dịch vụ{% endblock %}
+{% block page_title %}Yêu cầu dịch vụ{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4>🛎 Yêu cầu dịch vụ</h4>
+  <div style="font-size:12px;color:#888;">Tất cả khách sạn</div>
+</div>
+
+<!-- Quick counts -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-value" style="color:#d97706;">{{ counts.pending }}</div>
+      <div class="stat-label">⏳ Chờ xử lý</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-value" style="color:#2563eb;">{{ counts.in_progress }}</div>
+      <div class="stat-label">🔄 Đang xử lý</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-value" style="color:#059669;">{{ counts.resolved }}</div>
+      <div class="stat-label">✅ Đã giải quyết</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="stat-value" style="color:#dc2626;">{{ counts.urgent }}</div>
+      <div class="stat-label">🚨 Khẩn cấp</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filters -->
+<form method="get" class="search-bar">
+  <select name="hotel" class="form-select" style="max-width:220px;font-size:13px;" onchange="this.form.submit()">
+    <option value="">-- Tất cả khách sạn --</option>
+    {% for h in hotels %}
+    <option value="{{ h.pk }}" {% if filters.hotel == h.pk|stringformat:"s" %}selected{% endif %}>{{ h.name }}</option>
+    {% endfor %}
+  </select>
+  <select name="status" class="form-select" style="max-width:180px;font-size:13px;" onchange="this.form.submit()">
+    <option value="">-- Trạng thái --</option>
+    {% for val, label in status_choices %}
+    <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <select name="priority" class="form-select" style="max-width:170px;font-size:13px;" onchange="this.form.submit()">
+    <option value="">-- Ưu tiên --</option>
+    {% for val, label in priority_choices %}
+    <option value="{{ val }}" {% if filters.priority == val %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  {% if filters.hotel or filters.status or filters.priority %}
+  <a href="{% url 'dashboard:service_request_list' %}" class="btn btn-outline-secondary">✕ Xóa lọc</a>
+  {% endif %}
+</form>
+
+<div class="dash-table">
+  <table class="table table-hover mb-0">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Yêu cầu</th>
+        <th>Khách sạn</th>
+        <th>Phòng / Khách</th>
+        <th>Ưu tiên</th>
+        <th>Trạng thái</th>
+        <th>Thời gian</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for req in requests %}
+      <tr style="{% if req.priority == 'urgent' and req.status == 'pending' %}background:#fff5f5;{% endif %}">
+        <td style="color:#888;font-size:12px;">#{{ req.id }}</td>
+        <td>
+          <div style="font-weight:600;font-size:13px;">{{ req.title }}</div>
+          <div style="font-size:11px;color:#888;">{{ req.get_request_type_display }}</div>
+          {% if req.staff_note %}
+          <div style="font-size:11px;color:#0d9488;margin-top:2px;">📝 {{ req.staff_note|truncatechars:40 }}</div>
+          {% endif %}
+        </td>
+        <td style="font-size:13px;">{{ req.hotel.name }}</td>
+        <td>
+          {% if req.room %}<div style="font-weight:600;font-size:13px;">P.{{ req.room.room_number }}</div>{% endif %}
+          {% if req.guest %}<div style="font-size:11px;color:#888;">{{ req.guest_name }}</div>{% endif %}
+        </td>
+        <td>
+          <span style="font-size:11px;padding:3px 9px;border-radius:12px;font-weight:600;
+            {% if req.priority == 'urgent' %}background:#ef4444;color:#fff;
+            {% elif req.priority == 'high' %}background:#fee2e2;color:#991b1b;
+            {% elif req.priority == 'medium' %}background:#fef3c7;color:#92400e;
+            {% else %}background:#f0fdf4;color:#166534;{% endif %}">
+            {{ req.get_priority_display }}
+          </span>
+        </td>
+        <td>
+          <span class="badge-status bs-{{ req.status }}">{{ req.get_status_display }}</span>
+        </td>
+        <td style="font-size:11px;color:#aaa;">{{ req.created_at|timesince }} trước</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="7" style="text-align:center;color:#aaa;padding:50px;font-size:14px;">
+          🛎 Không có yêu cầu dịch vụ nào.
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

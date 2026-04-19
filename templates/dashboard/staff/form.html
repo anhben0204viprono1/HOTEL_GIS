@@ -1,0 +1,136 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}{{ action }}{% endblock %}
+{% block page_title %}{{ action }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4>👷 {{ action }}</h4>
+  <a href="{% url 'dashboard:staff_list' %}" class="btn btn-outline-secondary" style="font-size:13px;border-radius:8px;">← Quay lại</a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-12 col-lg-8">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <!-- Thông tin tài khoản -->
+      <div style="background:#fff;border-radius:12px;border:1px solid #e8e9ec;padding:24px;margin-bottom:20px;">
+        <div style="font-size:13px;font-weight:700;color:#1a1d27;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid #f0f0f0;">
+          🔐 Tài khoản đăng nhập
+        </div>
+
+        <div class="row g-3">
+          <div class="col-6">
+            <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Username *</label>
+            <input type="text" name="username"
+                   value="{% if profile %}{{ profile.user.username }}{% else %}{{ data.username }}{% endif %}"
+                   class="form-control" style="font-size:13px;border-radius:8px;"
+                   placeholder="Ví dụ: nhanvien01"
+                   {% if profile %}readonly{% else %}required{% endif %}>
+            {% if profile %}<div style="font-size:11px;color:#aaa;margin-top:4px;">Username không thể thay đổi.</div>{% endif %}
+          </div>
+          <div class="col-6">
+            <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">
+              Mật khẩu {% if profile %}<span style="color:#aaa;font-weight:400;">(để trống = không đổi)</span>{% else %}*{% endif %}
+            </label>
+            <input type="password" name="password"
+                   class="form-control" style="font-size:13px;border-radius:8px;"
+                   placeholder="{% if profile %}Nhập mật khẩu mới nếu muốn đổi{% else %}Tối thiểu 8 ký tự{% endif %}"
+                   {% if not profile %}required{% endif %}>
+          </div>
+          <div class="col-6">
+            <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Họ</label>
+            <input type="text" name="last_name"
+                   value="{% if profile %}{{ profile.user.last_name }}{% else %}{{ data.last_name }}{% endif %}"
+                   class="form-control" style="font-size:13px;border-radius:8px;" placeholder="Nguyễn">
+          </div>
+          <div class="col-6">
+            <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Tên</label>
+            <input type="text" name="first_name"
+                   value="{% if profile %}{{ profile.user.first_name }}{% else %}{{ data.first_name }}{% endif %}"
+                   class="form-control" style="font-size:13px;border-radius:8px;" placeholder="Văn A">
+          </div>
+          <div class="col-12">
+            <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Email</label>
+            <input type="email" name="email"
+                   value="{% if profile %}{{ profile.user.email }}{% else %}{{ data.email }}{% endif %}"
+                   class="form-control" style="font-size:13px;border-radius:8px;" placeholder="email@khachsan.com">
+          </div>
+        </div>
+      </div>
+
+      <!-- Thông tin nhân viên -->
+      <div style="background:#fff;border-radius:12px;border:1px solid #e8e9ec;padding:24px;margin-bottom:20px;">
+        <div style="font-size:13px;font-weight:700;color:#1a1d27;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid #f0f0f0;">
+          🏨 Thông tin công việc
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12">
+            <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Khách sạn phụ trách *</label>
+            <select name="hotel" class="form-select" style="font-size:13px;border-radius:8px;" required>
+              <option value="">-- Chọn khách sạn --</option>
+              {% for h in hotels %}
+              <option value="{{ h.pk }}"
+                {% if profile and profile.hotel_id == h.pk %}selected
+                {% elif data.hotel == h.pk|stringformat:"s" %}selected{% endif %}>
+                {{ h.name }} — {{ h.city }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6">
+            <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Chức vụ *</label>
+            <select name="role" class="form-select" style="font-size:13px;border-radius:8px;">
+              {% for val, label in role_choices %}
+              <option value="{{ val }}"
+                {% if profile and profile.role == val %}selected
+                {% elif data.role == val %}selected{% endif %}>
+                {{ label }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-6">
+            <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Số điện thoại</label>
+            <input type="text" name="phone"
+                   value="{% if profile %}{{ profile.phone }}{% else %}{{ data.phone }}{% endif %}"
+                   class="form-control" style="font-size:13px;border-radius:8px;" placeholder="0901 234 567">
+          </div>
+          <div class="col-6">
+            <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Ngày vào làm</label>
+            <input type="date" name="hired_at"
+                   value="{% if profile and profile.hired_at %}{{ profile.hired_at|date:'Y-m-d' }}{% endif %}"
+                   class="form-control" style="font-size:13px;border-radius:8px;">
+          </div>
+          {% if profile %}
+          <div class="col-6">
+            <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Trạng thái</label>
+            <div style="padding-top:8px;">
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="is_active" id="isActiveSwitch"
+                       {% if profile.is_active %}checked{% endif %}
+                       style="width:40px;height:22px;cursor:pointer;">
+                <label class="form-check-label" for="isActiveSwitch" style="font-size:13px;margin-left:8px;">
+                  {% if profile.is_active %}Đang hoạt động{% else %}Đã khóa{% endif %}
+                </label>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:12px;justify-content:flex-end;">
+        <a href="{% url 'dashboard:staff_list' %}" class="btn btn-outline-secondary" style="border-radius:8px;font-size:13px;padding:10px 24px;">
+          Hủy
+        </a>
+        <button type="submit" class="btn btn-gold" style="border-radius:8px;font-size:13px;padding:10px 32px;font-weight:600;">
+          {% if profile %}💾 Lưu thay đổi{% else %}✅ Tạo nhân viên{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+<!-- Thêm 2 dòng này vào sidebar của dashboard/base.html -->
+<!-- Đặt SAU dòng "Tài khoản" và TRƯỚC "<div class="nav-section">Hệ thống</div>" -->
+
+    <a href="{% url 'dashboard:staff_list' %}"
+       class="nav-item-dash {% if page == 'staff' %}active{% endif %}">
+      <span class="icon">👷</span> Nhân viên
+    </a>
+    <a href="{% url 'dashboard:service_request_list' %}"
+       class="nav-item-dash {% if page == 'service_requests' %}active{% endif %}">
+      <span class="icon">🛎</span> Yêu cầu dịch vụ
+    </a>

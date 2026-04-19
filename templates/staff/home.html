@@ -1,0 +1,268 @@
+{% extends 'staff/base.html' %}
+{% block title %}Dashboard Nhân Viên{% endblock %}
+{% block page_title %}👋 Xin chào, {{ profile.full_name }}{% endblock %}
+
+{% block content %}
+<!-- Hotel info banner -->
+<div style="background:linear-gradient(135deg,#0d9488,#065f46);border-radius:14px;padding:20px 28px;margin-bottom:24px;color:#fff;display:flex;align-items:center;justify-content:space-between;">
+  <div>
+    <div style="font-size:11px;opacity:.7;letter-spacing:1px;text-transform:uppercase;">Khách sạn phụ trách</div>
+    <div style="font-size:1.3rem;font-weight:700;margin-top:4px;">{{ hotel.name }}</div>
+    <div style="font-size:13px;opacity:.8;margin-top:2px;">{{ hotel.address }}</div>
+  </div>
+  <div style="text-align:right;">
+    <div style="font-size:11px;opacity:.7;">Chức vụ</div>
+    <div style="font-size:1rem;font-weight:600;margin-top:4px;">{{ profile.get_role_display }}</div>
+    <div style="font-size:11px;opacity:.7;margin-top:4px;">Hôm nay: {{ today|date:"d/m/Y" }}</div>
+  </div>
+</div>
+
+{% if urgent_count > 0 %}
+<div class="alert" style="background:#fef2f2;border:1px solid #fca5a5;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:12px;">
+  <span style="font-size:20px;">🚨</span>
+  <div>
+    <strong style="color:#991b1b;">Có {{ urgent_count }} yêu cầu khẩn cấp</strong>
+    <span style="color:#b91c1c;font-size:13px;margin-left:8px;">cần xử lý ngay!</span>
+  </div>
+  <a href="{% url 'staff:service_requests' %}?priority=urgent" class="btn btn-sm ms-auto" style="background:#ef4444;color:#fff;border-radius:8px;">Xem ngay</a>
+</div>
+{% endif %}
+
+<!-- Stat cards -->
+<div class="row g-3 mb-4">
+  <!-- Phòng trống -->
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="stat-icon" style="background:#d1fae5;">✅</div>
+        <span style="font-size:11px;color:#10b981;font-weight:600;">TRỐNG</span>
+      </div>
+      <div class="stat-value" style="color:#059669;">{{ room_stats.available }}</div>
+      <div class="stat-label">Phòng còn trống</div>
+      <div class="stat-sub">/ {{ room_stats.total }} tổng phòng</div>
+    </div>
+  </div>
+  <!-- Phòng có khách -->
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="stat-icon" style="background:#fee2e2;">🔴</div>
+        <span style="font-size:11px;color:#ef4444;font-weight:600;">CÓ KHÁCH</span>
+      </div>
+      <div class="stat-value" style="color:#dc2626;">{{ room_stats.occupied }}</div>
+      <div class="stat-label">Phòng đang có khách</div>
+    </div>
+  </div>
+  <!-- Check-in hôm nay -->
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="stat-icon" style="background:#dbeafe;">🏨</div>
+        <span style="font-size:11px;color:#3b82f6;font-weight:600;">HÔM NAY</span>
+      </div>
+      <div class="stat-value" style="color:#2563eb;">{{ booking_today.checkin }}</div>
+      <div class="stat-label">Khách nhận phòng</div>
+    </div>
+  </div>
+  <!-- Chờ xử lý -->
+  <div class="col-6 col-md-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <div class="stat-icon" style="background:#fef3c7;">⏳</div>
+        <span style="font-size:11px;color:#d97706;font-weight:600;">CHỜ XỬ LÝ</span>
+      </div>
+      <div class="stat-value" style="color:#d97706;">{{ booking_today.pending }}</div>
+      <div class="stat-label">Booking chờ xác nhận</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Check-in / Check-out hôm nay -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-card-title">🏨 Nhận phòng hôm nay ({{ booking_today.checkin }})</div>
+      {% if checkins_today %}
+        <div class="dash-table">
+          <table class="table table-borderless mb-0">
+            <thead>
+              <tr>
+                <th>Khách</th>
+                <th>Phòng</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for b in checkins_today %}
+              <tr>
+                <td>
+                  <div style="font-weight:600;font-size:13px;">{{ b.user.get_full_name|default:b.user.username }}</div>
+                  <div style="font-size:11px;color:#888;">{{ b.user.email }}</div>
+                </td>
+                <td>
+                  <span class="badge-status bs-available">P.{{ b.room.room_number }}</span>
+                  <div style="font-size:11px;color:#888;margin-top:2px;">{{ b.room.room_type.name }}</div>
+                </td>
+                <td>
+                  <a href="{% url 'staff:booking_detail' b.pk %}" class="btn btn-sm btn-teal" style="font-size:11px;border-radius:6px;">Check-in</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">
+          ✅ Không có lịch nhận phòng hôm nay
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="section-card">
+      <div class="section-card-title">🚪 Trả phòng hôm nay ({{ booking_today.checkout }})</div>
+      {% if checkouts_today %}
+        <div class="dash-table">
+          <table class="table table-borderless mb-0">
+            <thead><tr><th>Khách</th><th>Phòng</th><th>Hành động</th></tr></thead>
+            <tbody>
+              {% for b in checkouts_today %}
+              <tr>
+                <td>
+                  <div style="font-weight:600;font-size:13px;">{{ b.user.get_full_name|default:b.user.username }}</div>
+                </td>
+                <td><span class="badge-status bs-occupied">P.{{ b.room.room_number }}</span></td>
+                <td>
+                  <a href="{% url 'staff:booking_detail' b.pk %}" class="btn btn-sm btn-gold" style="font-size:11px;border-radius:6px;">Check-out</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">
+          ✅ Không có lịch trả phòng hôm nay
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Yêu cầu dịch vụ chờ xử lý -->
+  <div class="col-12 col-lg-6">
+    <div class="section-card">
+      <div class="section-card-title d-flex justify-content-between align-items-center">
+        <span>🛎 Yêu cầu dịch vụ chờ xử lý</span>
+        <a href="{% url 'staff:service_requests' %}" style="font-size:12px;color:#0d9488;">Xem tất cả →</a>
+      </div>
+      {% if pending_requests %}
+        {% for req in pending_requests %}
+        <div style="border:1px solid #e8e9ec;border-radius:10px;padding:12px 14px;margin-bottom:10px;background:#fff;">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <span class="badge-status pri-{{ req.priority }} me-2" style="font-size:10px;padding:2px 8px;border-radius:12px;">{{ req.get_priority_display }}</span>
+              <span style="font-size:11px;color:#888;">{{ req.get_request_type_display }}</span>
+              <div style="font-weight:600;font-size:13px;margin-top:4px;">{{ req.title }}</div>
+              {% if req.room %}<div style="font-size:11px;color:#888;margin-top:2px;">Phòng {{ req.room.room_number }}</div>{% endif %}
+              <div style="font-size:11px;color:#aaa;margin-top:2px;">{{ req.created_at|timesince }} trước</div>
+            </div>
+            <a href="{% url 'staff:service_requests' %}" class="btn btn-sm btn-teal" style="font-size:11px;border-radius:6px;white-space:nowrap;">Xử lý</a>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div style="text-align:center;padding:40px;color:#aaa;font-size:13px;">
+          ✅ Không có yêu cầu nào đang chờ xử lý
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Room status overview -->
+    <div class="section-card">
+      <div class="section-card-title d-flex justify-content-between align-items-center">
+        <span>🛏 Tổng quan phòng</span>
+        <a href="{% url 'staff:rooms' %}" style="font-size:12px;color:#0d9488;">Quản lý →</a>
+      </div>
+      <div class="row g-2">
+        <div class="col-4">
+          <div style="text-align:center;padding:14px;background:#f0fdf4;border-radius:10px;">
+            <div style="font-size:1.4rem;font-weight:700;color:#059669;">{{ room_stats.available }}</div>
+            <div style="font-size:11px;color:#065f46;">Còn trống</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div style="text-align:center;padding:14px;background:#fef2f2;border-radius:10px;">
+            <div style="font-size:1.4rem;font-weight:700;color:#dc2626;">{{ room_stats.occupied }}</div>
+            <div style="font-size:11px;color:#991b1b;">Có khách</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div style="text-align:center;padding:14px;background:#fffbeb;border-radius:10px;">
+            <div style="font-size:1.4rem;font-weight:700;color:#d97706;">{{ room_stats.maintenance }}</div>
+            <div style="font-size:11px;color:#92400e;">Bảo trì</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Occupancy bar -->
+      {% if room_stats.total > 0 %}
+      <div style="margin-top:14px;">
+        <div style="font-size:11px;color:#888;margin-bottom:6px;">
+          Tỷ lệ lấp đầy: <strong>{% widthratio room_stats.occupied room_stats.total 100 %}%</strong>
+        </div>
+        <div style="background:#f3f4f6;border-radius:999px;height:8px;overflow:hidden;">
+          <div style="background:linear-gradient(90deg,#0d9488,#059669);height:100%;width:{% widthratio room_stats.occupied room_stats.total 100 %}%;border-radius:999px;transition:width .5s;"></div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Recent bookings -->
+<div class="section-card">
+  <div class="section-card-title d-flex justify-content-between align-items-center">
+    <span>📋 Đặt phòng gần đây</span>
+    <a href="{% url 'staff:bookings' %}" style="font-size:12px;color:#0d9488;">Xem tất cả →</a>
+  </div>
+  <div class="dash-table">
+    <table class="table table-borderless mb-0">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Khách hàng</th>
+          <th>Phòng</th>
+          <th>Check-in</th>
+          <th>Check-out</th>
+          <th>Trạng thái</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in recent_bookings %}
+        <tr>
+          <td style="color:#888;">#{{ b.id }}</td>
+          <td>
+            <div style="font-weight:600;font-size:13px;">{{ b.user.get_full_name|default:b.user.username }}</div>
+            <div style="font-size:11px;color:#888;">{{ b.user.email }}</div>
+          </td>
+          <td>
+            P.{{ b.room.room_number }}
+            <div style="font-size:11px;color:#888;">{{ b.room.room_type.name }}</div>
+          </td>
+          <td style="font-size:13px;">{{ b.check_in|date:"d/m" }}</td>
+          <td style="font-size:13px;">{{ b.check_out|date:"d/m" }}</td>
+          <td>
+            <span class="badge-status bs-{{ b.status }}">{{ b.get_status_display }}</span>
+          </td>
+          <td>
+            <a href="{% url 'staff:booking_detail' b.pk %}" class="btn btn-icon" style="background:#f0fdfa;color:#0d9488;" title="Chi tiết">👁</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="7" style="text-align:center;color:#aaa;padding:30px;">Chưa có đặt phòng nào.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
