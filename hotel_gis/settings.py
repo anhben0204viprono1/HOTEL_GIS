@@ -18,7 +18,7 @@ INSTALLED_APPS = [
     'dashboard',
     'accounts',
     'bookings',
-    'staff', 
+    'staff',
 ]
 
 MIDDLEWARE = [
@@ -58,10 +58,18 @@ DATABASES = {
     }
 }
 
+# Cache (dùng cho token reset mật khẩu — LocMemCache, không cần migrate)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'hotel-gis-cache',
+    }
+}
+
 LANGUAGE_CODE = 'vi'
 TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = True
-USE_L10N = False   
+USE_L10N = False
 USE_TZ = True
 
 STATIC_URL = '/static/'
@@ -75,13 +83,16 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
 LOGIN_URL = '/accounts/login/'
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
-LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/staff/'
+LOGOUT_REDIRECT_URL = '/'
 
-
+# ══════════════════════════════════════════════
+# EMAIL — Mailtrap SMTP (sandbox)
+# ══════════════════════════════════════════════
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'sandbox.smtp.mailtrap.io'
-EMAIL_HOST_USER = 'eae47a6c0460f6'
-EMAIL_HOST_PASSWORD = 'ed744a6e79353a'
+EMAIL_HOST_USER = '622441704f1d3b'
+EMAIL_HOST_PASSWORD = 'ce0b9871fa93e8'
 EMAIL_PORT = '2525'
+EMAIL_USE_TLS = True
+DEFAULT_FROM_EMAIL = 'Hotel GIS <noreply@hotelgis.vn>'

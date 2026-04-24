@@ -21,7 +21,7 @@
             <div>
               <h6 class="fw-semibold mb-1">{{ b.room_type.hotel.name }}</h6>
               <p class="text-muted mb-1" style="font-size:13px;">🛏️ {{ b.room_type.name }}</p>
-              <p class="mb-1" style="font-size:13px;">📅 {{ b.check_in|date:"d/m/Y" }} → {{ b.check_out|date:"d/m/Y" }} ({{ b.nights }} đêm)</p>
+              <p class="mb-1" style="font-size:13px;">📅 {% if b.is_hourly %}{{ b.check_in_dt|date:"H:i d/m/Y" }}{% else %}{{ b.check_in|date:"d/m/Y" }}{% endif %} → {% if b.is_hourly %}{{ b.check_out_dt|date:"H:i d/m/Y" }}{% else %}{{ b.check_out|date:"d/m/Y" }}{% endif %} ({% if b.is_hourly %}{{ b.hours }} giờ{% else %}{{ b.nights }} đêm{% endif %})</p>
               <p class="mb-0" style="font-size:13px;color:#C9A84C;font-weight:600;">{{ b.total_price|floatformat:0 }} ₫</p>
             </div>
             <div class="text-end">

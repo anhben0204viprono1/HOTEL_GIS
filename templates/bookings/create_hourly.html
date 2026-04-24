@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block title %}Đặt phòng theo giờ — {{ room_type.name }} | Hotel GIS{% endblock %}
+
+{% block extra_css %}
+<style>
+  .hourly-wrap { max-width: 600px; margin: 0 auto; }
+  .room-card {
+    background: linear-gradient(135deg, #0d0d0d, #1a1a2e);
+    border-radius: 16px; padding: 28px; color: #fff; margin-bottom: 28px;
+  }
+  .label-sm { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#C9A84C; }
+  .form-section { background:#fff; border-radius:12px; border:1px solid #e8e9ec; padding:24px; margin-bottom:20px; }
+  .form-section-title { font-size:11px; font-weight:700; color:#888; letter-spacing:2px; text-transform:uppercase; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid #f0ede8; }
+  .price-preview { background:#fff9ec; border:1.5px solid #C9A84C; border-radius:10px; padding:16px 20px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5 hourly-wrap">
+
+  <!-- Breadcrumb -->
+  <nav class="mb-4">
+    <ol class="breadcrumb" style="font-size:13px;">
+      <li class="breadcrumb-item"><a href="/" style="color:#C9A84C;">Trang chủ</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'hotels:detail' hotel.slug %}" style="color:#C9A84C;">{{ hotel.name }}</a></li>
+      <li class="breadcrumb-item active">Đặt theo giờ</li>
+    </ol>
+  </nav>
+
+  <!-- Room info card -->
+  <div class="room-card">
+    <div class="label-sm mb-1">Đặt phòng theo giờ</div>
+    <h2 style="font-family:'Cormorant Garamond',serif;font-weight:300;font-size:1.8rem;margin-bottom:4px;">
+      {{ room_type.name }}
+    </h2>
+    <p style="color:rgba(255,255,255,.5);font-size:13px;margin-bottom:16px;">{{ hotel.name }}</p>
+    <div class="d-flex gap-4 flex-wrap">
+      <div>
+        <div class="label-sm">Giá / giờ</div>
+        <div style="font-size:1.4rem;font-weight:700;color:#C9A84C;">
+          {% if room_type.price_per_hour %}
+            {{ room_type.price_per_hour|floatformat:0 }} ₫
+          {% else %}
+            ~{{ room_type.price_per_night|floatformat:0|slice:":5" }}... ₫
+            <span style="font-size:11px;color:rgba(255,255,255,.4);">(tính theo đêm/24)</span>
+          {% endif %}
+        </div>
+      </div>
+      <div>
+        <div class="label-sm">Sức chứa</div>
+        <div style="font-size:1.1rem;color:#fff;">{{ room_type.max_occupancy }} người</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form -->
+  <form method="post" id="hourlyForm">
+    {% csrf_token %}
+
+    <div class="form-section">
+      <div class="form-section-title">📅 Thời gian sử dụng</div>
+
+      <div class="mb-3">
+        <label class="form-label label-sm">Ngày</label>
+        <input type="date" name="date" id="dateInput" class="form-control"
+               min="{{ today|date:'Y-m-d' }}" required
+               value="{{ today|date:'Y-m-d' }}">
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-6">
+          <label class="form-label label-sm">Giờ nhận phòng</label>
+          <input type="time" name="time_in" id="timeIn" class="form-control"
+                 value="08:00" required>
+        </div>
+        <div class="col-6">
+          <label class="form-label label-sm">Giờ trả phòng</label>
+          <input type="time" name="time_out" id="timeOut" class="form-control"
+                 value="12:00" required>
+        </div>
+      </div>
+
+      <!-- Preview giá -->
+      <div class="price-preview" id="pricePreview">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div style="font-size:11px;color:#856404;letter-spacing:1px;text-transform:uppercase;">Ước tính</div>
+            <div id="previewLabel" style="font-size:12px;color:#a07a10;margin-top:2px;">4 giờ × ... ₫/giờ</div>
+          </div>
+          <div id="previewTotal" style="font-size:1.4rem;font-weight:700;color:#C9A84C;">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">👥 Thông tin khách</div>
+      <div class="mb-3">
+        <label class="form-label label-sm">Số khách</label>
+        <input type="number" name="num_guests" class="form-control"
+               min="1" max="{{ room_type.max_occupancy }}" value="1">
+      </div>
+      <div class="mb-3">
+        <label class="form-label label-sm">Yêu cầu đặc biệt</label>
+        <textarea name="note" class="form-control" rows="2"
+                  placeholder="Ghi chú thêm cho nhân viên..."></textarea>
+      </div>
+    </div>
+
+    <div class="d-grid gap-2">
+      <button type="submit" class="btn btn-gold py-3" style="font-size:14px;letter-spacing:1px;border-radius:10px;">
+        ⏰ Đặt phòng theo giờ →
+      </button>
+      <a href="{% url 'hotels:detail' hotel.slug %}" class="btn btn-outline-secondary">Hủy bỏ</a>
+    </div>
+  </form>
+</div>
+
+{% block extra_js %}
+<script>
+const pricePerHour = {{ room_type.price_per_hour|default:0 }};
+const pricePerNight = {{ room_type.price_per_night }};
+const hourlyRate = pricePerHour > 0 ? pricePerHour : Math.round(pricePerNight / 24);
+
+function updatePreview() {
+  const t1 = document.getElementById('timeIn').value;
+  const t2 = document.getElementById('timeOut').value;
+  if (!t1 || !t2) return;
+  const [h1, m1] = t1.split(':').map(Number);
+  const [h2, m2] = t2.split(':').map(Number);
+  const mins = (h2 * 60 + m2) - (h1 * 60 + m1);
+  if (mins <= 0) {
+    document.getElementById('previewTotal').textContent = '—';
+    document.getElementById('previewLabel').textContent = 'Giờ trả phải sau giờ nhận';
+    return;
+  }
+  const hrs = Math.max(mins / 60, 1);
+  const total = Math.round(hrs * hourlyRate);
+  document.getElementById('previewLabel').textContent =
+    `${hrs.toFixed(1)} giờ × ${hourlyRate.toLocaleString('vi')} ₫/giờ`;
+  document.getElementById('previewTotal').textContent =
+    total.toLocaleString('vi') + ' ₫';
+}
+
+document.getElementById('timeIn').addEventListener('change', updatePreview);
+document.getElementById('timeOut').addEventListener('change', updatePreview);
+updatePreview();
+</script>
+{% endblock %}
+{% endblock %}

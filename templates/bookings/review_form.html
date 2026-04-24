@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}Đánh giá {{ hotel.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.star-rating { display:flex; flex-direction:row-reverse; justify-content:flex-end; gap:4px; }
+.star-rating input { display:none; }
+.star-rating label {
+  font-size:2.5rem; color:#ddd; cursor:pointer;
+  transition:color .15s;
+}
+.star-rating input:checked ~ label,
+.star-rating label:hover,
+.star-rating label:hover ~ label { color:#C9A84C; }
+.review-wrap { max-width:600px; margin:0 auto; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5 review-wrap">
+
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb" style="font-size:13px;">
+      <li class="breadcrumb-item"><a href="/" style="color:#C9A84C;">Trang chủ</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'bookings:detail' booking.pk %}" style="color:#C9A84C;">Booking #{{ booking.id }}</a></li>
+      <li class="breadcrumb-item active">Viết đánh giá</li>
+    </ol>
+  </nav>
+
+  <!-- Điều kiện đánh giá — chỉ sau khi checked out -->
+  <div class="alert" style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:13px;">
+    <strong>✅ Xác nhận đủ điều kiện:</strong>
+    Bạn đã trả phòng thành công và có thể để lại đánh giá cho chuyến ở này.
+    <br>
+    <span style="color:#065f46;font-size:12px;">📝 Đánh giá của bạn giúp khách sạn cải thiện dịch vụ và hỗ trợ những khách hàng sau.</span>
+  </div>
+
+  <div class="bg-white rounded-3 shadow-sm p-4">
+
+    <!-- Hotel info -->
+    <div class="d-flex align-items-center gap-3 mb-4 p-3 rounded-2" style="background:#f8f7f4;">
+      {% if hotel.image %}
+        <img src="{{ hotel.image.url }}" class="rounded-2" style="width:64px;height:64px;object-fit:cover;" alt="{{ hotel.name }}">
+      {% elif hotel.thumbnail_url %}
+        <img src="{{ hotel.thumbnail_url }}" class="rounded-2" style="width:64px;height:64px;object-fit:cover;" alt="{{ hotel.name }}">
+      {% else %}
+        <div style="width:64px;height:64px;border-radius:8px;background:linear-gradient(135deg,#C9A84C,#a07a10);display:flex;align-items:center;justify-content:center;font-size:1.8rem;">🏨</div>
+      {% endif %}
+      <div>
+        <div style="font-size:11px;color:#888;letter-spacing:1px;text-transform:uppercase;">Đánh giá cho</div>
+        <div style="font-weight:700;font-size:1rem;">{{ hotel.name }}</div>
+        <div style="font-size:12px;color:#888;margin-top:2px;">
+          {% if booking.is_hourly %}
+            ⏰ {{ booking.check_in_dt|date:"H:i d/m/Y" }} → {{ booking.check_out_dt|date:"H:i d/m/Y" }}
+          {% else %}
+            📅 {{ booking.check_in|date:"d/m/Y" }} → {{ booking.check_out|date:"d/m/Y" }}
+          {% endif %}
+          · Phòng {{ booking.room.room_number }}
+        </div>
+      </div>
+    </div>
+
+    <form method="post">
+      {% csrf_token %}
+
+      <!-- Rating sao -->
+      <div class="mb-4">
+        <label class="form-label" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#888;font-weight:600;">
+          Chấm điểm tổng thể
+        </label>
+        <div class="star-rating" id="starRating">
+          {% for val in "54321" %}
+          <input type="radio" name="rating" id="star{{ val }}" value="{{ val }}"
+                 {% if form.rating.value == val %}checked{% endif %}>
+          <label for="star{{ val }}" title="{{ val }} sao">★</label>
+          {% endfor %}
+        </div>
+        <div id="ratingLabel" style="font-size:13px;color:#888;margin-top:8px;height:18px;"></div>
+        {% if form.rating.errors %}
+          <div class="text-danger" style="font-size:12px;margin-top:4px;">Vui lòng chọn số sao.</div>
+        {% endif %}
+      </div>
+
+      <!-- Nhận xét -->
+      <div class="mb-4">
+        <label for="comment" class="form-label" style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#888;font-weight:600;">
+          Nhận xét của bạn
+        </label>
+        <textarea id="comment" name="comment" class="form-control" rows="5"
+                  placeholder="Chia sẻ trải nghiệm của bạn — phòng ốc, dịch vụ, nhân viên, vị trí..."
+                  style="font-size:14px;line-height:1.6;">{{ form.comment.value|default:'' }}</textarea>
+        <div style="font-size:11px;color:#aaa;text-align:right;margin-top:4px;" id="commentCount">0 ký tự</div>
+        {% if form.comment.errors %}
+          <div class="text-danger" style="font-size:12px;">{{ form.comment.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="d-flex gap-3">
+        <button type="submit" class="btn btn-gold px-5 py-2">⭐ Gửi đánh giá</button>
+        <a href="{% url 'bookings:detail' booking.pk %}" class="btn btn-outline-secondary px-4">Hủy</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+const ratingLabels = {
+  '1': '😞 Rất tệ',
+  '2': '😐 Không hài lòng',
+  '3': '🙂 Bình thường',
+  '4': '😊 Hài lòng',
+  '5': '🤩 Tuyệt vời!'
+};
+document.querySelectorAll('.star-rating input').forEach(input => {
+  input.addEventListener('change', () => {
+    document.getElementById('ratingLabel').textContent = ratingLabels[input.value] || '';
+  });
+});
+const commentEl = document.getElementById('comment');
+const countEl   = document.getElementById('commentCount');
+commentEl?.addEventListener('input', () => {
+  countEl.textContent = commentEl.value.length + ' ký tự';
+});
+// Init counter
+if (commentEl) countEl.textContent = commentEl.value.length + ' ký tự';
+</script>
+{% endblock %}
+{% endblock %}

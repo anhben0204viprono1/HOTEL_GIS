@@ -47,13 +47,18 @@
         </td>
         <td>
           {% if u != request.user %}
-          <form method="post" action="{% url 'dashboard:user_toggle' u.pk %}" style="display:inline;"
-                onsubmit="return confirm('{% if u.is_active %}Khóa{% else %}Mở khóa{% endif %} tài khoản {{ u.username }}?')">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}" style="font-size:11px;padding:4px 10px;">
-              {% if u.is_active %}🔒 Khóa{% else %}🔓 Mở{% endif %}
-            </button>
-          </form>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <form method="post" action="{% url 'dashboard:user_toggle' u.pk %}" style="display:inline;"
+                  onsubmit="return confirm('{% if u.is_active %}Khóa{% else %}Mở khóa{% endif %} tài khoản {{ u.username }}?')">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}" style="font-size:11px;padding:4px 10px;">
+                {% if u.is_active %}🔒 Khóa{% else %}🔓 Mở{% endif %}
+              </button>
+            </form>
+            {% if request.user.is_superuser %}
+            <a href="{% url 'dashboard:user_permissions' u.pk %}" class="btn btn-sm btn-outline-primary" style="font-size:11px;padding:4px 10px;">🔑 Phân quyền</a>
+            {% endif %}
+          </div>
           {% else %}
             <span style="font-size:11px;color:#aaa;">(Bạn)</span>
           {% endif %}

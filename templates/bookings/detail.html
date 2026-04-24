@@ -86,22 +86,34 @@
         <span>Phòng {{ booking.room.room_number }}{% if booking.room.floor %} — Tầng {{ booking.room.floor }}{% endif %}</span>
       </div>
       <div class="detail-row">
+        <span class="detail-label">Loại đặt phòng</span>
+        <span>{% if booking.is_hourly %}⏰ Theo giờ{% else %}📅 Theo ngày{% endif %}</span>
+      </div>
+      <div class="detail-row">
         <span class="detail-label">Nhận phòng</span>
         <span class="fw-semibold" style="color:#15803d;">
-          {{ booking.check_in|date:"l, d/m/Y" }}
-          <small class="text-muted fw-normal">({{ booking.room.hotel.check_in_time|time:"H:i" }})</small>
+          {% if booking.is_hourly %}
+            {{ booking.check_in_dt|date:"H:i — d/m/Y" }}
+          {% else %}
+            {{ booking.check_in|date:"l, d/m/Y" }}
+            <small class="text-muted fw-normal">({{ booking.room.hotel.check_in_time|time:"H:i" }})</small>
+          {% endif %}
         </span>
       </div>
       <div class="detail-row">
         <span class="detail-label">Trả phòng</span>
         <span class="fw-semibold" style="color:#dc2626;">
-          {{ booking.check_out|date:"l, d/m/Y" }}
-          <small class="text-muted fw-normal">({{ booking.room.hotel.check_out_time|time:"H:i" }})</small>
+          {% if booking.is_hourly %}
+            {{ booking.check_out_dt|date:"H:i — d/m/Y" }}
+          {% else %}
+            {{ booking.check_out|date:"l, d/m/Y" }}
+            <small class="text-muted fw-normal">({{ booking.room.hotel.check_out_time|time:"H:i" }})</small>
+          {% endif %}
         </span>
       </div>
       <div class="detail-row">
         <span class="detail-label">Thời gian lưu trú</span>
-        <span>{{ booking.nights }} đêm</span>
+        <span>{% if booking.is_hourly %}{{ booking.hours }} giờ{% else %}{{ booking.nights }} đêm{% endif %}</span>
       </div>
       <div class="detail-row">
         <span class="detail-label">Số khách</span>
@@ -120,7 +132,7 @@
           <div>
             <div style="font-size:11px;color:#856404;letter-spacing:1px;text-transform:uppercase;">Tổng tiền</div>
             <div style="font-size:12px;color:#a07a10;margin-top:2px;">
-              {{ booking.nights }} đêm × {{ booking.room.room_type.price_per_night|floatformat:0 }} ₫/đêm
+              {% if booking.is_hourly %}{{ booking.hours }} giờ × ... ₫/giờ{% else %}{{ booking.nights }} đêm × {{ booking.room.room_type.price_per_night|floatformat:0 }} ₫/đêm{% endif %}
             </div>
           </div>
           <div style="font-size:1.6rem;font-weight:700;color:#C9A84C;">
@@ -139,6 +151,32 @@
     <a href="{% url 'hotels:detail' booking.room.hotel.slug %}" class="btn btn-outline-secondary px-4">
       🏨 Xem khách sạn
     </a>
+    {% if booking.status == 'pending' or booking.status == 'confirmed' %}
+      <a href="{% url 'bookings:payment' booking.id %}" class="btn btn-outline-primary px-4">
+        💳 Thanh toán
+      </a>
+    {% endif %}
+    {% if booking.status == 'confirmed' or booking.status == 'checked_in' %}
+      <a href="{% url 'bookings:detail_user' booking.pk %}" class="btn btn-outline-primary px-4">
+        🛎 Gọi dịch vụ
+      </a>
+      <a href="{% url 'bookings:amenity_usage' booking.pk %}" class="btn btn-outline-success px-4">
+        ✨ Tiện nghi
+      </a>
+    {% endif %}
+    {% if booking.status == 'checked_out' %}
+      {% if booking.can_review %}
+        <a href="{% url 'bookings:review' booking.pk %}" class="btn btn-gold px-4">
+          ⭐ Viết đánh giá
+        </a>
+      {% else %}
+        <span class="btn btn-outline-secondary px-4 disabled">✅ Đã đánh giá</span>
+      {% endif %}
+    {% elif booking.status in 'pending,confirmed,checked_in' %}
+      <span class="btn btn-outline-secondary px-4 disabled" title="Chỉ có thể đánh giá sau khi trả phòng">
+        🔒 Đánh giá (sau trả phòng)
+      </span>
+    {% endif %}
     {% if booking.can_cancel %}
       <button class="btn btn-outline-danger px-4" onclick="showCancelModal()">
         ✕ Hủy đặt phòng

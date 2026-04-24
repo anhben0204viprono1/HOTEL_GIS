@@ -115,8 +115,27 @@
 
     <div class="col-lg-5">
       <div class="form-section">
-        <div class="form-section-title">📝 Mô tả</div>
-        <textarea name="description" class="form-control" rows="4" placeholder="Mô tả khách sạn...">{{ hotel.description|default:'' }}</textarea>
+        <div class="form-section-title">📝 Mô tả khách sạn</div>
+        <div class="mb-3">
+          <label class="form-label" style="font-size:12px;font-weight:600;">
+            Mô tả ngắn
+            <span style="font-size:11px;color:#aaa;font-weight:400;">(hiển thị trong card danh sách & hero — tối đa 300 ký tự)</span>
+          </label>
+          <input type="text" name="short_description" class="form-control" maxlength="300"
+                 value="{{ hotel.short_description|default:'' }}"
+                 placeholder="VD: Khách sạn 5 sao sang trọng tại trung tâm Quận 1, với view sông Sài Gòn...">
+          <div style="font-size:11px;color:#aaa;text-align:right;margin-top:3px;" id="shortDescCount">
+            <span id="sdcNum">{{ hotel.short_description|length }}</span>/300
+          </div>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:12px;font-weight:600;">
+            Mô tả dài (chi tiết)
+            <span style="font-size:11px;color:#aaa;font-weight:400;">(hiển thị trong trang chi tiết khách sạn)</span>
+          </label>
+          <textarea name="description" class="form-control" rows="6"
+                    placeholder="Mô tả đầy đủ về khách sạn, lịch sử, phong cách, vị trí...">{{ hotel.description|default:'' }}</textarea>
+        </div>
       </div>
 
       <div class="form-section">
@@ -157,6 +176,30 @@
         <input type="file" id="galInput" name="gallery_images" accept="image/*" multiple style="display:none" onchange="handleFiles(this.files)">
         <div class="img-grid" id="newGrid"></div>
         <div id="galCaps"></div>
+      </div>
+
+      <!-- Tiện nghi cấp khách sạn -->
+      <div class="form-section">
+        <div class="form-section-title">🏊 Tiện nghi khách sạn (Hotel-level Amenities)</div>
+        <p style="font-size:12px;color:#888;margin-bottom:12px;">Tiện nghi chung của khách sạn (hồ bơi, gym, spa...) — hiển thị trong trang chi tiết.</p>
+        {% if amenities_all %}
+          {% regroup amenities_all by get_category_display as amenity_groups %}
+          {% for group in amenity_groups %}
+            <div style="font-size:11px;font-weight:700;color:#888;letter-spacing:1px;text-transform:uppercase;margin:10px 0 6px;">{{ group.grouper }}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+              {% for a in group.list %}
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;padding:6px 12px;border:1px solid #e0e0e0;border-radius:8px;cursor:pointer;background:{% if a.id in hotel_amenity_ids %}#fff9ec{% else %}#fff{% endif %};">
+                <input type="checkbox" name="hotel_amenities" value="{{ a.id }}"
+                       {% if a.id in hotel_amenity_ids %}checked{% endif %}
+                       style="accent-color:#C9A84C;">
+                <span>{% if a.icon %}{{ a.icon }} {% endif %}{{ a.name }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <p style="font-size:13px;color:#aaa;">Chưa có tiện nghi nào. Thêm qua Django Admin.</p>
+        {% endif %}
       </div>
 
       <div class="d-grid gap-2">
@@ -366,6 +409,16 @@ function delExist(id){
   c.style.opacity='.3'; c.style.pointerEvents='none';
   const df=document.getElementById('delImgIds');
   if(df){const cur=df.value?df.value.split(',').filter(x=>x):[];cur.push(id);df.value=cur.join(',');}
+}
+
+// Short description char counter
+const sdInput = document.querySelector('[name="short_description"]');
+const sdcNum  = document.getElementById('sdcNum');
+if (sdInput && sdcNum) {
+  sdInput.addEventListener('input', () => {
+    sdcNum.textContent = sdInput.value.length;
+    sdcNum.style.color = sdInput.value.length > 280 ? '#dc2626' : '#aaa';
+  });
 }
 </script>
 {% endblock %}

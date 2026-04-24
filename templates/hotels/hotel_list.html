@@ -306,18 +306,35 @@
 {% block content %}
 
 <!-- ══════════ HERO ══════════ -->
-<section id="hero" class="px-3">
+{% if homepage_config.site_announcement %}
+<div style="background:#C9A84C;color:#0f1117;text-align:center;padding:10px 16px;font-size:13px;font-weight:600;position:relative;z-index:100;">
+  {{ homepage_config.site_announcement }}
+</div>
+{% endif %}
+
+<section id="hero" class="px-3"
+  style="background: linear-gradient(160deg, rgba(13,13,13,.92) 0%, rgba(13,13,13,.55) 60%, rgba(13,13,13,.8) 100%), url('{{ homepage_config.hero_image_url }}') center/cover;">
   <div class="container text-center position-relative" style="z-index:1;">
-    <p class="hero-tagline">Hệ thống GIS · Tích hợp bản đồ · Dịch vụ phòng</p>
-    <h1 class="hero-title">
-      Khám Phá <em>Khách Sạn</em><br>Tốt Nhất Việt Nam
-    </h1>
+    <p class="hero-tagline">{{ homepage_config.hero_tagline }}</p>
+    <h1 class="hero-title">{{ homepage_config.hero_title }}</h1>
+    {% if homepage_config.hero_subtitle %}
+    <p style="color:rgba(255,255,255,.65);font-size:15px;margin-top:8px;font-weight:300;">
+      {{ homepage_config.hero_subtitle }}
+    </p>
+    {% endif %}
     <div class="hero-stat">
       <span>🏨</span>
       <span><strong>{{ total }}</strong> khách sạn đang hiển thị</span>
       <span style="color:rgba(255,255,255,.3)">·</span>
       <span>📍 TP. Hồ Chí Minh & lân cận</span>
     </div>
+    {% if homepage_config.hero_cta_text %}
+    <div class="mt-4">
+      <a href="#hotel-list" class="btn btn-gold px-5 py-2" style="font-size:14px;letter-spacing:1px;border-radius:30px;">
+        {{ homepage_config.hero_cta_text }} ↓
+      </a>
+    </div>
+    {% endif %}
   </div>
 </section>
 
@@ -327,8 +344,8 @@
     <div class="row align-items-end mb-2">
       <div class="col-md-6">
         <p class="section-label">Tiện Ích Nổi Bật</p>
-        <h2 class="section-title">Trải Nghiệm <em style="color:var(--gold);font-style:italic;">Đẳng Cấp</em></h2>
-        <p class="text-muted mt-2" style="font-size:13px;">Hàng trăm tiện ích được tích hợp sẵn trong từng phòng khách sạn.</p>
+        <h2 class="section-title">{{ homepage_config.showcase_title|default:"Trải Nghiệm Đẳng Cấp" }}</h2>
+        <p class="text-muted mt-2" style="font-size:13px;">{{ homepage_config.showcase_subtitle|default:"Hàng trăm tiện ích được tích hợp sẵn trong từng phòng khách sạn." }}</p>
       </div>
     </div>
 
@@ -460,7 +477,10 @@
                   <span class="badge-star rounded flex-shrink-0" style="font-size:10px;">{{ hotel.star_rating }}★</span>
                 </div>
                 <p class="text-muted mb-1" style="font-size:11px;">📍 {{ hotel.city }}</p>
-                <p class="mb-2" style="font-size:11px;color:#888;">{{ hotel.address|truncatechars:48 }}</p>
+                <p class="mb-1" style="font-size:11px;color:#888;">{{ hotel.address|truncatechars:48 }}</p>
+                {% if hotel.short_description %}
+                <p class="mb-2" style="font-size:11px;color:#666;line-height:1.5;">{{ hotel.short_description|truncatechars:90 }}</p>
+                {% endif %}
                 <div class="d-flex justify-content-between align-items-center">
                   <div>
                     <span style="font-size:13px;font-weight:700;color:var(--gold);">

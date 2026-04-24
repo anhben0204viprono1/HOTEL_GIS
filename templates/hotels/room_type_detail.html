@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% block title %}{{ room_type.name }} — {{ hotel.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+.cal-head { text-align:center; font-size:11px; color:#888; font-weight:600; padding:4px 0; }
+.cal-day {
+  aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  border-radius:8px; font-size:12px; font-weight:500; cursor:default;
+  border:1px solid transparent;
+}
+.cal-day.available { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+.cal-day.busy      { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+.cal-day.today     { border:2px solid #C9A84C !important; font-weight:700; }
+.cal-day.past      { background:#f3f4f6; color:#d1d5db; }
+.cal-day.empty     { background:transparent; border:none; }
+.amenity-tag {
+  display:inline-block; background:#fff3cd; color:#856404;
+  padding:5px 12px; border-radius:20px; font-size:12px; margin:3px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:960px;">
+
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/" style="color:#C9A84C;">Trang chủ</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'hotels:detail' hotel.slug %}" style="color:#C9A84C;">{{ hotel.name }}</a></li>
+      <li class="breadcrumb-item active">{{ room_type.name }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+
+    <!-- ─── Trái: ảnh + thông tin ─── -->
+    <div class="col-lg-7">
+
+      <!-- Ảnh -->
+      {% if room_type.image %}
+        <img src="{{ room_type.image.url }}" class="img-fluid rounded-3 mb-4 w-100"
+             style="max-height:340px;object-fit:cover;" alt="{{ room_type.name }}">
+      {% elif room_type.thumbnail_url %}
+        <img src="{{ room_type.thumbnail_url }}" class="img-fluid rounded-3 mb-4 w-100"
+             style="max-height:340px;object-fit:cover;" alt="{{ room_type.name }}">
+      {% endif %}
+
+      <!-- Gallery -->
+      {% with images=room_type.images.all %}
+      {% if images %}
+      <div class="d-flex gap-2 mb-4 overflow-auto pb-1">
+        {% for img in images %}
+          <img src="{{ img.image.url }}" class="rounded-2"
+               style="height:80px;width:120px;object-fit:cover;flex-shrink:0;"
+               alt="{{ img.caption|default:room_type.name }}">
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <!-- Thông tin -->
+      <div class="bg-white rounded-3 shadow-sm p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div>
+            <h3 style="font-family:'Cormorant Garamond',serif;">{{ room_type.name }}</h3>
+            <p class="text-muted mb-0" style="font-size:13px;">{{ hotel.name }}</p>
+          </div>
+          <div class="text-end">
+            <div style="font-size:1.5rem;font-weight:700;color:#C9A84C;">
+              {{ room_type.price_per_night|floatformat:0 }} ₫
+            </div>
+            <div style="font-size:11px;color:#888;">/đêm</div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3" style="font-size:13px;">
+          <div class="col-6">
+            <span style="color:#888;">👥 Sức chứa:</span>
+            <strong>{{ room_type.max_occupancy }} người</strong>
+          </div>
+          {% if room_type.bed_type %}
+          <div class="col-6">
+            <span style="color:#888;">🛏 Giường:</span>
+            <strong>{{ room_type.get_bed_type_display }}</strong>
+          </div>
+          {% endif %}
+          {% if room_type.area_sqm %}
+          <div class="col-6">
+            <span style="color:#888;">📐 Diện tích:</span>
+            <strong>{{ room_type.area_sqm }} m²</strong>
+          </div>
+          {% endif %}
+          <div class="col-6">
+            <span style="color:#888;">🚪 Còn trống:</span>
+            <strong style="color:{% if available_now > 0 %}#065f46{% else %}#991b1b{% endif %};">
+              {{ available_now }} phòng
+            </strong>
+          </div>
+        </div>
+
+        {% if room_type.description %}
+        <p class="text-muted" style="font-size:14px;">{{ room_type.description }}</p>
+        {% endif %}
+
+        {% if room_type.amenities.exists %}
+        <hr class="my-3">
+        <h6 style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#888;">Tiện ích</h6>
+        <div class="mt-2">
+          {% for a in room_type.amenities.all %}
+            <span class="amenity-tag">{{ a.name }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Nút đặt phòng -->
+      {% if available_now > 0 %}
+      <a href="{% url 'bookings:create' room_type.pk %}"
+         class="btn btn-gold btn-lg w-100 mb-2" style="border-radius:12px;font-size:15px;padding:14px;">
+        🏨 Đặt phòng ngay — {{ room_type.price_per_night|floatformat:0 }} ₫/đêm
+      </a>
+      {% else %}
+      <button class="btn btn-secondary btn-lg w-100 mb-2" disabled style="border-radius:12px;">
+        😔 Hết phòng trống
+      </button>
+      {% endif %}
+      <a href="{% url 'hotels:detail' hotel.slug %}" class="btn btn-outline-secondary w-100">
+        ← Quay lại khách sạn
+      </a>
+    </div>
+
+    <!-- ─── Phải: lịch 60 ngày ─── -->
+    <div class="col-lg-5">
+      <div class="bg-white rounded-3 shadow-sm p-4" style="position:sticky;top:80px;">
+        <h6 style="font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#888;margin-bottom:16px;">
+          📅 Lịch trống / bận (60 ngày tới)
+        </h6>
+
+        <!-- Legend -->
+        <div class="d-flex gap-3 mb-3" style="font-size:11px;">
+          <span><span style="display:inline-block;width:12px;height:12px;background:#d1fae5;border:1px solid #6ee7b7;border-radius:3px;"></span> Còn trống</span>
+          <span><span style="display:inline-block;width:12px;height:12px;background:#fee2e2;border:1px solid #fca5a5;border-radius:3px;"></span> Đã đặt</span>
+          <span><span style="display:inline-block;width:12px;height:12px;border:2px solid #C9A84C;border-radius:3px;"></span> Hôm nay</span>
+        </div>
+
+        <!-- Header thứ -->
+        <div class="cal-grid mb-1">
+          {% for d in "THTWNGS" %}
+          <div class="cal-head">
+            {% if forloop.counter == 1 %}T2
+            {% elif forloop.counter == 2 %}T3
+            {% elif forloop.counter == 3 %}T4
+            {% elif forloop.counter == 4 %}T5
+            {% elif forloop.counter == 5 %}T6
+            {% elif forloop.counter == 6 %}T7
+            {% else %}CN{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Lưới ngày -->
+        <div class="cal-grid" id="calGrid">
+          {# Padding cho ngày đầu tiên #}
+          {% with first_day=calendar_days.0 %}
+            {% for i in first_day.weekday|rjust:1 %}
+              <div class="cal-day empty"></div>
+            {% endfor %}
+            {# Render padding bằng JS #}
+          {% endwith %}
+
+          {% for day in calendar_days %}
+          <div class="cal-day {% if day.is_busy %}busy{% else %}available{% endif %} {% if day.is_today %}today{% endif %}"
+               title="{{ day.date|date:'d/m/Y' }} — {% if day.is_busy %}Đã đặt{% else %}Còn trống{% endif %}">
+            {{ day.date.day }}
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="mt-3 p-3 rounded-2" style="background:#f8f7f4;font-size:12px;color:#666;">
+          ⏱ Lịch cập nhật theo thời gian thực. Số phòng thực tế có thể thay đổi.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Thêm padding đầu tháng/tuần cho calendar
+(function() {
+  const grid = document.getElementById('calGrid');
+  if (!grid) return;
+  const firstDayData = {{ calendar_days.0.weekday }};
+  // weekday: 0=Monday...6=Sunday, lịch bắt đầu từ T2
+  for (let i = 0; i < firstDayData; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'cal-day empty';
+    grid.insertBefore(empty, grid.firstChild);
+  }
+})();
+</script>
+{% endblock %}

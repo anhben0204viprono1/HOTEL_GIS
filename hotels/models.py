@@ -92,7 +92,12 @@ class Hotel(models.Model):
     star_rating     = models.SmallIntegerField(
         choices=STAR_CHOICES, default=3, verbose_name='Số sao'
     )
-    description     = models.TextField(blank=True, verbose_name='Mô tả')
+    short_description = models.CharField(
+        max_length=300, blank=True,
+        verbose_name='Mô tả ngắn',
+        help_text='Hiển thị trong card danh sách và hero. Tối đa 300 ký tự.'
+    )
+    description     = models.TextField(blank=True, verbose_name='Mô tả dài (chi tiết)')
     thumbnail_url   = models.CharField(max_length=500, blank=True, verbose_name='URL ảnh đại diện')
     image           = models.ImageField(
         upload_to='hotels/', blank=True, null=True,
@@ -105,6 +110,13 @@ class Hotel(models.Model):
     check_out_time  = models.TimeField(default='12:00', verbose_name='Giờ trả phòng')
 
     is_active       = models.BooleanField(default=True, verbose_name='Đang hoạt động')
+    # Tiện nghi cấp khách sạn (spa, gym, pool, etc.)
+    amenities       = models.ManyToManyField(
+        'Amenity',
+        blank=True,
+        related_name='hotels',
+        verbose_name='Tiện nghi khách sạn'
+    )
     created_at      = models.DateTimeField(auto_now_add=True)
     updated_at      = models.DateTimeField(auto_now=True)
 
@@ -192,7 +204,12 @@ class RoomType(models.Model):
         related_name='room_types', verbose_name='Khách sạn'
     )
     name            = models.CharField(max_length=100, verbose_name='Tên loại phòng')
-    description     = models.TextField(blank=True, verbose_name='Mô tả')
+    short_description = models.CharField(
+        max_length=300, blank=True,
+        verbose_name='Mô tả ngắn',
+        help_text='Hiển thị trong card danh sách và hero. Tối đa 300 ký tự.'
+    )
+    description     = models.TextField(blank=True, verbose_name='Mô tả dài (chi tiết)')
     max_occupancy   = models.SmallIntegerField(default=2, verbose_name='Sức chứa tối đa (người)')
     bed_type        = models.CharField(
         max_length=50, choices=BED_CHOICES,
@@ -205,6 +222,12 @@ class RoomType(models.Model):
     price_per_night = models.DecimalField(
         max_digits=12, decimal_places=2,
         verbose_name='Giá / đêm (VNĐ)'
+    )
+    price_per_hour  = models.DecimalField(
+        max_digits=12, decimal_places=2,
+        null=True, blank=True,
+        verbose_name='Giá / giờ (VNĐ)',
+        help_text='Để trống sẽ tự tính = giá đêm / 24'
     )
     thumbnail_url   = models.CharField(max_length=500, blank=True, verbose_name='URL ảnh')
     image           = models.ImageField(
@@ -467,3 +490,76 @@ class ServiceRequest(models.Model):
         if self.guest:
             return self.guest.get_full_name() or self.guest.username
         return self.guest_name or 'Khách vãng lai'
+
+# ─── HomepageConfig — Cấu hình trang chủ do admin chỉnh ──────────────────────
+
+class HomepageConfig(models.Model):
+    """
+    Singleton model — chỉ có 1 record (id=1).
+    Admin vào /dashboard/homepage/ để chỉnh hero section và nội dung trang chủ.
+    """
+    # Hero section
+    hero_tagline    = models.CharField(
+        max_length=150, default='Hệ thống GIS · Tích hợp bản đồ · Dịch vụ phòng',
+        verbose_name='Tagline (chữ nhỏ trên hero)'
+    )
+    hero_title      = models.CharField(
+        max_length=200, default='Khám Phá Khách Sạn Tốt Nhất Việt Nam',
+        verbose_name='Tiêu đề hero lớn'
+    )
+    hero_subtitle   = models.CharField(
+        max_length=300, blank=True,
+        default='',
+        verbose_name='Phụ đề hero (dòng nhỏ dưới tiêu đề)'
+    )
+    hero_image_url  = models.CharField(
+        max_length=500,
+        default='https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=1800&q=80',
+        verbose_name='URL ảnh nền hero'
+    )
+    hero_cta_text   = models.CharField(
+        max_length=80, default='Khám phá ngay',
+        verbose_name='Nút CTA hero (text)'
+    )
+
+    # Amenity showcase section
+    showcase_title  = models.CharField(
+        max_length=150, default='Trải Nghiệm Đẳng Cấp',
+        verbose_name='Tiêu đề section tiện nghi'
+    )
+    showcase_subtitle = models.CharField(
+        max_length=300, blank=True,
+        default='Hàng trăm tiện ích được tích hợp sẵn trong từng phòng khách sạn.',
+        verbose_name='Mô tả section tiện nghi'
+    )
+
+    # Promo / intro section
+    promo_title     = models.CharField(
+        max_length=150, blank=True, default='',
+        verbose_name='Tiêu đề promo section'
+    )
+    promo_body      = models.TextField(
+        blank=True, default='',
+        verbose_name='Nội dung promo (HTML hoặc text)'
+    )
+
+    # Footer / site-wide
+    site_announcement = models.TextField(
+        blank=True, default='',
+        verbose_name='Thông báo nổi (hiển thị đầu trang nếu có)'
+    )
+
+    updated_at      = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name        = 'Cấu hình trang chủ'
+        verbose_name_plural = 'Cấu hình trang chủ'
+
+    def __str__(self):
+        return 'Cấu hình trang chủ'
+
+    @classmethod
+    def get(cls):
+        """Lấy singleton — tự tạo nếu chưa có."""
+        obj, _ = cls.objects.get_or_create(pk=1)
+        return obj

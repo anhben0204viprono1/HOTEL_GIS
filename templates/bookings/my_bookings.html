@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Đặt phòng của tôi{% endblock %}
+
+{% block extra_css %}
+<style>
+.booking-card { border:none; border-radius:14px; box-shadow:0 2px 12px rgba(0,0,0,.06); transition:box-shadow .2s; }
+.booking-card:hover { box-shadow:0 6px 24px rgba(0,0,0,.1); }
+.status-badge { display:inline-block; padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; }
+.s-pending     { background:#fef3c7; color:#92400e; }
+.s-confirmed   { background:#d1fae5; color:#065f46; }
+.s-checked_in  { background:#dbeafe; color:#1e40af; }
+.s-checked_out { background:#f3f4f6; color:#374151; }
+.s-cancelled   { background:#fee2e2; color:#991b1b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <h4 style="font-family:'Cormorant Garamond',serif;margin-bottom:0;">🏨 Đặt phòng của tôi</h4>
+    <a href="{% url 'hotels:list' %}" class="btn btn-gold btn-sm">+ Đặt phòng mới</a>
+  </div>
+
+  {% if bookings %}
+    {% for booking in bookings %}
+    <div class="booking-card bg-white mb-3 p-4">
+      <div class="row align-items-center g-3">
+
+        <!-- Ảnh khách sạn -->
+        <div class="col-auto d-none d-sm-block">
+          {% with hotel=booking.room.hotel %}
+          {% if hotel.image %}
+            <img src="{{ hotel.image.url }}" class="rounded-2"
+                 style="width:80px;height:80px;object-fit:cover;" alt="{{ hotel.name }}">
+          {% elif hotel.thumbnail_url %}
+            <img src="{{ hotel.thumbnail_url }}" class="rounded-2"
+                 style="width:80px;height:80px;object-fit:cover;" alt="{{ hotel.name }}">
+          {% else %}
+            <div class="rounded-2 d-flex align-items-center justify-content-center"
+                 style="width:80px;height:80px;background:#f8f7f4;font-size:1.8rem;">🏨</div>
+          {% endif %}
+          {% endwith %}
+        </div>
+
+        <!-- Thông tin -->
+        <div class="col">
+          <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+            <div>
+              <div style="font-size:11px;color:#888;letter-spacing:1px;">#{{ booking.id }}</div>
+              <div style="font-weight:600;font-size:1rem;">{{ booking.room.hotel.name }}</div>
+              <div style="font-size:12px;color:#888;">
+                {{ booking.room.room_type.name }} · Phòng {{ booking.room.room_number }}
+              </div>
+            </div>
+            <span class="status-badge s-{{ booking.status }}">{{ booking.get_status_display }}</span>
+          </div>
+
+          <div class="d-flex gap-4 mt-2" style="font-size:13px;color:#666;">
+            <span>📅 {% if booking.is_hourly %}{{ booking.check_in_dt|date:"H:i d/m/Y" }}{% else %}{{ booking.check_in|date:"d/m/Y" }}{% endif %} → {% if booking.is_hourly %}{{ booking.check_out_dt|date:"H:i d/m/Y" }}{% else %}{{ booking.check_out|date:"d/m/Y" }}{% endif %}</span>
+            <span>🌙 {% if booking.is_hourly %}{{ booking.hours }} giờ{% else %}{{ booking.nights }} đêm{% endif %}</span>
+            <span style="color:#C9A84C;font-weight:600;">{{ booking.total_price|floatformat:0 }} ₫</span>
+          </div>
+        </div>
+
+        <!-- Hành động -->
+        <div class="col-auto d-flex flex-column gap-2">
+          <a href="{% url 'bookings:detail' booking.pk %}" class="btn btn-sm btn-outline-secondary">
+            Chi tiết
+          </a>
+          {% if booking.status == 'checked_out' and booking.can_review %}
+            <a href="{% url 'bookings:review' booking.pk %}" class="btn btn-sm btn-gold">
+              ⭐ Đánh giá
+            </a>
+          {% endif %}
+          {% if booking.status in 'confirmed,checked_in' %}
+            <a href="{% url 'bookings:detail_user' booking.pk %}" class="btn btn-sm btn-outline-primary">
+              🛎 Dịch vụ
+            </a>
+          {% endif %}
+        </div>
+
+      </div>
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <div class="text-center py-5" style="color:#aaa;">
+      <div style="font-size:4rem;margin-bottom:16px;">🏨</div>
+      <h5>Bạn chưa có đặt phòng nào</h5>
+      <p style="font-size:13px;">Khám phá hàng trăm khách sạn tuyệt vời</p>
+      <a href="{% url 'hotels:list' %}" class="btn btn-gold mt-2">Tìm khách sạn ngay</a>
+    </div>
+  {% endif %}
+
+</div>
+{% endblock %}

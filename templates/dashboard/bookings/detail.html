@@ -23,9 +23,17 @@
       {% include 'dashboard/bookings/_row.html' with label="Khách sạn" value=booking.room.hotel.name %}
       {% include 'dashboard/bookings/_row.html' with label="Loại phòng" value=booking.room.room_type.name %}
       {% include 'dashboard/bookings/_row.html' with label="Số phòng" value=booking.room.room_number %}
+      {% if booking.is_hourly %}
+      {% include 'dashboard/bookings/_row.html' with label="Loại" value="⏰ Theo giờ" %}
+      {% include 'dashboard/bookings/_row.html' with label="Check-in" value=booking.check_in_dt|date:"H:i — d/m/Y" %}
+      {% include 'dashboard/bookings/_row.html' with label="Check-out" value=booking.check_out_dt|date:"H:i — d/m/Y" %}
+      {% include 'dashboard/bookings/_row.html' with label="Số giờ" value=booking.hours %}
+      {% else %}
+      {% include 'dashboard/bookings/_row.html' with label="Loại" value="📅 Theo ngày" %}
       {% include 'dashboard/bookings/_row.html' with label="Check-in" value=booking.check_in|date:"l, d/m/Y" %}
       {% include 'dashboard/bookings/_row.html' with label="Check-out" value=booking.check_out|date:"l, d/m/Y" %}
       {% include 'dashboard/bookings/_row.html' with label="Số đêm" value=booking.nights %}
+      {% endif %}
       {% include 'dashboard/bookings/_row.html' with label="Số khách" value=booking.num_guests %}
 
       <div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f3f0eb;font-size:14px;">
@@ -41,6 +49,26 @@
       {% include 'dashboard/bookings/_row.html' with label="Lý do hủy" value=booking.cancel_reason %}
       {% endif %}
     </div>
+
+    <!-- Tiện nghi sử dụng -->
+    {% if amenity_usages %}
+    <div class="form-section" style="background:#fff;border-radius:12px;border:1px solid #e8e9ec;padding:24px;margin-bottom:20px;">
+      <div class="form-section-title" style="font-size:12px;font-weight:700;color:#888;letter-spacing:2px;text-transform:uppercase;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid #f0ede8;">
+        ✨ Tiện nghi đã sử dụng
+      </div>
+      {% for u in amenity_usages %}
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:13px;">
+        <span style="font-size:1.2rem;">{{ u.amenity.icon }}</span>
+        <div class="flex-grow-1">
+          <span class="fw-semibold">{{ u.amenity.name }}</span>
+          {% if u.note %}<span class="text-muted"> — {{ u.note }}</span>{% endif %}
+          <div style="font-size:11px;color:#aaa;">{{ u.used_at|date:"H:i d/m/Y" }}</div>
+        </div>
+        <span style="background:#d1fae5;color:#065f46;padding:2px 10px;border-radius:6px;font-size:12px;font-weight:600;">× {{ u.quantity }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
 
   </div>
 

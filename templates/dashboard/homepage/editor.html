@@ -1,0 +1,174 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Chỉnh sửa trang chủ{% endblock %}
+{% block page_title %}Chỉnh sửa trang chủ{% endblock %}
+
+{% block extra_css %}
+<style>
+  .editor-section { background:#fff; border-radius:12px; border:1px solid #e8e9ec; padding:24px; margin-bottom:20px; }
+  .editor-section-title { font-size:11px; font-weight:700; color:#888; letter-spacing:2px; text-transform:uppercase; margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid #f0ede8; }
+  .preview-hero {
+    border-radius:12px; overflow:hidden; margin-top:16px;
+    background: linear-gradient(160deg,rgba(13,13,13,.92),rgba(13,13,13,.55)),
+                var(--hero-bg, url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?w=800&q=60')) center/cover;
+    min-height:180px; display:flex; align-items:center; padding:32px;
+  }
+  .preview-hero .tagline { font-size:10px; letter-spacing:4px; color:#C9A84C; text-transform:uppercase; margin-bottom:8px; }
+  .preview-hero .title { font-family:'Cormorant Garamond',serif; font-size:1.8rem; font-weight:300; color:#fff; }
+  .preview-hero .subtitle { color:rgba(255,255,255,.6); font-size:13px; margin-top:8px; }
+  .char-count { font-size:11px; color:#aaa; float:right; margin-top:4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h4>🖼 Chỉnh sửa trang chủ</h4>
+    <p style="color:#888;font-size:13px;margin:0;">Thay đổi sẽ áp dụng ngay khi lưu</p>
+  </div>
+  <a href="/" target="_blank" class="btn btn-outline-secondary btn-sm">🔗 Xem trang chủ</a>
+</div>
+
+<form method="post">
+  {% csrf_token %}
+
+  <!-- HERO SECTION -->
+  <div class="editor-section">
+    <div class="editor-section-title">🦸 Hero Section — Phần đầu trang</div>
+
+    <div class="mb-3">
+      <label class="form-label">Tagline (dòng nhỏ phía trên)</label>
+      <input type="text" name="hero_tagline" class="form-control" maxlength="150"
+             value="{{ config.hero_tagline }}" id="heroTaglineInput"
+             placeholder="VD: Hệ thống GIS · Tích hợp bản đồ · Dịch vụ phòng">
+      <div class="char-count"><span id="taglineCount">{{ config.hero_tagline|length }}</span>/150</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Tiêu đề lớn</label>
+      <input type="text" name="hero_title" class="form-control" maxlength="200"
+             value="{{ config.hero_title }}" id="heroTitleInput"
+             placeholder="VD: Khám Phá Khách Sạn Tốt Nhất Việt Nam">
+      <div class="char-count"><span id="titleCount">{{ config.hero_title|length }}</span>/200</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Phụ đề <span style="color:#aaa;">(không bắt buộc)</span></label>
+      <input type="text" name="hero_subtitle" class="form-control" maxlength="300"
+             value="{{ config.hero_subtitle }}"
+             placeholder="VD: Đặt phòng nhanh, giá tốt nhất, xác nhận ngay...">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">URL ảnh nền hero</label>
+      <input type="text" name="hero_image_url" class="form-control" id="heroImgUrl"
+             value="{{ config.hero_image_url }}"
+             placeholder="https://images.unsplash.com/...">
+      <div style="font-size:11px;color:#aaa;margin-top:4px;">Nên dùng ảnh 1800×900px hoặc từ Unsplash</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Text nút CTA</label>
+      <input type="text" name="hero_cta_text" class="form-control" maxlength="80"
+             value="{{ config.hero_cta_text }}" placeholder="VD: Khám phá ngay">
+    </div>
+
+    <!-- Live Preview -->
+    <div style="font-size:11px;color:#888;margin-bottom:8px;">📐 Preview (xấp xỉ)</div>
+    <div class="preview-hero" id="heroPreview">
+      <div>
+        <div class="tagline" id="pvTagline">{{ config.hero_tagline }}</div>
+        <div class="title" id="pvTitle">{{ config.hero_title }}</div>
+        {% if config.hero_subtitle %}
+        <div class="subtitle" id="pvSubtitle">{{ config.hero_subtitle }}</div>
+        {% else %}
+        <div class="subtitle" id="pvSubtitle" style="display:none;"></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- AMENITY SHOWCASE -->
+  <div class="editor-section">
+    <div class="editor-section-title">✨ Section Tiện Nghi</div>
+    <div class="row g-3">
+      <div class="col-md-6">
+        <label class="form-label">Tiêu đề section</label>
+        <input type="text" name="showcase_title" class="form-control" maxlength="150"
+               value="{{ config.showcase_title }}" placeholder="VD: Trải Nghiệm Đẳng Cấp">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Mô tả ngắn</label>
+        <input type="text" name="showcase_subtitle" class="form-control" maxlength="300"
+               value="{{ config.showcase_subtitle }}">
+      </div>
+    </div>
+  </div>
+
+  <!-- PROMO SECTION -->
+  <div class="editor-section">
+    <div class="editor-section-title">📢 Promo / Nội dung giới thiệu thêm</div>
+    <div class="mb-3">
+      <label class="form-label">Tiêu đề promo</label>
+      <input type="text" name="promo_title" class="form-control" maxlength="150"
+             value="{{ config.promo_title }}" placeholder="VD: Ưu đãi tháng này">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Nội dung <span style="color:#aaa;">(hỗ trợ HTML cơ bản)</span></label>
+      <textarea name="promo_body" class="form-control" rows="4"
+                placeholder="Nhập nội dung hiển thị trong section promo...">{{ config.promo_body }}</textarea>
+    </div>
+  </div>
+
+  <!-- ANNOUNCEMENT -->
+  <div class="editor-section">
+    <div class="editor-section-title">📣 Thông báo toàn site</div>
+    <div class="mb-3">
+      <label class="form-label">Nội dung thông báo <span style="color:#aaa;">(để trống = ẩn banner)</span></label>
+      <textarea name="site_announcement" class="form-control" rows="2"
+                placeholder="VD: 🔥 Ưu đãi cuối tuần — Giảm 20% tất cả phòng!">{{ config.site_announcement }}</textarea>
+    </div>
+    {% if config.site_announcement %}
+    <div style="background:#fff9ec;border:1.5px solid #C9A84C;border-radius:8px;padding:12px 16px;font-size:13px;">
+      <strong>Preview:</strong> {{ config.site_announcement }}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="d-flex gap-3">
+    <button type="submit" class="btn btn-gold px-5 py-2">✅ Lưu thay đổi</button>
+    <a href="/" target="_blank" class="btn btn-outline-secondary px-4">👁 Xem trang chủ</a>
+  </div>
+</form>
+
+{% block extra_js %}
+<script>
+// Live preview
+const heroTaglineInput = document.getElementById('heroTaglineInput');
+const heroTitleInput   = document.getElementById('heroTitleInput');
+const heroImgUrl       = document.getElementById('heroImgUrl');
+const pvTagline        = document.getElementById('pvTagline');
+const pvTitle          = document.getElementById('pvTitle');
+const pvSubtitle       = document.getElementById('pvSubtitle');
+const heroPreview      = document.getElementById('heroPreview');
+
+heroTaglineInput?.addEventListener('input', e => {
+  pvTagline.textContent = e.target.value;
+  document.getElementById('taglineCount').textContent = e.target.value.length;
+});
+heroTitleInput?.addEventListener('input', e => {
+  pvTitle.textContent = e.target.value;
+  document.getElementById('titleCount').textContent = e.target.value.length;
+});
+document.querySelector('[name="hero_subtitle"]')?.addEventListener('input', e => {
+  pvSubtitle.textContent = e.target.value;
+  pvSubtitle.style.display = e.target.value ? '' : 'none';
+});
+heroImgUrl?.addEventListener('input', e => {
+  if (e.target.value) {
+    heroPreview.style.backgroundImage =
+      `linear-gradient(160deg,rgba(13,13,13,.92),rgba(13,13,13,.55)),url('${e.target.value}')`;
+  }
+});
+</script>
+{% endblock %}
+{% endblock %}

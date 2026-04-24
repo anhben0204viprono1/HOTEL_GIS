@@ -1,3 +1,4 @@
+
 {% extends 'base.html' %}
 {% block title %}{{ hotel.name }} — Hotel GIS{% endblock %}
 
@@ -407,9 +408,18 @@
         <div class="hd-card">
           <p class="hd-section-label">Giới thiệu</p>
           <h2 class="hd-card-title">{{ hotel.name }}</h2>
-          <p style="color:#555; line-height:1.8; font-size:14px;">
-            {{ hotel.description|default:"Chưa có mô tả cho khách sạn này." }}
+          {% if hotel.short_description %}
+          <p style="color:#333; line-height:1.7; font-size:15px; font-weight:500; margin-bottom:12px; border-left:3px solid #C9A84C; padding-left:14px;">
+            {{ hotel.short_description }}
           </p>
+          {% endif %}
+          {% if hotel.description %}
+          <div style="color:#555; line-height:1.85; font-size:14px;" id="fullDescSection">
+            {{ hotel.description|linebreaksbr }}
+          </div>
+          {% else %}
+          <p style="color:#aaa;font-size:14px;">Chưa có mô tả chi tiết cho khách sạn này.</p>
+          {% endif %}
           <div class="hd-info-grid mt-4">
             {% if hotel.phone %}
             <div class="hd-info-item">
@@ -565,9 +575,11 @@
                 <div class="per">mỗi đêm · chưa gồm thuế</div>
               </div>
               <div style="display:flex; gap:10px; align-items:center;">
+                <a href="{% url 'hotels:room_type_detail' room.id %}" class="btn-book-outline">Chi tiết</a>
                 {% if user.is_authenticated %}
                   {% if room.available_rooms_count > 0 %}
                   <a href="{% url 'bookings:create' room.id %}" class="btn-book">Đặt ngay →</a>
+                  <a href="{% url 'bookings:create_hourly' room.id %}" class="btn-book-outline" style="font-size:11px;padding:8px 12px;">⏰ Theo giờ</a>
                   {% else %}
                   <span class="btn-book" style="opacity:.45; cursor:default;">Hết phòng</span>
                   {% endif %}
@@ -690,6 +702,109 @@
       </div>
 
     </div><!-- /row -->
+
+    <!-- ══ KHÁCH SẠN GẦN ĐÓ (< 3km) ══════════════════════════════ -->
+    {% if nearby %}
+    <div class="mt-5 pt-2">
+      <p class="hd-section-label">Xung quanh</p>
+      <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;color:var(--dark);margin-bottom:24px;">
+        Khách sạn gần đây
+      </h3>
+      <div class="row g-3">
+        {% for h in nearby %}
+        <div class="col-6 col-md-3">
+          <a href="{% url 'hotels:detail' h.slug %}" class="text-decoration-none">
+            <div style="background:#fff;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s;"
+                 onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 40px rgba(0,0,0,.1)'"
+                 onmouseout="this.style.transform='';this.style.boxShadow='var(--shadow)'">
+              {% if h.image %}
+                <img src="{{ h.image.url }}" style="width:100%;height:120px;object-fit:cover;" alt="{{ h.name }}">
+              {% elif h.thumbnail_url %}
+                <img src="{{ h.thumbnail_url }}" style="width:100%;height:120px;object-fit:cover;" alt="{{ h.name }}">
+              {% else %}
+                <div style="height:120px;background:#f5f4f0;display:flex;align-items:center;justify-content:center;font-size:2.5rem;">🏨</div>
+              {% endif %}
+              <div style="padding:14px;">
+                <div style="font-size:13px;font-weight:600;color:var(--dark);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  {{ h.name }}
+                </div>
+                <div style="color:var(--gold);font-size:12px;letter-spacing:1px;">
+                  {% for i in h.star_range %}★{% endfor %}
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:4px;">
+                 📍 {{ h.distance|floatformat:1 }} km
+                </div>
+              </div>
+            </div>
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ══ ĐÁNH GIÁ KHÁCH HÀNG ════════════════════════════════════ -->
+    <div class="mt-5 pt-2">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+        <div>
+          <p class="hd-section-label" style="margin-bottom:4px;">Đánh giá</p>
+          <h3 style="font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;color:var(--dark);margin:0;">
+            Khách hàng nói gì
+          </h3>
+        </div>
+        {% if avg_rating %}
+        <div style="display:flex;align-items:center;gap:16px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:16px 24px;box-shadow:var(--shadow);">
+          <div style="font-size:2.8rem;font-weight:700;color:var(--gold);font-family:'Cormorant Garamond',serif;line-height:1;">
+            {{ avg_rating }}
+          </div>
+          <div>
+            <div style="color:var(--gold);font-size:18px;letter-spacing:2px;margin-bottom:4px;">
+              {% for i in "12345" %}{% if forloop.counter <= avg_rating %}★{% else %}☆{% endif %}{% endfor %}
+            </div>
+            <div style="font-size:12px;color:var(--text-muted);">{{ review_count }} đánh giá</div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if reviews %}
+      <div class="row g-3">
+        {% for rv in reviews %}
+        <div class="col-md-6">
+          <div style="background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:24px;box-shadow:var(--shadow);height:100%;">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+              <div style="width:44px;height:44px;border-radius:50%;background:var(--gold-pale);border:1.5px solid rgba(201,168,76,.3);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">
+                👤
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:600;font-size:14px;color:var(--dark);">
+                  {{ rv.user.get_full_name|default:rv.user.username }}
+                </div>
+                <div style="font-size:11px;color:var(--text-muted);">{{ rv.created_at|date:"d/m/Y" }}</div>
+              </div>
+              <div style="color:var(--gold);font-size:15px;flex-shrink:0;">
+                {% for i in "12345" %}{% if forloop.counter <= rv.rating %}★{% else %}☆{% endif %}{% endfor %}
+              </div>
+            </div>
+            {% if rv.comment %}
+            <p style="font-size:13px;color:#555;line-height:1.75;margin:0;font-style:italic;">
+              "{{ rv.comment|truncatechars:200 }}"
+            </p>
+            {% else %}
+            <p style="font-size:12px;color:#bbb;margin:0;font-style:italic;">Không có nhận xét.</p>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:48px;text-align:center;box-shadow:var(--shadow);">
+        <div style="font-size:3rem;margin-bottom:12px;">💬</div>
+        <p style="color:var(--text-muted);font-size:14px;margin:0;">Chưa có đánh giá nào. Hãy là người đầu tiên!</p>
+      </div>
+      {% endif %}
+    </div>
+
   </div><!-- /container -->
 </div>
 

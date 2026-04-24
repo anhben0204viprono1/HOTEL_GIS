@@ -1,0 +1,253 @@
+
+{% extends 'base.html' %}
+{% block title %}Chi tiết đặt phòng #{{ booking.id }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+  {% if messages %}
+    {% for msg in messages %}
+    <div class="alert alert-{% if msg.tags == 'error' %}danger{% else %}success{% endif %} alert-dismissible fade show" style="border-radius:10px;">
+      {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{% url 'bookings:my_bookings' %}" style="color:#0d9488;text-decoration:none;font-size:13px;">← Đặt phòng của tôi</a>
+    <span style="color:#ddd;">|</span>
+    <span style="font-size:13px;color:#888;">Booking #{{ booking.id }}</span>
+  </div>
+
+  <div class="row g-4">
+
+    <!-- ═══ Cột trái: Thông tin booking ═══ -->
+    <div class="col-12 col-lg-7">
+
+      <!-- Hotel card -->
+      <div class="card border-0 shadow-sm mb-4" style="border-radius:14px;">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-start justify-content-between mb-3">
+            <div>
+              <div style="font-size:12px;color:#888;">⭐ {{ hotel.star_rating }} sao</div>
+              <h5 class="fw-bold mb-1">{{ hotel.name }}</h5>
+              <div style="font-size:13px;color:#666;">📍 {{ hotel.address }}</div>
+            </div>
+            <span style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:600;
+              {% if booking.status == 'confirmed' %}background:#d1fae5;color:#065f46;
+              {% elif booking.status == 'checked_in' %}background:#dbeafe;color:#1e40af;
+              {% elif booking.status == 'pending' %}background:#fef3c7;color:#92400e;
+              {% elif booking.status == 'cancelled' %}background:#fee2e2;color:#991b1b;
+              {% else %}background:#f3f4f6;color:#374151;{% endif %}">
+              {{ booking.get_status_display }}
+            </span>
+          </div>
+
+          <hr style="border-color:#f0f0f0;">
+
+          <div class="row g-3">
+            <div class="col-6">
+              <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Phòng</div>
+              <div style="font-weight:700;">P.{{ booking.room.room_number }}</div>
+              <div style="font-size:12px;color:#666;">{{ booking.room.room_type.name }}</div>
+            </div>
+            <div class="col-3">
+              <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Nhận phòng</div>
+              <div style="font-weight:700;">{{ booking.check_in|date:"d/m/Y" }}</div>
+              <div style="font-size:11px;color:#888;">{{ hotel.check_in_time|time:"H:i" }}</div>
+            </div>
+            <div class="col-3">
+              <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Trả phòng</div>
+              <div style="font-weight:700;">{{ booking.check_out|date:"d/m/Y" }}</div>
+              <div style="font-size:11px;color:#888;">{{ hotel.check_out_time|time:"H:i" }}</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Số đêm</div>
+              <div style="font-weight:700;">{{ booking.nights }} đêm</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Tổng tiền</div>
+              <div style="font-weight:700;color:#0d9488;font-size:1.1rem;">{{ booking.total_price|floatformat:0 }} ₫</div>
+            </div>
+            {% if booking.note %}
+            <div class="col-12">
+              <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Yêu cầu đặc biệt</div>
+              <div style="font-size:13px;color:#555;background:#f8f9fb;padding:10px;border-radius:8px;">{{ booking.note }}</div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Lịch sử yêu cầu dịch vụ -->
+      <div class="card border-0 shadow-sm" style="border-radius:14px;">
+        <div class="card-body p-4">
+          <h6 class="fw-bold mb-3">🛎 Yêu cầu dịch vụ của bạn</h6>
+
+          {% if my_requests %}
+            {% for req in my_requests %}
+            <div style="border:1px solid #e8e9ec;border-radius:10px;padding:14px;margin-bottom:10px;">
+              <div class="d-flex align-items-start justify-content-between">
+                <div>
+                  <div style="font-weight:600;font-size:14px;">{{ req.service.name }}</div>
+                  {% if req.quantity > 1 %}
+                  <div style="font-size:12px;color:#888;">Số lượng: {{ req.quantity }}</div>
+                  {% endif %}
+                  {% if req.note %}
+                  <div style="font-size:12px;color:#666;margin-top:4px;">{{ req.note }}</div>
+                  {% endif %}
+                  <div style="font-size:11px;color:#aaa;margin-top:6px;">
+                    {{ req.created_at|date:"d/m/Y H:i" }}
+                  </div>
+                  {% if req.staff_note %}
+                  <div style="font-size:12px;color:#0d9488;margin-top:6px;background:#f0fdfa;padding:8px;border-radius:6px;">
+                    💬 Nhân viên: {{ req.staff_note }}
+                  </div>
+                  {% endif %}
+                </div>
+                <span style="padding:4px 12px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap;
+                  {% if req.status == 'pending' %}background:#fef3c7;color:#92400e;
+                  {% elif req.status == 'in_progress' %}background:#dbeafe;color:#1e40af;
+                  {% elif req.status == 'resolved' %}background:#d1fae5;color:#065f46;
+                  {% else %}background:#f3f4f6;color:#374151;{% endif %}">
+                  {{ req.get_status_display }}
+                </span>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div style="text-align:center;padding:30px;color:#aaa;font-size:13px;">
+              Chưa có yêu cầu dịch vụ nào.
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Cột phải: Form gửi yêu cầu ═══ -->
+    <div class="col-12 col-lg-5">
+      <div id="request-service" class="card border-0 shadow-sm" style="border-radius:14px;position:sticky;top:20px;">
+        <div class="card-body p-4">
+
+          {% if booking.status in 'confirmed,checked_in' %}
+            <h6 class="fw-bold mb-1">🛎 Gửi yêu cầu dịch vụ</h6>
+            <p style="font-size:12px;color:#888;margin-bottom:20px;">
+              Nhân viên sẽ xử lý và phản hồi sớm nhất có thể.
+            </p>
+
+            <form method="post" action="{% url 'bookings:service_request' booking.pk %}">
+              {% csrf_token %}
+
+              <!-- Chọn dịch vụ -->
+              <div class="mb-3">
+                <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">
+                  Loại dịch vụ <span style="color:#ef4444;">*</span>
+                </label>
+                {% if services %}
+                <div class="row g-2 mb-2">
+                  {% for svc in services %}
+                  <div class="col-6">
+                    <input type="radio" class="btn-check" name="service"
+                           id="svc_{{ svc.pk }}" value="{{ svc.pk }}" required>
+                    <label class="btn btn-outline-secondary w-100 text-start"
+                           for="svc_{{ svc.pk }}"
+                           style="font-size:12px;border-radius:10px;padding:10px 12px;border-color:#e8e9ec;">
+                      <div style="font-weight:600;">{{ svc.name }}</div>
+                      {% if svc.price %}
+                      <div style="font-size:11px;color:#0d9488;margin-top:2px;">{{ svc.price|floatformat:0 }}₫</div>
+                      {% else %}
+                      <div style="font-size:11px;color:#aaa;margin-top:2px;">Miễn phí</div>
+                      {% endif %}
+                      {% if svc.eta_minutes %}
+                      <div style="font-size:10px;color:#aaa;">⏱ ~{{ svc.eta_minutes }} phút</div>
+                      {% endif %}
+                    </label>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <div style="background:#fef3c7;border-radius:8px;padding:12px;font-size:13px;color:#92400e;">
+                  ⚠️ Khách sạn chưa cấu hình dịch vụ. Vui lòng liên hệ lễ tân.
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- Số lượng -->
+              <div class="mb-3">
+                <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Số lượng</label>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <button type="button" onclick="changeQty(-1)"
+                          style="width:36px;height:36px;border-radius:8px;border:1px solid #e8e9ec;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">−</button>
+                  <input type="number" name="quantity" id="qty" value="1" min="1" max="10"
+                         style="width:60px;text-align:center;border:1px solid #e8e9ec;border-radius:8px;padding:6px;font-size:14px;font-weight:600;">
+                  <button type="button" onclick="changeQty(1)"
+                          style="width:36px;height:36px;border-radius:8px;border:1px solid #e8e9ec;background:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">+</button>
+                </div>
+              </div>
+
+              <!-- Ghi chú -->
+              <div class="mb-3">
+                <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Ghi chú thêm</label>
+                <textarea name="note" rows="3" class="form-control"
+                          placeholder="Ví dụ: Mang lên phòng lúc 8 giờ sáng, cần thêm đường..."
+                          style="font-size:13px;border-radius:8px;border-color:#e8e9ec;resize:none;"></textarea>
+              </div>
+
+              <!-- Ưu tiên -->
+              <div class="mb-4">
+                <label style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;display:block;">Mức độ khẩn cấp</label>
+                <div style="display:flex;gap:8px;">
+                  <input type="radio" class="btn-check" name="priority" id="pri_low" value="low">
+                  <label class="btn btn-sm btn-outline-secondary" for="pri_low" style="border-radius:20px;font-size:12px;">🟢 Bình thường</label>
+
+                  <input type="radio" class="btn-check" name="priority" id="pri_medium" value="medium" checked>
+                  <label class="btn btn-sm btn-outline-secondary" for="pri_medium" style="border-radius:20px;font-size:12px;">🟡 Cần sớm</label>
+
+                  <input type="radio" class="btn-check" name="priority" id="pri_urgent" value="urgent">
+                  <label class="btn btn-sm btn-outline-secondary" for="pri_urgent" style="border-radius:20px;font-size:12px;">🚨 Khẩn cấp</label>
+                </div>
+              </div>
+
+              <button type="submit" class="btn w-100"
+                      style="background:#0d9488;color:#fff;border-radius:10px;font-weight:600;padding:12px;">
+                📤 Gửi yêu cầu
+              </button>
+            </form>
+
+          {% elif booking.status == 'pending' %}
+            <div style="text-align:center;padding:30px;">
+              <div style="font-size:2.5rem;margin-bottom:12px;">⏳</div>
+              <h6 style="color:#92400e;">Booking chưa được xác nhận</h6>
+              <p style="font-size:13px;color:#aaa;">Bạn có thể gửi yêu cầu dịch vụ sau khi booking được xác nhận.</p>
+            </div>
+
+          {% elif booking.status == 'checked_out' %}
+            <div style="text-align:center;padding:30px;">
+              <div style="font-size:2.5rem;margin-bottom:12px;">🚪</div>
+              <h6 style="color:#374151;">Bạn đã trả phòng</h6>
+              <p style="font-size:13px;color:#aaa;">Cảm ơn bạn đã lưu trú tại {{ hotel.name }}!</p>
+            </div>
+
+          {% else %}
+            <div style="text-align:center;padding:30px;">
+              <div style="font-size:2.5rem;margin-bottom:12px;">❌</div>
+              <h6 style="color:#991b1b;">Booking đã hủy</h6>
+              <p style="font-size:13px;color:#aaa;">Không thể gửi yêu cầu dịch vụ.</p>
+            </div>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function changeQty(delta) {
+  const input = document.getElementById('qty');
+  const val = parseInt(input.value) + delta;
+  input.value = Math.min(10, Math.max(1, val));
+}
+</script>
+{% endblock %}

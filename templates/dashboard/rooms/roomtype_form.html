@@ -69,7 +69,23 @@
             <label class="form-label">Giá / đêm (VNĐ) *</label>
             <input type="number" name="price_per_night" class="form-control" min="0" step="1000"
                    value="{{ room_type.price_per_night|default:'' }}" required
-                   placeholder="VD: 2500000">
+                   placeholder="VD: 2500000" id="priceNightInput">
+          </div>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label">Giá / giờ (VNĐ)
+              <span style="font-size:11px;color:#aaa;">(để trống = tự tính giá đêm ÷ 24)</span>
+            </label>
+            <input type="number" name="price_per_hour" class="form-control" min="0" step="1000"
+                   value="{{ room_type.price_per_hour|default:'' }}"
+                   placeholder="VD: 150000" id="priceHourInput">
+            <div style="font-size:11px;color:#aaa;margin-top:4px;" id="hourAutoCalc"></div>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Diện tích (m²)</label>
+            <input type="number" name="area_sqm" class="form-control" min="0" step="0.5"
+                   value="{{ room_type.area_sqm|default:'' }}" placeholder="VD: 35">
           </div>
         </div>
 
@@ -257,6 +273,24 @@ function rtDelExist(id){
 }
 
 // Preview giá
+// Auto-calculate price_per_hour hint
+const priceNightInput = document.getElementById('priceNightInput');
+const priceHourInput  = document.getElementById('priceHourInput');
+const hourAutoCalc    = document.getElementById('hourAutoCalc');
+
+function updateHourHint() {
+  const night = parseFloat(priceNightInput?.value || 0);
+  if (priceHourInput && !priceHourInput.value && night > 0) {
+    const auto = Math.round(night / 24);
+    if (hourAutoCalc) hourAutoCalc.textContent = `→ Tự động: ${auto.toLocaleString('vi')} ₫/giờ`;
+  } else {
+    if (hourAutoCalc) hourAutoCalc.textContent = '';
+  }
+}
+if (priceNightInput) priceNightInput.addEventListener('input', updateHourHint);
+if (priceHourInput)  priceHourInput.addEventListener('input', updateHourHint);
+updateHourHint();
+
 const priceInput = document.querySelector('[name="price_per_night"]');
 function updatePreview() {
   const p = parseFloat(priceInput.value) || 0;

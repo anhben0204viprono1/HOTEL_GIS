@@ -1,6 +1,6 @@
 """
 dashboard/views.py
-Trang admin tự xây — yêu cầu staff hoặc superuser.
+Trang admin tự xây — yêu cầu staff / superuser / group Employee.
 """
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -11,18 +11,24 @@ from django.http import JsonResponse
 from datetime import timedelta, date
 import json
 
-from hotels.models import Hotel, RoomType, Room, Amenity, HotelImage, RoomTypeImage
+from hotels.models import Hotel, RoomType, Room, Amenity, HotelImage, RoomTypeImage, HomepageConfig
 from bookings.models import Booking, Payment, Review
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from hotels.widgets import LeafletMapWidget
 from staff.models import StaffProfile
 
 
-# ── Guard: chỉ staff/superuser mới vào được ──────────────────────────────────
+# ── Guard: staff / superuser / group Employee mới vào được ──────────────────
 def is_staff(user):
-    return user.is_authenticated and (user.is_staff or user.is_superuser)
+    return user.is_authenticated and (
+        user.is_staff or user.is_superuser or
+        user.groups.filter(name='Employee').exists()
+    )
 
 staff_required = user_passes_test(is_staff, login_url='/accounts/login/')
+superuser_required = user_passes_test(
+    lambda u: u.is_superuser, login_url='/accounts/login/'
+)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -34,57 +40,47 @@ def dashboard_home(request):
     today = date.today()
     month_start = today.replace(day=1)
 
-    # Thống kê tổng quan
     stats = {
         'total_hotels':   Hotel.objects.filter(is_active=True).count(),
         'total_rooms':    Room.objects.filter(status='available').count(),
         'total_users':    User.objects.filter(is_active=True, is_staff=False).count(),
         'total_bookings': Booking.objects.count(),
 
-        # Tháng này
         'bookings_month': Booking.objects.filter(created_at__gte=month_start).count(),
         'revenue_month':  Payment.objects.filter(
             status='paid', paid_at__gte=month_start
         ).aggregate(total=Sum('amount'))['total'] or 0,
 
-        # Hôm nay
         'checkin_today':  Booking.objects.filter(check_in=today, status='confirmed').count(),
         'checkout_today': Booking.objects.filter(check_out=today, status='checked_in').count(),
         'pending':        Booking.objects.filter(status='pending').count(),
     }
 
-    # Booking 7 ngày gần nhất (cho chart)
     chart_labels, chart_data = [], []
     for i in range(6, -1, -1):
         d = today - timedelta(days=i)
         chart_labels.append(d.strftime('%d/%m'))
-        chart_data.append(
-            Booking.objects.filter(created_at__date=d).count()
-        )
+        chart_data.append(Booking.objects.filter(created_at__date=d).count())
 
-    # Booking mới nhất
     recent_bookings = (
         Booking.objects
         .select_related('user', 'room__room_type__hotel')
         .order_by('-created_at')[:8]
     )
-
-    # Khách sạn được đặt nhiều nhất
     top_hotels = (
         Hotel.objects
         .annotate(booking_count=Count('rooms__bookings'))
         .order_by('-booking_count')[:5]
     )
 
-    context = {
+    return render(request, 'dashboard/home.html', {
         'stats':           stats,
         'chart_labels':    json.dumps(chart_labels),
         'chart_data':      json.dumps(chart_data),
         'recent_bookings': recent_bookings,
         'top_hotels':      top_hotels,
         'page': 'dashboard',
-    }
-    return render(request, 'dashboard/home.html', context)
+    })
 
 
 # ═══════════════════════════════════════════════════════════
@@ -98,42 +94,32 @@ def hotel_list(request):
     hotels = Hotel.objects.annotate(
         room_count=Count('rooms', distinct=True),
         booking_count=Count('rooms__bookings', distinct=True),
-    ).order_by('-star_rating', 'name')
+    ).order_by('-created_at')
 
     if q:
-        hotels = hotels.filter(Q(name__icontains=q) | Q(address__icontains=q))
+        hotels = hotels.filter(Q(name__icontains=q) | Q(city__icontains=q))
     if city:
         hotels = hotels.filter(city__icontains=city)
 
-    cities = Hotel.objects.values_list('city', flat=True).distinct()
+    cities = Hotel.objects.values_list('city', flat=True).distinct().order_by('city')
     return render(request, 'dashboard/hotels/list.html', {
-        'hotels': hotels, 'cities': cities,
-        'filters': {'q': q, 'city': city}, 'page': 'hotels',
+        'hotels': hotels, 'q': q, 'city': city,
+        'cities': cities, 'page': 'hotels',
     })
 
 
 @login_required
 @staff_required
 def hotel_create(request):
-    if request.method == 'POST':
-        return _save_hotel(request, None)
-    amenities = Amenity.objects.all()
-    return render(request, 'dashboard/hotels/form.html', {
-        'amenities': amenities, 'page': 'hotels', 'action': 'Thêm mới',
-    })
+    hotel = Hotel()
+    return _save_hotel(request, hotel)
 
 
 @login_required
 @staff_required
 def hotel_edit(request, pk):
     hotel = get_object_or_404(Hotel, pk=pk)
-    if request.method == 'POST':
-        return _save_hotel(request, hotel)
-    amenities = Amenity.objects.all()
-    return render(request, 'dashboard/hotels/form.html', {
-        'hotel': hotel, 'amenities': amenities,
-        'page': 'hotels', 'action': 'Chỉnh sửa',
-    })
+    return _save_hotel(request, hotel)
 
 
 @login_required
@@ -141,9 +127,8 @@ def hotel_edit(request, pk):
 def hotel_delete(request, pk):
     hotel = get_object_or_404(Hotel, pk=pk)
     if request.method == 'POST':
-        name = hotel.name
         hotel.delete()
-        messages.success(request, f'Đã xóa khách sạn "{name}".')
+        messages.success(request, f'Đã xóa khách sạn "{hotel.name}".')
     return redirect('dashboard:hotel_list')
 
 
@@ -153,82 +138,85 @@ def hotel_toggle(request, pk):
     hotel = get_object_or_404(Hotel, pk=pk)
     hotel.is_active = not hotel.is_active
     hotel.save()
-    status = 'kích hoạt' if hotel.is_active else 'ẩn'
+    status = 'kích hoạt' if hotel.is_active else 'tắt'
     messages.success(request, f'Đã {status} khách sạn "{hotel.name}".')
     return redirect('dashboard:hotel_list')
 
 
 def _save_hotel(request, hotel):
-    """Helper lưu hotel từ POST data."""
-    from django.utils.text import slugify
-    data = request.POST
+    amenities_all = Amenity.objects.all().order_by('category', 'name')
+    map_widget    = LeafletMapWidget()
+    is_edit       = bool(hotel.pk)
 
-    try:
-        lat = float(data.get('latitude', 0))
-        lng = float(data.get('longitude', 0))
-    except ValueError:
-        messages.error(request, 'Tọa độ không hợp lệ.')
+    if request.method == 'POST':
+        hotel.name         = request.POST.get('name', '').strip()
+        hotel.slug         = request.POST.get('slug', '').strip() or None
+        hotel.address      = request.POST.get('address', '').strip()
+        hotel.city         = request.POST.get('city', '').strip() or 'Hồ Chí Minh'
+        hotel.phone        = request.POST.get('phone', '').strip()
+        hotel.email        = request.POST.get('email', '').strip()
+        hotel.star_rating  = int(request.POST.get('star_rating', 3))
+        hotel.short_description = request.POST.get('short_description', '').strip()
+        hotel.description  = request.POST.get('description', '').strip()
+        hotel.thumbnail_url= request.POST.get('thumbnail_url', '').strip()
+        hotel.website      = request.POST.get('website', '').strip()
+        hotel.check_in_time  = request.POST.get('check_in_time', '14:00') or '14:00'
+        hotel.check_out_time = request.POST.get('check_out_time', '12:00') or '12:00'
+        hotel.is_active    = 'is_active' in request.POST
+
+        lat = request.POST.get('latitude', '').strip()
+        lng = request.POST.get('longitude', '').strip()
+        try:
+            hotel.latitude  = float(lat)
+            hotel.longitude = float(lng)
+        except (ValueError, TypeError):
+            messages.error(request, 'Tọa độ không hợp lệ.')
+            return render(request, 'dashboard/hotels/form.html', {
+                'hotel': hotel, 'amenities_all': amenities_all,
+                'map_widget': map_widget, 'is_edit': is_edit, 'page': 'hotels',
+            })
+
+        if 'image' in request.FILES:
+            hotel.image = request.FILES['image']
+
+        try:
+            hotel.save()
+        except Exception as e:
+            messages.error(request, f'Lỗi lưu khách sạn: {e}')
+            return render(request, 'dashboard/hotels/form.html', {
+                'hotel': hotel, 'amenities_all': amenities_all,
+                'map_widget': map_widget, 'is_edit': is_edit, 'page': 'hotels',
+            })
+
+        # Tiện nghi cấp khách sạn
+        selected_amenity_ids = request.POST.getlist('hotel_amenities')
+        hotel.amenities.set(Amenity.objects.filter(id__in=selected_amenity_ids))
+
+        _save_hotel_gallery_images(request, hotel)
+
+        action = 'Cập nhật' if is_edit else 'Thêm mới'
+        messages.success(request, f'{action} khách sạn "{hotel.name}" thành công.')
         return redirect('dashboard:hotel_list')
 
-    fields = {
-        'name':           data.get('name', '').strip(),
-        'address':        data.get('address', '').strip(),
-        'city':           data.get('city', '').strip(),
-        'latitude':       lat,
-        'longitude':      lng,
-        'phone':          data.get('phone', '').strip(),
-        'email':          data.get('email', '').strip(),
-        'website':        data.get('website', '').strip(),
-        'star_rating':    int(data.get('star_rating', 3)),
-        'description':    data.get('description', '').strip(),
-        'check_in_time':  data.get('check_in_time', '14:00'),
-        'check_out_time': data.get('check_out_time', '12:00'),
-        'is_active':      data.get('is_active') == 'on',
-    }
+    return render(request, 'dashboard/hotels/form.html', {
+        'hotel': hotel, 'amenities_all': amenities_all,
+        'map_widget': map_widget, 'is_edit': is_edit, 'page': 'hotels',
+        'hotel_amenity_ids': list(hotel.amenities.values_list('id', flat=True)) if hotel.pk else [],
+    })
 
-    if not fields['name']:
-        messages.error(request, 'Tên khách sạn không được để trống.')
-        return redirect('dashboard:hotel_list')
 
-    if hotel:
-        for k, v in fields.items():
-            setattr(hotel, k, v)
-        if not hotel.slug:
-            hotel.slug = slugify(hotel.name, allow_unicode=True)
-        hotel.save()
-        messages.success(request, f'Đã cập nhật khách sạn "{hotel.name}".')
-    else:
-        fields['slug'] = slugify(fields['name'], allow_unicode=True)
-        hotel = Hotel(**fields)
-        hotel.save()
-        messages.success(request, f'Đã thêm khách sạn "{hotel.name}".')
+def _save_hotel_gallery_images(request, hotel):
+    """Xử lý upload nhiều ảnh gallery."""
+    gallery_files = request.FILES.getlist('gallery_images')
+    captions      = request.POST.getlist('gallery_captions')
+    delete_ids    = request.POST.getlist('delete_image_ids')
 
-    # ── Xử lý ảnh đại diện chính (1 file)
-    if 'image_main' in request.FILES:
-        hotel.image = request.FILES['image_main']
-        hotel.save(update_fields=['image'])
+    if delete_ids:
+        HotelImage.objects.filter(hotel=hotel, id__in=delete_ids).delete()
 
-    # ── Xử lý ảnh đính kèm (nhiều file)
-    gallery_files  = request.FILES.getlist('gallery_images')
-    gallery_caps   = request.POST.getlist('gallery_captions')
-    delete_img_ids = request.POST.getlist('delete_image_ids')
-
-    # Xóa ảnh được đánh dấu xóa
-    if delete_img_ids:
-        HotelImage.objects.filter(id__in=delete_img_ids, hotel=hotel).delete()
-
-    # Đặt lại ảnh đại diện gallery
-    primary_id = request.POST.get('primary_image_id')
-    if primary_id:
-        HotelImage.objects.filter(hotel=hotel).update(is_primary=False)
-        HotelImage.objects.filter(id=primary_id, hotel=hotel).update(is_primary=True)
-
-    # Upload ảnh mới
     for i, f in enumerate(gallery_files):
-        cap = gallery_caps[i] if i < len(gallery_caps) else ''
-        HotelImage.objects.create(hotel=hotel, image=f, caption=cap, order=i)
-
-    return redirect('dashboard:hotel_list')
+        caption = captions[i] if i < len(captions) else ''
+        HotelImage.objects.create(hotel=hotel, image=f, caption=caption)
 
 
 # ═══════════════════════════════════════════════════════════
@@ -239,6 +227,7 @@ def _save_hotel(request, hotel):
 def booking_list(request):
     status = request.GET.get('status', '')
     q      = request.GET.get('q', '')
+    hotel  = request.GET.get('hotel', '')
 
     bookings = (
         Booking.objects
@@ -247,16 +236,19 @@ def booking_list(request):
     )
     if status:
         bookings = bookings.filter(status=status)
+    if hotel:
+        bookings = bookings.filter(room__room_type__hotel_id=hotel)
     if q:
         bookings = bookings.filter(
             Q(user__username__icontains=q) |
-            Q(user__first_name__icontains=q) |
-            Q(room__hotel__name__icontains=q)
+            Q(user__email__icontains=q) |
+            Q(room__room_number__icontains=q)
         )
 
+    hotels_qs = Hotel.objects.filter(is_active=True).order_by('name')
     return render(request, 'dashboard/bookings/list.html', {
-        'bookings': bookings,
-        'filters':  {'status': status, 'q': q},
+        'bookings': bookings, 'status': status, 'q': q,
+        'hotel': hotel, 'hotels': hotels_qs,
         'status_choices': Booking.STATUS_CHOICES,
         'page': 'bookings',
     })
@@ -269,8 +261,11 @@ def booking_detail(request, pk):
         Booking.objects.select_related('user', 'room__room_type__hotel'),
         pk=pk
     )
+    amenity_usages = booking.amenity_usages.select_related('amenity').all()
     return render(request, 'dashboard/bookings/detail.html', {
-        'booking': booking, 'page': 'bookings',
+        'booking': booking,
+        'amenity_usages': amenity_usages,
+        'page': 'bookings',
     })
 
 
@@ -283,10 +278,10 @@ def booking_update_status(request, pk):
         valid = [s[0] for s in Booking.STATUS_CHOICES]
         if new_status in valid:
             booking.status = new_status
-            if new_status == 'cancelled':
-                booking.cancelled_at = timezone.now()
             booking.save()
             messages.success(request, f'Đã cập nhật trạng thái booking #{pk}.')
+        else:
+            messages.error(request, 'Trạng thái không hợp lệ.')
     return redirect('dashboard:booking_detail', pk=pk)
 
 
@@ -296,22 +291,19 @@ def booking_update_status(request, pk):
 @login_required
 @staff_required
 def room_list(request):
-    hotel_id = request.GET.get('hotel', '')
-    status   = request.GET.get('status', '')
+    status = request.GET.get('status', '')
+    hotel  = request.GET.get('hotel', '')
+    rooms  = Room.objects.select_related('room_type__hotel').order_by('room_type__hotel', 'room_number')
 
-    rooms = Room.objects.select_related('hotel', 'room_type').order_by('hotel', 'room_number')
-    if hotel_id:
-        rooms = rooms.filter(hotel_id=hotel_id)
     if status:
         rooms = rooms.filter(status=status)
+    if hotel:
+        rooms = rooms.filter(room_type__hotel_id=hotel)
 
-    hotels = Hotel.objects.filter(is_active=True)
+    hotels_qs = Hotel.objects.filter(is_active=True).order_by('name')
     return render(request, 'dashboard/rooms/list.html', {
-        'rooms':   rooms,
-        'hotels':  hotels,
-        'filters': {'hotel': hotel_id, 'status': status},
-        'status_choices': Room.STATUS_CHOICES,
-        'page': 'rooms',
+        'rooms': rooms, 'status': status, 'hotel': hotel,
+        'hotels': hotels_qs, 'status_choices': Room.STATUS_CHOICES, 'page': 'rooms',
     })
 
 
@@ -320,9 +312,12 @@ def room_list(request):
 def room_update_status(request, pk):
     room = get_object_or_404(Room, pk=pk)
     if request.method == 'POST':
-        room.status = request.POST.get('status', room.status)
-        room.save()
-        messages.success(request, f'Đã cập nhật phòng {room.room_number}.')
+        new_status = request.POST.get('status')
+        valid = [s[0] for s in Room.STATUS_CHOICES]
+        if new_status in valid:
+            room.status = new_status
+            room.save()
+            messages.success(request, f'Đã cập nhật trạng thái phòng {room.room_number}.')
     return redirect('dashboard:room_list')
 
 
@@ -343,7 +338,6 @@ def user_list(request):
             Q(email__icontains=q) |
             Q(first_name__icontains=q)
         )
-
     return render(request, 'dashboard/users/list.html', {
         'users': users, 'q': q, 'page': 'users',
     })
@@ -361,34 +355,51 @@ def user_toggle(request, pk):
     return redirect('dashboard:user_list')
 
 
+@login_required
+@superuser_required
+def user_permissions(request, pk):
+    """Chỉ superuser mới chỉnh được quyền user."""
+    target_user = get_object_or_404(User, pk=pk)
+    groups_all  = Group.objects.all()
+
+    if request.method == 'POST':
+        selected_ids = request.POST.getlist('groups')
+        target_user.groups.set(Group.objects.filter(id__in=selected_ids))
+        target_user.is_staff     = 'is_staff'     in request.POST
+        target_user.is_superuser = 'is_superuser' in request.POST
+        target_user.save()
+        messages.success(request, f'Đã cập nhật quyền cho "{target_user.username}".')
+        return redirect('dashboard:user_list')
+
+    return render(request, 'dashboard/users/permissions.html', {
+        'target_user':     target_user,
+        'groups_all':      groups_all,
+        'user_group_ids':  list(target_user.groups.values_list('id', flat=True)),
+        'page': 'users',
+    })
+
+
 # ═══════════════════════════════════════════════════════════
-# ROOM TYPES — Quản lý loại phòng
+# ROOM TYPES
 # ═══════════════════════════════════════════════════════════
 @login_required
 @staff_required
 def roomtype_list(request, hotel_pk):
-    hotel      = get_object_or_404(Hotel, pk=hotel_pk)
-    room_types = hotel.room_types.prefetch_related('amenities').annotate(
-        room_count=Count('rooms'),
-        available_count=Count('rooms', filter=Q(rooms__status='available')),
-    )
+    hotel = get_object_or_404(Hotel, pk=hotel_pk)
+    room_types = hotel.room_types.annotate(
+        room_count=Count('rooms')
+    ).order_by('price_per_night')
     return render(request, 'dashboard/rooms/roomtype_list.html', {
-        'hotel': hotel, 'room_types': room_types, 'page': 'rooms',
+        'hotel': hotel, 'room_types': room_types, 'page': 'hotels',
     })
 
 
 @login_required
 @staff_required
 def roomtype_create(request, hotel_pk):
-    hotel = get_object_or_404(Hotel, pk=hotel_pk)
-    if request.method == 'POST':
-        return _save_roomtype(request, hotel, None)
-    amenities = Amenity.objects.all().order_by('category', 'name')
-    return render(request, 'dashboard/rooms/roomtype_form.html', {
-        'hotel': hotel, 'amenities': amenities,
-        'bed_choices': RoomType.BED_CHOICES, 'rt_images': [],
-        'page': 'rooms', 'action': 'Thêm loại phòng',
-    })
+    hotel     = get_object_or_404(Hotel, pk=hotel_pk)
+    room_type = RoomType(hotel=hotel)
+    return _save_roomtype(request, hotel, room_type)
 
 
 @login_required
@@ -396,17 +407,7 @@ def roomtype_create(request, hotel_pk):
 def roomtype_edit(request, hotel_pk, pk):
     hotel     = get_object_or_404(Hotel, pk=hotel_pk)
     room_type = get_object_or_404(RoomType, pk=pk, hotel=hotel)
-    if request.method == 'POST':
-        return _save_roomtype(request, hotel, room_type)
-    amenities         = Amenity.objects.all().order_by('category', 'name')
-    selected_amenities = list(room_type.amenities.values_list('id', flat=True))
-    rt_images          = room_type.images.all()
-    return render(request, 'dashboard/rooms/roomtype_form.html', {
-        'hotel': hotel, 'room_type': room_type,
-        'amenities': amenities, 'selected_amenities': selected_amenities,
-        'bed_choices': RoomType.BED_CHOICES, 'rt_images': rt_images,
-        'page': 'rooms', 'action': 'Sửa loại phòng',
-    })
+    return _save_roomtype(request, hotel, room_type)
 
 
 @login_required
@@ -415,459 +416,369 @@ def roomtype_delete(request, hotel_pk, pk):
     hotel     = get_object_or_404(Hotel, pk=hotel_pk)
     room_type = get_object_or_404(RoomType, pk=pk, hotel=hotel)
     if request.method == 'POST':
-        if room_type.rooms.exists():
-            messages.error(request, f'Không thể xóa — loại phòng "{room_type.name}" còn {room_type.rooms.count()} phòng thực tế.')
-        else:
-            name = room_type.name
-            room_type.delete()
-            messages.success(request, f'Đã xóa loại phòng "{name}".')
+        room_type.delete()
+        messages.success(request, f'Đã xóa loại phòng "{room_type.name}".')
     return redirect('dashboard:roomtype_list', hotel_pk=hotel_pk)
 
 
 def _save_roomtype(request, hotel, room_type):
-    from hotels.models import RoomAmenity
-    data = request.POST
-    try:
-        price     = float(data.get('price_per_night', 0))
-        occupancy = int(data.get('max_occupancy', 2))
-        area      = float(data.get('area_sqm', 0)) if data.get('area_sqm') else None
-    except ValueError:
-        messages.error(request, 'Dữ liệu không hợp lệ.')
-        return redirect('dashboard:roomtype_list', hotel_pk=hotel.pk)
+    amenities_all = Amenity.objects.all().order_by('category', 'name')
+    is_edit = bool(room_type.pk)
 
-    fields = {
-        'hotel':           hotel,
-        'name':            data.get('name', '').strip(),
-        'description':     data.get('description', '').strip(),
-        'bed_type':        data.get('bed_type', ''),
-        'max_occupancy':   occupancy,
-        'area_sqm':        area,
-        'price_per_night': price,
-        'is_active':       data.get('is_active') == 'on',
-    }
+    if request.method == 'POST':
+        room_type.name          = request.POST.get('name', '').strip()
+        room_type.description   = request.POST.get('description', '').strip()
+        room_type.bed_type      = request.POST.get('bed_type', '')
+        room_type.is_active     = 'is_active' in request.POST
 
-    if not fields['name']:
-        messages.error(request, 'Tên loại phòng không được để trống.')
-        return redirect('dashboard:roomtype_list', hotel_pk=hotel.pk)
-
-    if room_type:
-        for k, v in fields.items():
-            setattr(room_type, k, v)
-        room_type.save()
-    else:
-        room_type = RoomType(**fields)
-        room_type.save()
-
-    # ── Ảnh đại diện chính
-    if 'image_main' in request.FILES:
-        room_type.image = request.FILES['image_main']
-        room_type.save(update_fields=['image'])
-
-    # ── Ảnh đính kèm
-    gallery_files  = request.FILES.getlist('rt_gallery_images')
-    gallery_caps   = request.POST.getlist('rt_gallery_captions')
-    delete_img_ids = request.POST.getlist('delete_rt_image_ids')
-    if delete_img_ids:
-        RoomTypeImage.objects.filter(id__in=delete_img_ids, room_type=room_type).delete()
-    primary_id = request.POST.get('primary_rt_image_id')
-    if primary_id:
-        RoomTypeImage.objects.filter(room_type=room_type).update(is_primary=False)
-        RoomTypeImage.objects.filter(id=primary_id, room_type=room_type).update(is_primary=True)
-    for i, f in enumerate(gallery_files):
-        cap = gallery_caps[i] if i < len(gallery_caps) else ''
-        RoomTypeImage.objects.create(room_type=room_type, image=f, caption=cap, order=i)
-
-    # Cập nhật tiện ích M2M
-    selected_ids = [int(x) for x in data.getlist('amenities') if x.isdigit()]
-    RoomAmenity.objects.filter(room_type=room_type).delete()
-    for aid in selected_ids:
         try:
-            amenity = Amenity.objects.get(pk=aid)
-            RoomAmenity.objects.get_or_create(room_type=room_type, amenity=amenity)
-        except Amenity.DoesNotExist:
-            pass
+            room_type.max_occupancy   = int(request.POST.get('max_occupancy', 2))
+            room_type.price_per_night = float(request.POST.get('price_per_night', 0))
+            # Giá theo giờ (có thể để trống)
+            pph = request.POST.get('price_per_hour', '').strip()
+            room_type.price_per_hour = float(pph) if pph else None
+            area = request.POST.get('area_sqm', '').strip()
+            room_type.area_sqm = float(area) if area else None
+        except (ValueError, TypeError) as e:
+            messages.error(request, f'Dữ liệu số không hợp lệ: {e}')
+            return render(request, 'dashboard/rooms/roomtype_form.html', {
+                'hotel': hotel, 'room_type': room_type,
+                'amenities_all': amenities_all, 'is_edit': is_edit, 'page': 'hotels',
+            })
 
-    messages.success(request, f'Đã lưu loại phòng "{room_type.name}".')
-    return redirect('dashboard:roomtype_list', hotel_pk=hotel.pk)
+        room_type.thumbnail_url = request.POST.get('thumbnail_url', '').strip()
+        if 'image' in request.FILES:
+            room_type.image = request.FILES['image']
+
+        try:
+            room_type.save()
+        except Exception as e:
+            messages.error(request, f'Lỗi lưu loại phòng: {e}')
+            return render(request, 'dashboard/rooms/roomtype_form.html', {
+                'hotel': hotel, 'room_type': room_type,
+                'amenities_all': amenities_all, 'is_edit': is_edit, 'page': 'hotels',
+            })
+
+        # Amenities
+        selected_ids = request.POST.getlist('amenities')
+        room_type.amenities.set(Amenity.objects.filter(id__in=selected_ids))
+
+        # Gallery ảnh loại phòng
+        gallery_files = request.FILES.getlist('gallery_images')
+        delete_ids    = request.POST.getlist('delete_image_ids')
+        if delete_ids:
+            RoomTypeImage.objects.filter(room_type=room_type, id__in=delete_ids).delete()
+        for f in gallery_files:
+            RoomTypeImage.objects.create(room_type=room_type, image=f)
+
+        action = 'Cập nhật' if is_edit else 'Thêm mới'
+        messages.success(request, f'{action} loại phòng "{room_type.name}" thành công.')
+        return redirect('dashboard:roomtype_list', hotel_pk=hotel.pk)
+
+    return render(request, 'dashboard/rooms/roomtype_form.html', {
+        'hotel': hotel, 'room_type': room_type,
+        'amenities_all': amenities_all, 'is_edit': is_edit, 'page': 'hotels',
+        'selected_amenity_ids': list(room_type.amenities.values_list('id', flat=True)) if room_type.pk else [],
+    })
 
 
-# ═══════════════════════════════════════════════════════════
-# ROOMS — Phòng thực tế (gắn vào hotel cụ thể)
-# ═══════════════════════════════════════════════════════════
 @login_required
 @staff_required
 def room_by_hotel(request, hotel_pk):
-    hotel  = get_object_or_404(Hotel, pk=hotel_pk)
-    rooms  = Room.objects.filter(hotel=hotel).select_related('room_type').order_by('floor', 'room_number')
-    status_counts = {
-        'available':   rooms.filter(status='available').count(),
-        'occupied':    rooms.filter(status='occupied').count(),
-        'maintenance': rooms.filter(status='maintenance').count(),
-    }
+    hotel = get_object_or_404(Hotel, pk=hotel_pk)
+    rooms = hotel.rooms.select_related('room_type').order_by('room_number')
     return render(request, 'dashboard/rooms/room_list.html', {
-        'hotel': hotel, 'rooms': rooms,
-        'status_counts': status_counts,
-        'status_choices': Room.STATUS_CHOICES,
-        'page': 'rooms',
+        'hotel': hotel, 'rooms': rooms, 'page': 'hotels',
     })
 
 
 @login_required
 @staff_required
 def room_create(request, hotel_pk):
-    hotel      = get_object_or_404(Hotel, pk=hotel_pk)
-    room_types = hotel.room_types.filter(is_active=True)
-    if request.method == 'POST':
-        return _save_room(request, hotel, None)
-    return render(request, 'dashboard/rooms/room_form.html', {
-        'hotel': hotel, 'room_types': room_types,
-        'status_choices': Room.STATUS_CHOICES,
-        'page': 'rooms', 'action': 'Thêm phòng',
-    })
+    hotel = get_object_or_404(Hotel, pk=hotel_pk)
+    room  = Room(room_type=hotel.room_types.first())
+    return _save_room(request, hotel, room)
 
 
 @login_required
 @staff_required
 def room_edit(request, hotel_pk, pk):
     hotel = get_object_or_404(Hotel, pk=hotel_pk)
-    room  = get_object_or_404(Room, pk=pk, hotel=hotel)
-    room_types = hotel.room_types.filter(is_active=True)
-    if request.method == 'POST':
-        return _save_room(request, hotel, room)
-    return render(request, 'dashboard/rooms/room_form.html', {
-        'hotel': hotel, 'room': room, 'room_types': room_types,
-        'status_choices': Room.STATUS_CHOICES,
-        'page': 'rooms', 'action': 'Sửa phòng',
-    })
+    room  = get_object_or_404(Room, pk=pk, room_type__hotel=hotel)
+    return _save_room(request, hotel, room)
 
 
 @login_required
 @staff_required
 def room_delete(request, hotel_pk, pk):
     hotel = get_object_or_404(Hotel, pk=hotel_pk)
-    room  = get_object_or_404(Room, pk=pk, hotel=hotel)
+    room  = get_object_or_404(Room, pk=pk, room_type__hotel=hotel)
     if request.method == 'POST':
-        num = room.room_number
         room.delete()
-        messages.success(request, f'Đã xóa phòng {num}.')
+        messages.success(request, f'Đã xóa phòng {room.room_number}.')
     return redirect('dashboard:room_by_hotel', hotel_pk=hotel_pk)
 
 
 @login_required
 @staff_required
 def room_bulk_create(request, hotel_pk):
-    """Tạo hàng loạt phòng theo tầng."""
-    hotel      = get_object_or_404(Hotel, pk=hotel_pk)
+    hotel = get_object_or_404(Hotel, pk=hotel_pk)
     room_types = hotel.room_types.filter(is_active=True)
+
     if request.method == 'POST':
-        room_type_id = request.POST.get('room_type_id')
-        floor_start  = int(request.POST.get('floor_start', 1))
-        floor_end    = int(request.POST.get('floor_end', 1))
-        rooms_per_floor = int(request.POST.get('rooms_per_floor', 10))
+        room_type_id = request.POST.get('room_type')
+        prefix       = request.POST.get('prefix', '').strip()
+        start        = int(request.POST.get('start_number', 1))
+        count        = int(request.POST.get('count', 1))
+        floor        = request.POST.get('floor', '').strip()
         status       = request.POST.get('status', 'available')
 
-        try:
-            room_type = RoomType.objects.get(pk=room_type_id, hotel=hotel)
-        except RoomType.DoesNotExist:
-            messages.error(request, 'Loại phòng không hợp lệ.')
-            return redirect('dashboard:room_by_hotel', hotel_pk=hotel_pk)
-
-        created, skipped = 0, 0
-        for floor in range(floor_start, floor_end + 1):
-            for i in range(1, rooms_per_floor + 1):
-                room_number = f'{floor}{i:02d}'
-                _, ok = Room.objects.get_or_create(
-                    hotel=hotel, room_number=room_number,
-                    defaults={'room_type': room_type, 'floor': floor, 'status': status}
+        room_type = get_object_or_404(RoomType, pk=room_type_id, hotel=hotel)
+        created = 0
+        for i in range(count):
+            num = str(start + i).zfill(3)
+            room_number = f'{prefix}{num}'
+            if not Room.objects.filter(room_type__hotel=hotel, room_number=room_number).exists():
+                Room.objects.create(
+                    room_type=room_type,
+                    room_number=room_number,
+                    floor=floor,
+                    status=status,
                 )
-                if ok: created += 1
-                else:  skipped += 1
-
-        messages.success(request, f'✅ Đã tạo {created} phòng. Bỏ qua {skipped} phòng đã tồn tại.')
+                created += 1
+        messages.success(request, f'Đã tạo {created} phòng mới.')
         return redirect('dashboard:room_by_hotel', hotel_pk=hotel_pk)
 
     return render(request, 'dashboard/rooms/room_bulk.html', {
-        'hotel': hotel, 'room_types': room_types,
-        'status_choices': Room.STATUS_CHOICES,
-        'page': 'rooms',
+        'hotel': hotel, 'room_types': room_types, 'page': 'hotels',
     })
 
 
 def _save_room(request, hotel, room):
-    data = request.POST
-    room_type_id = data.get('room_type_id')
-    room_number  = data.get('room_number', '').strip()
+    room_types = hotel.room_types.filter(is_active=True)
+    is_edit    = bool(room.pk)
 
-    if not room_number:
-        messages.error(request, 'Số phòng không được để trống.')
-        return redirect('dashboard:room_by_hotel', hotel_pk=hotel.pk)
+    if request.method == 'POST':
+        rt_id = request.POST.get('room_type')
+        room.room_type = get_object_or_404(RoomType, pk=rt_id, hotel=hotel)
+        room.room_number = request.POST.get('room_number', '').strip()
+        room.floor       = request.POST.get('floor', '').strip()
+        room.status      = request.POST.get('status', 'available')
+        room.note        = request.POST.get('note', '').strip()
 
-    try:
-        room_type = RoomType.objects.get(pk=room_type_id, hotel=hotel)
-    except RoomType.DoesNotExist:
-        messages.error(request, 'Loại phòng không hợp lệ.')
-        return redirect('dashboard:room_by_hotel', hotel_pk=hotel.pk)
-
-    floor_val = data.get('floor', '').strip()
-    floor     = int(floor_val) if floor_val.isdigit() else None
-
-    if room:
-        room.room_type   = room_type
-        room.room_number = room_number
-        room.floor       = floor
-        room.status      = data.get('status', 'available')
-        room.note        = data.get('note', '').strip()
         try:
             room.save()
-            messages.success(request, f'Đã cập nhật phòng {room_number}.')
-        except Exception:
-            messages.error(request, f'Số phòng {room_number} đã tồn tại trong khách sạn này.')
-    else:
-        try:
-            Room.objects.create(
-                hotel      = hotel,
-                room_type  = room_type,
-                room_number= room_number,
-                floor      = floor,
-                status     = data.get('status', 'available'),
-                note       = data.get('note', '').strip(),
-            )
-            messages.success(request, f'Đã thêm phòng {room_number}.')
-        except Exception:
-            messages.error(request, f'Số phòng {room_number} đã tồn tại trong khách sạn này.')
+        except Exception as e:
+            messages.error(request, f'Lỗi lưu phòng: {e}')
+            return render(request, 'dashboard/rooms/room_form.html', {
+                'hotel': hotel, 'room': room, 'room_types': room_types,
+                'is_edit': is_edit, 'page': 'hotels',
+            })
 
-    return redirect('dashboard:room_by_hotel', hotel_pk=hotel.pk)
+        action = 'Cập nhật' if is_edit else 'Thêm mới'
+        messages.success(request, f'{action} phòng {room.room_number} thành công.')
+        return redirect('dashboard:room_by_hotel', hotel_pk=hotel.pk)
+
+    return render(request, 'dashboard/rooms/room_form.html', {
+        'hotel': hotel, 'room': room, 'room_types': room_types,
+        'is_edit': is_edit, 'page': 'hotels',
+    })
 
 
 # ═══════════════════════════════════════════════════════════
-# API — cho chart JS
+# API STATS
 # ═══════════════════════════════════════════════════════════
 @login_required
 @staff_required
 def api_stats(request):
     today = date.today()
-    data = []
-    for i in range(29, -1, -1):
-        d = today - timedelta(days=i)
-        data.append({
-            'date':     d.strftime('%d/%m'),
-            'bookings': Booking.objects.filter(created_at__date=d).count(),
-            'revenue':  float(
-                Payment.objects.filter(status='paid', paid_at__date=d)
-                .aggregate(t=Sum('amount'))['t'] or 0
-            ),
-        })
-    return JsonResponse({'data': data})
-from staff.models import StaffProfile
+    return JsonResponse({
+        'bookings_today': Booking.objects.filter(created_at__date=today).count(),
+        'revenue_today': float(
+            Payment.objects.filter(status='paid', paid_at__date=today)
+            .aggregate(total=Sum('amount'))['total'] or 0
+        ),
+        'pending': Booking.objects.filter(status='pending').count(),
+        'checked_in': Booking.objects.filter(status='checked_in').count(),
+    })
 
 
+# ═══════════════════════════════════════════════════════════
+# STAFF — Quản lý nhân viên
+# ═══════════════════════════════════════════════════════════
 @login_required
 @staff_required
 def staff_list(request):
-    """Danh sách nhân viên, có thể lọc theo khách sạn."""
-    hotel_filter = request.GET.get('hotel', '')
-    q            = request.GET.get('q', '')
+    q = request.GET.get('q', '')
+    hotel = request.GET.get('hotel', '')
+    staff_qs = StaffProfile.objects.select_related('user', 'hotel').order_by('-created_at')
 
-    staff_qs = StaffProfile.objects.select_related('user', 'hotel').order_by('hotel', 'user__last_name')
-
-    if hotel_filter:
-        staff_qs = staff_qs.filter(hotel_id=hotel_filter)
     if q:
         staff_qs = staff_qs.filter(
+            Q(user__username__icontains=q) |
             Q(user__first_name__icontains=q) |
-            Q(user__last_name__icontains=q)  |
-            Q(user__email__icontains=q)      |
-            Q(user__username__icontains=q)
+            Q(user__email__icontains=q)
         )
+    if hotel:
+        staff_qs = staff_qs.filter(hotel_id=hotel)
 
-    hotels = Hotel.objects.filter(is_active=True).order_by('name')
-
+    hotels_qs = Hotel.objects.filter(is_active=True).order_by('name')
     return render(request, 'dashboard/staff/list.html', {
-        'staff_list':    staff_qs,
-        'hotels':        hotels,
-        'filters':       {'hotel': hotel_filter, 'q': q},
-        'page':          'staff',
+        'staff_list': staff_qs, 'q': q, 'hotel': hotel,
+        'hotels': hotels_qs, 'page': 'staff',
     })
 
 
 @login_required
 @staff_required
 def staff_create(request):
-    """Tạo nhân viên mới: tạo User + StaffProfile cùng lúc."""
-    hotels = Hotel.objects.filter(is_active=True).order_by('name')
-
+    hotels_qs = Hotel.objects.filter(is_active=True).order_by('name')
     if request.method == 'POST':
-        # ── Lấy dữ liệu form ──
-        username   = request.POST.get('username', '').strip()
-        email      = request.POST.get('email', '').strip()
-        first_name = request.POST.get('first_name', '').strip()
-        last_name  = request.POST.get('last_name', '').strip()
-        password   = request.POST.get('password', '').strip()
-        hotel_id   = request.POST.get('hotel')
-        role       = request.POST.get('role', 'receptionist')
-        phone      = request.POST.get('phone', '').strip()
-        hired_at   = request.POST.get('hired_at') or None
-
-        # ── Validation ──
-        if not username or not password or not hotel_id:
-            messages.error(request, '⚠️ Username, mật khẩu và khách sạn là bắt buộc.')
-            return render(request, 'dashboard/staff/form.html', {
-                'hotels': hotels, 'page': 'staff', 'action': 'Thêm nhân viên',
-                'data': request.POST,
-            })
-
-        if User.objects.filter(username=username).exists():
-            messages.error(request, f'⚠️ Username "{username}" đã tồn tại.')
-            return render(request, 'dashboard/staff/form.html', {
-                'hotels': hotels, 'page': 'staff', 'action': 'Thêm nhân viên',
-                'data': request.POST,
-            })
-
-        try:
-            hotel = Hotel.objects.get(pk=hotel_id)
-        except Hotel.DoesNotExist:
-            messages.error(request, 'Khách sạn không hợp lệ.')
-            return redirect('dashboard:staff_list')
-
-        # ── Tạo User ──
-        user = User.objects.create_user(
-            username   = username,
-            email      = email,
-            password   = password,
-            first_name = first_name,
-            last_name  = last_name,
-        )
-
-        # ── Tạo StaffProfile ──
-        StaffProfile.objects.create(
-            user     = user,
-            hotel    = hotel,
-            role     = role,
-            phone    = phone,
-            hired_at = hired_at,
-        )
-
-        messages.success(request, f'✅ Đã tạo nhân viên "{user.get_full_name() or username}" cho {hotel.name}.')
-        return redirect('dashboard:staff_list')
-
+        return _save_staff(request, None)
     return render(request, 'dashboard/staff/form.html', {
-        'hotels': hotels, 'page': 'staff', 'action': 'Thêm nhân viên',
+        'hotels': hotels_qs, 'is_edit': False, 'page': 'staff',
     })
 
 
 @login_required
 @staff_required
 def staff_edit(request, pk):
-    """Sửa thông tin nhân viên."""
-    profile = get_object_or_404(StaffProfile, pk=pk)
-    hotels  = Hotel.objects.filter(is_active=True).order_by('name')
-
+    staff = get_object_or_404(StaffProfile, pk=pk)
+    hotels_qs = Hotel.objects.filter(is_active=True).order_by('name')
     if request.method == 'POST':
-        user = profile.user
-        user.first_name = request.POST.get('first_name', '').strip()
-        user.last_name  = request.POST.get('last_name', '').strip()
-        user.email      = request.POST.get('email', '').strip()
-
-        # Đổi mật khẩu nếu nhập
-        new_password = request.POST.get('password', '').strip()
-        if new_password:
-            user.set_password(new_password)
-
-        user.save()
-
-        hotel_id = request.POST.get('hotel')
-        try:
-            profile.hotel    = Hotel.objects.get(pk=hotel_id)
-        except Hotel.DoesNotExist:
-            pass
-
-        profile.role     = request.POST.get('role', profile.role)
-        profile.phone    = request.POST.get('phone', '').strip()
-        hired_at         = request.POST.get('hired_at')
-        profile.hired_at = hired_at if hired_at else None
-        profile.is_active = request.POST.get('is_active') == 'on'
-        profile.save()
-
-        messages.success(request, f'✅ Đã cập nhật nhân viên "{profile.full_name()}".')
-        return redirect('dashboard:staff_list')
-
+        return _save_staff(request, staff)
     return render(request, 'dashboard/staff/form.html', {
-        'profile': profile,
-        'hotels':  hotels,
-        'page':    'staff',
-        'action':  'Sửa nhân viên',
+        'staff': staff, 'hotels': hotels_qs, 'is_edit': True, 'page': 'staff',
     })
+
+
+def _save_staff(request, staff_profile):
+    hotels_qs = Hotel.objects.filter(is_active=True).order_by('name')
+    is_edit   = staff_profile is not None
+
+    username   = request.POST.get('username', '').strip()
+    email      = request.POST.get('email', '').strip()
+    first_name = request.POST.get('first_name', '').strip()
+    last_name  = request.POST.get('last_name', '').strip()
+    hotel_id   = request.POST.get('hotel')
+    role       = request.POST.get('role', 'receptionist')
+    phone      = request.POST.get('phone', '').strip()
+    is_active  = 'is_active' in request.POST
+
+    hotel = get_object_or_404(Hotel, pk=hotel_id)
+
+    if is_edit:
+        user = staff_profile.user
+        user.email      = email
+        user.first_name = first_name
+        user.last_name  = last_name
+        user.is_active  = is_active
+        password = request.POST.get('password', '').strip()
+        if password:
+            user.set_password(password)
+        user.save()
+        staff_profile.hotel = hotel
+        staff_profile.role  = role
+        staff_profile.phone = phone
+        staff_profile.save()
+        messages.success(request, f'Đã cập nhật nhân viên "{user.username}".')
+    else:
+        if User.objects.filter(username=username).exists():
+            messages.error(request, f'Username "{username}" đã tồn tại.')
+            return render(request, 'dashboard/staff/form.html', {
+                'hotels': hotels_qs, 'is_edit': False, 'page': 'staff',
+            })
+        password = request.POST.get('password', '').strip()
+        user = User.objects.create_user(
+            username=username, email=email,
+            first_name=first_name, last_name=last_name,
+            password=password, is_active=is_active, is_staff=True,
+        )
+        # Thêm vào group Employee
+        employee_group, _ = Group.objects.get_or_create(name='Employee')
+        user.groups.add(employee_group)
+
+        StaffProfile.objects.create(user=user, hotel=hotel, role=role, phone=phone)
+        messages.success(request, f'Đã tạo nhân viên "{username}".')
+
+    return redirect('dashboard:staff_list')
 
 
 @login_required
 @staff_required
 def staff_delete(request, pk):
-    """Xóa nhân viên (xóa cả User)."""
-    profile = get_object_or_404(StaffProfile, pk=pk)
+    staff = get_object_or_404(StaffProfile, pk=pk)
     if request.method == 'POST':
-        name = profile.full_name()
-        profile.user.delete()   # cascade → xóa StaffProfile luôn
-        messages.success(request, f'Đã xóa nhân viên "{name}".')
+        user = staff.user
+        staff.delete()
+        user.delete()
+        messages.success(request, 'Đã xóa nhân viên.')
     return redirect('dashboard:staff_list')
 
 
 @login_required
 @staff_required
 def staff_toggle(request, pk):
-    """Kích hoạt / vô hiệu hoá nhân viên."""
-    profile = get_object_or_404(StaffProfile, pk=pk)
-    if request.method == 'POST':
-        profile.is_active = not profile.is_active
-        profile.save()
-        state = 'kích hoạt' if profile.is_active else 'vô hiệu hoá'
-        messages.success(request, f'Đã {state} nhân viên "{profile.full_name()}".')
+    staff = get_object_or_404(StaffProfile, pk=pk)
+    user = staff.user
+    if user != request.user:
+        user.is_active = not user.is_active
+        user.save()
+        status = 'kích hoạt' if user.is_active else 'khóa'
+        messages.success(request, f'Đã {status} tài khoản nhân viên "{user.username}".')
     return redirect('dashboard:staff_list')
 
 
 # ═══════════════════════════════════════════════════════════
-# SERVICE REQUESTS — Admin xem tất cả yêu cầu dịch vụ
+# SERVICE REQUESTS — Quản lý yêu cầu dịch vụ
 # ═══════════════════════════════════════════════════════════
-
 @login_required
 @staff_required
 def service_request_list(request):
-    """Admin xem toàn bộ yêu cầu dịch vụ của tất cả khách sạn."""
     from hotels.models import ServiceRequest
-
-    hotel_filter    = request.GET.get('hotel', '')
-    status_filter   = request.GET.get('status', '')
-    priority_filter = request.GET.get('priority', '')
-
-    reqs = ServiceRequest.objects.select_related(
-        'hotel', 'guest', 'room', 'booking'
-    ).order_by('-created_at')
-
-    if hotel_filter:
-        reqs = reqs.filter(hotel_id=hotel_filter)
-    if status_filter:
-        reqs = reqs.filter(status=status_filter)
-    if priority_filter:
-        reqs = reqs.filter(priority=priority_filter)
-
-    hotels = Hotel.objects.filter(is_active=True).order_by('name')
-
-    counts = {
-        'pending':     ServiceRequest.objects.filter(status='pending').count(),
-        'in_progress': ServiceRequest.objects.filter(status='in_progress').count(),
-        'resolved':    ServiceRequest.objects.filter(status='resolved').count(),
-        'urgent':      ServiceRequest.objects.filter(priority='urgent', status__in=['pending','in_progress']).count(),
-    }
-
+    status = request.GET.get('status', '')
+    hotel  = request.GET.get('hotel', '')
+    reqs   = (
+        ServiceRequest.objects
+        .select_related('room__room_type__hotel', 'service', 'guest', 'assigned_to')
+        .order_by('-created_at')
+    )
+    if status:
+        reqs = reqs.filter(status=status)
+    if hotel:
+        reqs = reqs.filter(room__room_type__hotel_id=hotel)
+    hotels_qs = Hotel.objects.filter(is_active=True).order_by('name')
     return render(request, 'dashboard/service_requests/list.html', {
-        'requests':        reqs,
-        'hotels':          hotels,
-        'counts':          counts,
-        'status_choices':  ServiceRequest.STATUS_CHOICES,
-        'priority_choices':ServiceRequest.PRIORITY_CHOICES,
-        'filters': {
-            'hotel':    hotel_filter,
-            'status':   status_filter,
-            'priority': priority_filter,
-        },
-        'page': 'service_requests',
+        'requests': reqs, 'status': status, 'hotel': hotel,
+        'hotels': hotels_qs, 'page': 'service_requests',
+    })
+
+
+# ═══════════════════════════════════════════════════════════
+# HOMEPAGE — Chỉnh sửa trang chủ (chỉ superuser / staff)
+# ═══════════════════════════════════════════════════════════
+@login_required
+@staff_required
+def homepage_editor(request):
+    """Chỉnh sửa nội dung hero + section trang chủ."""
+    config = HomepageConfig.get()
+
+    if request.method == 'POST':
+        config.hero_tagline       = request.POST.get('hero_tagline', '').strip()
+        config.hero_title         = request.POST.get('hero_title', '').strip()
+        config.hero_subtitle      = request.POST.get('hero_subtitle', '').strip()
+        config.hero_image_url     = request.POST.get('hero_image_url', '').strip()
+        config.hero_cta_text      = request.POST.get('hero_cta_text', '').strip()
+        config.showcase_title     = request.POST.get('showcase_title', '').strip()
+        config.showcase_subtitle  = request.POST.get('showcase_subtitle', '').strip()
+        config.promo_title        = request.POST.get('promo_title', '').strip()
+        config.promo_body         = request.POST.get('promo_body', '').strip()
+        config.site_announcement  = request.POST.get('site_announcement', '').strip()
+        config.save()
+        messages.success(request, '✅ Đã cập nhật trang chủ thành công!')
+        return redirect('dashboard:homepage_editor')
+
+    return render(request, 'dashboard/homepage/editor.html', {
+        'config': config,
+        'page':   'homepage',
     })

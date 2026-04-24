@@ -211,6 +211,11 @@
       <span class="icon">👥</span> Tài khoản
     </a>
 
+    <div class="nav-section">Nội dung</div>
+    <a href="{% url 'dashboard:homepage_editor' %}"
+       class="nav-item-dash {% if page == 'homepage' %}active{% endif %}">
+      <span class="icon">🖼</span> Trang chủ
+    </a>
     <div class="nav-section">Hệ thống</div>
     <a href="/" class="nav-item-dash" target="_blank">
       <span class="icon">🌐</span> Xem website
