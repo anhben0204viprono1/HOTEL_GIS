@@ -97,7 +97,10 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='booking',
-            constraint=models.CheckConstraint(condition=models.Q(('check_out__gt', models.F('check_in'))), name='chk_checkout_after_checkin'),
+            constraint=models.CheckConstraint(
+                check=models.Q(check_out__gt=models.F('check_in')),
+                name='chk_checkout_after_checkin',
+            ),
         ),
         migrations.AddIndex(
             model_name='payment',

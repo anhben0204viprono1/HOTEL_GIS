@@ -6,10 +6,15 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.db.models import Count, Sum, Avg, Q
+from django.db import transaction
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.utils.text import slugify
+from django.db.models.functions import TruncMonth
 from datetime import timedelta, date
 import json
+from decimal import Decimal, InvalidOperation
+import datetime
 
 from hotels.models import Hotel, RoomType, Room, Amenity, HotelImage, RoomTypeImage, HomepageConfig
 from bookings.models import Booking, Payment, Review
@@ -103,9 +108,376 @@ def hotel_list(request):
 
     cities = Hotel.objects.values_list('city', flat=True).distinct().order_by('city')
     return render(request, 'dashboard/hotels/list.html', {
-        'hotels': hotels, 'q': q, 'city': city,
+        'hotels': hotels,
+        'filters': {'q': q, 'city': city},
         'cities': cities, 'page': 'hotels',
     })
+
+
+def _openpyxl_or_message(request):
+    try:
+        import openpyxl  # type: ignore
+    except Exception:
+        openpyxl = None
+    if openpyxl is None:
+        messages.error(
+            request,
+            'Thiếu thư viện openpyxl. Hãy chạy: pip install -r requirements.txt',
+        )
+    return openpyxl
+
+
+def _normalize_header(value: str) -> str:
+    return (
+        value.strip()
+        .lower()
+        .replace(" ", "")
+        .replace("_", "")
+        .replace("-", "")
+    )
+
+
+def _as_decimal(value):
+    if value is None or value == "":
+        return None
+    if isinstance(value, Decimal):
+        return value
+    if isinstance(value, (int, float)):
+        return Decimal(str(value))
+    s = str(value).strip().replace(",", ".")
+    try:
+        return Decimal(s)
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _as_time(value, default_value):
+    if value is None or value == "":
+        return default_value
+    if isinstance(value, datetime.time):
+        return value
+    if isinstance(value, datetime.datetime):
+        return value.time()
+    s = str(value).strip()
+    for fmt in ("%H:%M:%S", "%H:%M"):
+        try:
+            return datetime.datetime.strptime(s, fmt).time()
+        except ValueError:
+            continue
+    return default_value
+
+
+@login_required
+@superuser_required
+def hotel_import_template(request):
+    openpyxl = _openpyxl_or_message(request)
+    if openpyxl is None:
+        return redirect('dashboard:hotel_list')
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Hotels"
+    headers = [
+        "id(optional)",
+        "name*",
+        "city",
+        "address",
+        "latitude*",
+        "longitude*",
+        "star_rating(1-5)",
+        "phone",
+        "email",
+        "short_description",
+        "description",
+        "thumbnail_url",
+        "website",
+        "check_in_time(HH:MM)",
+        "check_out_time(HH:MM)",
+        "is_active(TRUE/FALSE)",
+    ]
+    ws.append(headers)
+    ws.append([
+        "",
+        "Hotel Demo",
+        "Hồ Chí Minh",
+        "123 Nguyễn Huệ, Q1",
+        "10.7769",
+        "106.7009",
+        4,
+        "0900000000",
+        "demo@example.com",
+        "Mô tả ngắn",
+        "Mô tả dài",
+        "",
+        "https://example.com",
+        "14:00",
+        "12:00",
+        True,
+    ])
+
+    from io import BytesIO
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resp["Content-Disposition"] = 'attachment; filename="hotel_import_template.xlsx"'
+    return resp
+
+
+@login_required
+@superuser_required
+def hotel_import_excel(request):
+    if request.method == 'GET':
+        return render(request, 'dashboard/hotels/import.html', {'page': 'hotels'})
+
+    openpyxl = _openpyxl_or_message(request)
+    if openpyxl is None:
+        return redirect('dashboard:hotel_list')
+
+    f = request.FILES.get('file')
+    if not f:
+        messages.error(request, 'Vui lòng chọn file Excel (.xlsx).')
+        return redirect('dashboard:hotel_import_excel')
+
+    try:
+        wb = openpyxl.load_workbook(f, data_only=True)
+    except Exception:
+        messages.error(request, 'Không đọc được file. Hãy chắc chắn file là .xlsx hợp lệ.')
+        return redirect('dashboard:hotel_import_excel')
+
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        messages.error(request, 'File Excel rỗng.')
+        return redirect('dashboard:hotel_import_excel')
+
+    raw_headers = [str(c or "").strip() for c in rows[0]]
+    normalized = [_normalize_header(h) for h in raw_headers]
+
+    aliases = {
+        "id(optional)": "id",
+        "id": "id",
+        "pk": "id",
+        "name*": "name",
+        "tenkhachsan": "name",
+        "ten": "name",
+        "name": "name",
+        "city": "city",
+        "thanhpho": "city",
+        "address": "address",
+        "diachi": "address",
+        "latitude*": "latitude",
+        "latitude": "latitude",
+        "vido": "latitude",
+        "longitude*": "longitude",
+        "longitude": "longitude",
+        "kinhdo": "longitude",
+        "starrating(1-5)": "star_rating",
+        "starrating": "star_rating",
+        "sosao": "star_rating",
+        "phone": "phone",
+        "sodienthoai": "phone",
+        "email": "email",
+        "shortdescription": "short_description",
+        "motangan": "short_description",
+        "description": "description",
+        "motadai": "description",
+        "thumbnailurl": "thumbnail_url",
+        "website": "website",
+        "checkintime(hh:mm)": "check_in_time",
+        "checkintime": "check_in_time",
+        "checkouttime(hh:mm)": "check_out_time",
+        "checkouttime": "check_out_time",
+        "isactive(true/false)": "is_active",
+        "isactive": "is_active",
+    }
+
+    field_to_idx = {}
+    for idx, h in enumerate(normalized):
+        key = aliases.get(h)
+        if key:
+            field_to_idx[key] = idx
+
+    missing = [k for k in ("name", "latitude", "longitude") if k not in field_to_idx]
+    if missing:
+        messages.error(
+            request,
+            f"Thiếu cột bắt buộc: {', '.join(missing)}. Tải template để đúng format.",
+        )
+        return redirect('dashboard:hotel_import_excel')
+
+    created = 0
+    updated = 0
+    errors = []
+
+    with transaction.atomic():
+        for r_i, row in enumerate(rows[1:], start=2):
+            name = row[field_to_idx["name"]]
+            if name is None or str(name).strip() == "":
+                continue
+
+            lat = _as_decimal(row[field_to_idx["latitude"]])
+            lng = _as_decimal(row[field_to_idx["longitude"]])
+            if lat is None or lng is None:
+                errors.append(f"Dòng {r_i}: latitude/longitude không hợp lệ.")
+                continue
+
+            hotel_id = None
+            if "id" in field_to_idx:
+                v = row[field_to_idx["id"]]
+                try:
+                    hotel_id = int(v) if v not in (None, "") else None
+                except Exception:
+                    hotel_id = None
+
+            if hotel_id:
+                hotel = Hotel.objects.filter(pk=hotel_id).first()
+            else:
+                hotel = None
+
+            is_new = hotel is None
+            if hotel is None:
+                hotel = Hotel()
+
+            hotel.name = str(name).strip()
+            if "city" in field_to_idx and row[field_to_idx["city"]] not in (None, ""):
+                hotel.city = str(row[field_to_idx["city"]]).strip()
+            if "address" in field_to_idx and row[field_to_idx["address"]] not in (None, ""):
+                hotel.address = str(row[field_to_idx["address"]]).strip()
+
+            hotel.latitude = lat
+            hotel.longitude = lng
+
+            if "star_rating" in field_to_idx and row[field_to_idx["star_rating"]] not in (None, ""):
+                try:
+                    sr = int(row[field_to_idx["star_rating"]])
+                    hotel.star_rating = min(max(sr, 1), 5)
+                except Exception:
+                    pass
+            if "phone" in field_to_idx and row[field_to_idx["phone"]] not in (None, ""):
+                hotel.phone = str(row[field_to_idx["phone"]]).strip()
+            if "email" in field_to_idx and row[field_to_idx["email"]] not in (None, ""):
+                hotel.email = str(row[field_to_idx["email"]]).strip()
+            if "short_description" in field_to_idx and row[field_to_idx["short_description"]] not in (None, ""):
+                hotel.short_description = str(row[field_to_idx["short_description"]]).strip()
+            if "description" in field_to_idx and row[field_to_idx["description"]] not in (None, ""):
+                hotel.description = str(row[field_to_idx["description"]]).strip()
+            if "thumbnail_url" in field_to_idx and row[field_to_idx["thumbnail_url"]] not in (None, ""):
+                hotel.thumbnail_url = str(row[field_to_idx["thumbnail_url"]]).strip()
+            if "website" in field_to_idx and row[field_to_idx["website"]] not in (None, ""):
+                hotel.website = str(row[field_to_idx["website"]]).strip()
+
+            hotel.check_in_time = _as_time(
+                row[field_to_idx["check_in_time"]] if "check_in_time" in field_to_idx else None,
+                hotel.check_in_time,
+            )
+            hotel.check_out_time = _as_time(
+                row[field_to_idx["check_out_time"]] if "check_out_time" in field_to_idx else None,
+                hotel.check_out_time,
+            )
+
+            if "is_active" in field_to_idx:
+                v = row[field_to_idx["is_active"]]
+                if isinstance(v, bool):
+                    hotel.is_active = v
+                elif v is not None and str(v).strip() != "":
+                    s = str(v).strip().lower()
+                    hotel.is_active = s in {"1", "true", "yes", "y", "on"}
+
+            if is_new:
+                base = slugify(hotel.name, allow_unicode=True)[:250] or "hotel"
+                slug = base
+                i = 2
+                while Hotel.objects.filter(slug=slug).exists():
+                    slug = f"{base}-{i}"
+                    i += 1
+                hotel.slug = slug
+
+            try:
+                hotel.save()
+            except Exception as e:
+                errors.append(f"Dòng {r_i}: không lưu được ({e}).")
+                continue
+
+            if is_new:
+                created += 1
+            else:
+                updated += 1
+
+    if created or updated:
+        messages.success(request, f"✅ Import xong: tạo mới {created}, cập nhật {updated}.")
+    if errors:
+        messages.warning(request, f"⚠ Có {len(errors)} dòng lỗi (xem chi tiết bên dưới).")
+    return render(
+        request,
+        'dashboard/hotels/import.html',
+        {'created': created, 'updated': updated, 'errors': errors, 'page': 'hotels'},
+    )
+
+
+@login_required
+@staff_required
+def revenue_export_excel(request):
+    openpyxl = _openpyxl_or_message(request)
+    if openpyxl is None:
+        return redirect('dashboard:home')
+
+    try:
+        year = int(request.GET.get('year') or timezone.localdate().year)
+    except Exception:
+        year = timezone.localdate().year
+
+    qs = (
+        Payment.objects
+        .filter(status='paid', paid_at__isnull=False, paid_at__year=year)
+        .annotate(month=TruncMonth('paid_at'))
+        .values('month')
+        .annotate(
+            total=Sum('amount'),
+            payment_count=Count('id'),
+            booking_count=Count('booking', distinct=True),
+        )
+        .order_by('month')
+    )
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = f"Revenue {year}"
+    ws.append(["Tháng", "Doanh thu (VNĐ)", "Số giao dịch", "Số booking"])
+
+    total_year = Decimal("0")
+    for row in qs:
+        month = row["month"]
+        total = row["total"] or 0
+        total_year += Decimal(str(total))
+        ws.append([
+            month.strftime("%m/%Y") if month else "",
+            float(total),
+            int(row["payment_count"] or 0),
+            int(row["booking_count"] or 0),
+        ])
+
+    ws.append([])
+    ws.append(["Tổng năm", float(total_year), "", ""])
+
+    for cell in ws["B"][1:]:
+        cell.number_format = '#,##0'
+
+    from io import BytesIO
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    resp = HttpResponse(
+        buf.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    resp["Content-Disposition"] = f'attachment; filename="revenue_{year}.xlsx"'
+    return resp
 
 
 @login_required

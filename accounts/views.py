@@ -2,7 +2,9 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .forms import RegisterForm, LoginForm
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth import update_session_auth_hash
+from .forms import RegisterForm, LoginForm, ProfileUpdateForm
 from bookings.models import Booking
 
 
@@ -45,3 +47,24 @@ def profile(request):
         .order_by('-created_at')
     )
     return render(request, 'accounts/profile.html', {'bookings': bookings})
+
+
+@login_required
+def profile_edit(request):
+    form = ProfileUpdateForm(request.POST or None, instance=request.user)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, '✅ Đã cập nhật thông tin tài khoản.')
+        return redirect('accounts:profile')
+    return render(request, 'accounts/profile_edit.html', {'form': form})
+
+
+@login_required
+def password_change(request):
+    form = PasswordChangeForm(user=request.user, data=request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        user = form.save()
+        update_session_auth_hash(request, user)  # giữ đăng nhập sau khi đổi mật khẩu
+        messages.success(request, '🔐 Đổi mật khẩu thành công.')
+        return redirect('accounts:profile')
+    return render(request, 'accounts/password_change.html', {'form': form})

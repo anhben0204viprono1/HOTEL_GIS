@@ -9,6 +9,8 @@ urlpatterns = [
     path('login/',    views.user_login, name='login'),
     path('logout/',   views.user_logout, name='logout'),
     path('profile/',  views.profile, name='profile'),
+    path('profile/edit/', views.profile_edit, name='profile_edit'),
+    path('password/change/', views.password_change, name='password_change'),
 
     # ── Quên mật khẩu (Django built-in views) ─────────────────────────────
     path('password-reset/',

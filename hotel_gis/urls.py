@@ -8,7 +8,6 @@ urlpatterns = [
     path('', include('hotels.urls')),
     path('accounts/', include('accounts.urls')),
     path('bookings/', include('bookings.urls')),
-    path('dashboard/', include('dashboard.urls')),
     # Dashboard admin (staff/superuser)
     path('dashboard/',  include('dashboard.urls', namespace='dashboard')),
 

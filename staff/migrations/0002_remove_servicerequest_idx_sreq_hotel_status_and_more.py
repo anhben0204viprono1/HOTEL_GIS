@@ -12,15 +12,15 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RemoveIndex(
             model_name='servicerequest',
-            name='idx_sreq_hotel_status',
+            name='idx_staff_sreq_hotel_status',
         ),
         migrations.RemoveIndex(
             model_name='servicerequest',
-            name='idx_sreq_status',
+            name='idx_staff_sreq_status',
         ),
         migrations.RemoveIndex(
             model_name='servicerequest',
-            name='idx_sreq_priority',
+            name='idx_staff_sreq_priority',
         ),
         migrations.DeleteModel(
             name='ServiceRequest',

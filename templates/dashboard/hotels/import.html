@@ -1,0 +1,52 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Import khách sạn{% endblock %}
+{% block page_title %}Import khách sạn{% endblock %}
+
+{% block content %}
+<div class="stat-card">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <div class="table-section-title">⬆ Import khách sạn từ Excel</div>
+      <div class="text-muted" style="font-size:12px;">
+        File .xlsx · Bắt buộc: <code>name</code>, <code>latitude</code>, <code>longitude</code>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary" href="{% url 'dashboard:hotel_import_template' %}">Tải template</a>
+      <a class="btn btn-outline-secondary" href="{% url 'dashboard:hotel_list' %}">Quay lại</a>
+    </div>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+    {% csrf_token %}
+    <input type="file" name="file" accept=".xlsx" class="form-control" required>
+    <button class="btn btn-gold px-4" type="submit">Import</button>
+  </form>
+
+  {% if created is not None %}
+    <hr class="my-4">
+    <div class="d-flex gap-3" style="font-size:13px;">
+      <div><b>Tạo mới:</b> {{ created }}</div>
+      <div><b>Cập nhật:</b> {{ updated }}</div>
+      <div><b>Lỗi:</b> {{ errors|length }}</div>
+    </div>
+  {% endif %}
+
+  {% if errors %}
+    <div class="mt-3">
+      <div class="table-section-title">Chi tiết lỗi</div>
+      <div class="dash-table mt-2">
+        <table class="table table-hover mb-0">
+          <thead><tr><th style="width:60px;">#</th><th>Nội dung</th></tr></thead>
+          <tbody>
+            {% for e in errors %}
+              <tr><td style="color:#aaa;">{{ forloop.counter }}</td><td style="font-size:13px;">{{ e }}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+

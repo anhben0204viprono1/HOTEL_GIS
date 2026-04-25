@@ -23,3 +23,18 @@ class LoginForm(AuthenticationForm):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
             field.widget.attrs.update({'class': 'form-control'})
+
+
+class ProfileUpdateForm(forms.ModelForm):
+    first_name = forms.CharField(max_length=50, required=False, label="Họ")
+    last_name = forms.CharField(max_length=50, required=False, label="Tên")
+    email = forms.EmailField(required=False, label="Email")
+
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.update({"class": "form-control"})

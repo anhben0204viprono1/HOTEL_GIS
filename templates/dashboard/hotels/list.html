@@ -5,9 +5,16 @@
 {% block content %}
 <div class="page-header">
   <h4>🏨 Danh sách khách sạn</h4>
-  <a href="{% url 'dashboard:hotel_create' %}" class="btn btn-gold px-4">
-    + Thêm khách sạn
-  </a>
+  <div class="d-flex gap-2">
+    {% if user.is_superuser %}
+      <a href="{% url 'dashboard:hotel_import_excel' %}" class="btn btn-outline-secondary px-4">
+        ⬆ Import Excel
+      </a>
+    {% endif %}
+    <a href="{% url 'dashboard:hotel_create' %}" class="btn btn-gold px-4">
+      + Thêm khách sạn
+    </a>
+  </div>
 </div>
 
 <!-- Search -->

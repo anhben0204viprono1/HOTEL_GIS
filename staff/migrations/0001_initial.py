@@ -56,14 +56,14 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name='servicerequest',
-            index=models.Index(fields=['hotel', 'status'], name='idx_sreq_hotel_status'),
+            index=models.Index(fields=['hotel', 'status'], name='idx_staff_sreq_hotel_status'),
         ),
         migrations.AddIndex(
             model_name='servicerequest',
-            index=models.Index(fields=['status'], name='idx_sreq_status'),
+            index=models.Index(fields=['status'], name='idx_staff_sreq_status'),
         ),
         migrations.AddIndex(
             model_name='servicerequest',
-            index=models.Index(fields=['priority'], name='idx_sreq_priority'),
+            index=models.Index(fields=['priority'], name='idx_staff_sreq_priority'),
         ),
     ]

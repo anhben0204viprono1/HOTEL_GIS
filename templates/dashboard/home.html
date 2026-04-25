@@ -64,6 +64,13 @@
 
 </div>
 
+{% now "Y" as current_year %}
+<div class="d-flex justify-content-end mb-4">
+  <a class="btn btn-outline-secondary" href="{% url 'dashboard:revenue_export_excel' %}?year={{ current_year }}">
+    ⬇ Xuất doanh thu (Excel)
+  </a>
+</div>
+
 <!-- ── Chart + Top hotels ── -->
 <div class="row g-4 mb-4">
 

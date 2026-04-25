@@ -10,6 +10,8 @@ urlpatterns = [
     # ── Hotels ────────────────────────────────────────────────────
     path('hotels/',                             views.hotel_list,            name='hotel_list'),
     path('hotels/create/',                      views.hotel_create,          name='hotel_create'),
+    path('hotels/import/',                      views.hotel_import_excel,    name='hotel_import_excel'),
+    path('hotels/import-template/',             views.hotel_import_template, name='hotel_import_template'),
     path('hotels/<int:pk>/edit/',               views.hotel_edit,            name='hotel_edit'),
     path('hotels/<int:pk>/delete/',             views.hotel_delete,          name='hotel_delete'),
     path('hotels/<int:pk>/toggle/',             views.hotel_toggle,          name='hotel_toggle'),
@@ -52,6 +54,7 @@ urlpatterns = [
     path('service-requests/',                   views.service_request_list,  name='service_request_list'),
 
     path('homepage/',                           views.homepage_editor,       name='homepage_editor'),
+    path('reports/revenue.xlsx',                views.revenue_export_excel,  name='revenue_export_excel'),
 
     # ── API ───────────────────────────────────────────────────────
     path('api/stats/',                          views.api_stats,             name='api_stats'),
