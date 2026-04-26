@@ -54,6 +54,13 @@ urlpatterns = [
     path('service-requests/',                   views.service_request_list,  name='service_request_list'),
 
     path('homepage/',                           views.homepage_editor,       name='homepage_editor'),
+
+    # ── Hotel Services ────────────────────────────────────────────
+    path('hotels/<int:hotel_pk>/services/',              views.hotel_service_list,   name='hotel_service_list'),
+    path('hotels/<int:hotel_pk>/services/create/',       views.hotel_service_create, name='hotel_service_create'),
+    path('hotels/<int:hotel_pk>/services/<int:pk>/edit/',views.hotel_service_edit,   name='hotel_service_edit'),
+    path('hotels/<int:hotel_pk>/services/<int:pk>/delete/',views.hotel_service_delete,name='hotel_service_delete'),
+    path('hotels/<int:hotel_pk>/services/<int:pk>/toggle/',views.hotel_service_toggle,name='hotel_service_toggle'),
     path('reports/revenue.xlsx',                views.revenue_export_excel,  name='revenue_export_excel'),
 
     # ── API ───────────────────────────────────────────────────────

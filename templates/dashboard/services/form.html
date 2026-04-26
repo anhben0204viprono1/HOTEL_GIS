@@ -1,0 +1,96 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}{{ action }} — {{ hotel.name }}{% endblock %}
+{% block page_title %}{{ action }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a href="{% url 'dashboard:hotel_service_list' hotel.pk %}" style="font-size:12px;color:#aaa;text-decoration:none;">
+      ← Dịch vụ {{ hotel.name }}
+    </a>
+    <h4 class="mt-1">{{ action }}</h4>
+  </div>
+</div>
+
+<div style="max-width:600px;">
+<form method="post">
+{% csrf_token %}
+<div style="background:#fff;border-radius:12px;border:1px solid #e8e9ec;padding:24px;">
+
+  <div class="row g-3">
+    <!-- Tên -->
+    <div class="col-8">
+      <label class="form-label fw-semibold" style="font-size:12px;">Tên dịch vụ *</label>
+      <input type="text" name="name" class="form-control" required
+             value="{{ service.name|default:'' }}" placeholder="VD: Room Service, Giặt ủi...">
+    </div>
+    <!-- Icon -->
+    <div class="col-4">
+      <label class="form-label fw-semibold" style="font-size:12px;">Emoji icon</label>
+      <input type="text" name="icon" class="form-control text-center"
+             value="{{ service.icon|default:'✨' }}" maxlength="4"
+             style="font-size:20px;" placeholder="✨">
+    </div>
+
+    <!-- Danh mục -->
+    <div class="col-12">
+      <label class="form-label fw-semibold" style="font-size:12px;">Danh mục *</label>
+      <select name="category" class="form-select">
+        {% for val, label in categories %}
+          <option value="{{ val }}" {% if service.category == val %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Mô tả -->
+    <div class="col-12">
+      <label class="form-label fw-semibold" style="font-size:12px;">Mô tả</label>
+      <textarea name="description" class="form-control" rows="2"
+                placeholder="Mô tả ngắn cho khách biết dịch vụ này là gì...">{{ service.description|default:'' }}</textarea>
+    </div>
+
+    <!-- Giá & ETA -->
+    <div class="col-6">
+      <label class="form-label fw-semibold" style="font-size:12px;">Giá (VNĐ)</label>
+      <input type="number" name="price" class="form-control" step="1000" min="0"
+             value="{{ service.price|default:'' }}" placeholder="Để trống = Miễn phí">
+    </div>
+    <div class="col-3">
+      <label class="form-label fw-semibold" style="font-size:12px;">Thời gian (phút)</label>
+      <input type="number" name="eta_minutes" class="form-control" min="1" max="240"
+             value="{{ service.eta_minutes|default:'' }}" placeholder="VD: 30">
+    </div>
+    <div class="col-3">
+      <label class="form-label fw-semibold" style="font-size:12px;">Thứ tự</label>
+      <input type="number" name="order" class="form-control" min="0"
+             value="{{ service.order|default:'0' }}">
+    </div>
+
+    <!-- Toggles -->
+    <div class="col-6">
+      <div class="form-check form-switch mt-2">
+        <input class="form-check-input" type="checkbox" name="is_available" id="isAvail"
+               {% if not service or service.is_available %}checked{% endif %}
+               style="width:40px;height:22px;">
+        <label class="form-check-label ms-2" for="isAvail" style="font-size:13px;">Đang hoạt động</label>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="form-check form-switch mt-2">
+        <input class="form-check-input" type="checkbox" name="requires_note" id="reqNote"
+               {% if service and service.requires_note %}checked{% endif %}
+               style="width:40px;height:22px;">
+        <label class="form-check-label ms-2" for="reqNote" style="font-size:13px;">Yêu cầu ghi chú</label>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="d-flex gap-3 mt-3">
+  <button type="submit" class="btn btn-gold px-5">💾 Lưu</button>
+  <a href="{% url 'dashboard:hotel_service_list' hotel.pk %}" class="btn btn-outline-secondary">Hủy</a>
+</div>
+</form>
+</div>
+{% endblock %}

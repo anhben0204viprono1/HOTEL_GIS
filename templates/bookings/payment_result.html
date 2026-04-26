@@ -375,8 +375,7 @@
     <div class="detail-row">
       <span class="d-label">Loại phòng</span>
       <span class="d-val"
-        >{{ booking.room.room_type.name }} · Phòng {{ booking.room.room_number
-        }}</span
+        >{{ booking.room.room_type.name }} · Phòng {{ booking.room.room_number }}</span
       >
     </div>
     <div class="detail-row">
@@ -469,8 +468,7 @@
         <div class="tl-dot gray">○</div>
         <div>
           <div class="tl-text" style="color: #9ca3af">
-            Nhận phòng · {% if booking.is_hourly %}{{ booking.check_in_dt|date:"H:i d/m/Y" }}{% else %}{{ booking.check_in|date:"d/m/Y" }}{% endif %} lúc {{
-            booking.room.hotel.check_in_time|time:"H:i" }}
+            Nhận phòng · {% if booking.is_hourly %}{{ booking.check_in_dt|date:"H:i d/m/Y" }}{% else %}{{ booking.check_in|date:"d/m/Y" }}{% endif %} lúc {{ booking.room.hotel.check_in_time|time:"H:i" }}
           </div>
         </div>
       </div>

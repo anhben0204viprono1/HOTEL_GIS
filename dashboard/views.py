@@ -16,7 +16,7 @@ import json
 from decimal import Decimal, InvalidOperation
 import datetime
 
-from hotels.models import Hotel, RoomType, Room, Amenity, HotelImage, RoomTypeImage, HomepageConfig
+from hotels.models import Hotel, RoomType, Room, Amenity, HotelImage, RoomTypeImage, HomepageConfig, HotelService
 from bookings.models import Booking, Payment, Review
 from django.contrib.auth.models import User, Group
 from hotels.widgets import LeafletMapWidget
@@ -1154,3 +1154,113 @@ def homepage_editor(request):
         'config': config,
         'page':   'homepage',
     })
+
+
+# ═══════════════════════════════════════════════════════════
+# HOTEL SERVICES — Quản lý dịch vụ khách sạn
+# ═══════════════════════════════════════════════════════════
+
+@login_required
+@staff_required
+def hotel_service_list(request, hotel_pk):
+    """Danh sách dịch vụ của một khách sạn."""
+    hotel    = get_object_or_404(Hotel, pk=hotel_pk)
+    services = hotel.services.order_by('category', 'order', 'name')
+    return render(request, 'dashboard/services/list.html', {
+        'hotel': hotel, 'services': services, 'page': 'hotels',
+    })
+
+
+@login_required
+@staff_required
+def hotel_service_create(request, hotel_pk):
+    hotel = get_object_or_404(Hotel, pk=hotel_pk)
+    if request.method == 'POST':
+        return _save_service(request, hotel, None)
+    return render(request, 'dashboard/services/form.html', {
+        'hotel': hotel, 'page': 'hotels', 'action': 'Thêm dịch vụ',
+        'categories': HotelService.CATEGORY_CHOICES,
+    })
+
+
+@login_required
+@staff_required
+def hotel_service_edit(request, hotel_pk, pk):
+    hotel   = get_object_or_404(Hotel, pk=hotel_pk)
+    service = get_object_or_404(HotelService, pk=pk, hotel=hotel)
+    if request.method == 'POST':
+        return _save_service(request, hotel, service)
+    return render(request, 'dashboard/services/form.html', {
+        'hotel': hotel, 'service': service, 'page': 'hotels',
+        'action': 'Sửa dịch vụ',
+        'categories': HotelService.CATEGORY_CHOICES,
+    })
+
+
+@login_required
+@staff_required
+def hotel_service_delete(request, hotel_pk, pk):
+    hotel   = get_object_or_404(Hotel, pk=hotel_pk)
+    service = get_object_or_404(HotelService, pk=pk, hotel=hotel)
+    if request.method == 'POST':
+        name = service.name
+        service.delete()
+        messages.success(request, f'Đã xóa dịch vụ "{name}".')
+    return redirect('dashboard:hotel_service_list', hotel_pk=hotel_pk)
+
+
+@login_required
+@staff_required
+def hotel_service_toggle(request, hotel_pk, pk):
+    hotel   = get_object_or_404(Hotel, pk=hotel_pk)
+    service = get_object_or_404(HotelService, pk=pk, hotel=hotel)
+    if request.method == 'POST':
+        service.is_available = not service.is_available
+        service.save()
+        state = 'bật' if service.is_available else 'tắt'
+        messages.success(request, f'Đã {state} dịch vụ "{service.name}".')
+    return redirect('dashboard:hotel_service_list', hotel_pk=hotel_pk)
+
+
+def _save_service(request, hotel, service):
+    data = request.POST
+    name = data.get('name', '').strip()
+    if not name:
+        messages.error(request, 'Tên dịch vụ không được để trống.')
+        return redirect('dashboard:hotel_service_list', hotel_pk=hotel.pk)
+
+    price_raw = data.get('price', '').strip()
+    try:
+        price = float(price_raw) if price_raw else None
+    except ValueError:
+        price = None
+
+    eta_raw = data.get('eta_minutes', '').strip()
+    try:
+        eta = int(eta_raw) if eta_raw else None
+    except ValueError:
+        eta = None
+
+    fields = {
+        'hotel':         hotel,
+        'name':          name,
+        'category':      data.get('category', 'other'),
+        'icon':          data.get('icon', '✨').strip() or '✨',
+        'description':   data.get('description', '').strip(),
+        'price':         price,
+        'eta_minutes':   eta,
+        'order':         int(data.get('order', 0) or 0),
+        'is_available':  'is_available' in data,
+        'requires_note': 'requires_note' in data,
+    }
+
+    if service:
+        for k, v in fields.items():
+            setattr(service, k, v)
+        service.save()
+        messages.success(request, f'✅ Đã cập nhật dịch vụ "{name}".')
+    else:
+        HotelService.objects.create(**fields)
+        messages.success(request, f'✅ Đã thêm dịch vụ "{name}".')
+
+    return redirect('dashboard:hotel_service_list', hotel_pk=hotel.pk)

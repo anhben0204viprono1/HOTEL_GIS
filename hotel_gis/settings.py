@@ -48,28 +48,20 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = 'hotel_gis.wsgi.application'
 
-_db_engine = os.environ.get('DJANGO_DB_ENGINE', '').strip().lower()
-_use_postgres = _db_engine in {'postgres', 'postgresql'} or os.environ.get('POSTGRES_DB')
-if _use_postgres:
-    DATABASES = {
+
+DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.environ.get('POSTGRES_DB', 'qlks'),
             'USER': os.environ.get('POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', ''),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', '123456'),
             'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
             'PORT': os.environ.get('POSTGRES_PORT', '5432'),
         }
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
 
-# Cache (dùng cho token reset mật khẩu — LocMemCache, không cần migrate)
+
+# Cache (dùng cho token reset mật khẩu — LocMemCache, không cần migrate) 
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',

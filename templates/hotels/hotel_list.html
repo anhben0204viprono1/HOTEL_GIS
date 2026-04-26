@@ -639,9 +639,10 @@ function goToRoomPortalCta() {
 // MAP INIT
 // ════════════════════════════════════════════════════════
 const map = L.map('map').setView([10.7769, 106.7009], 12);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap',
-  maxZoom: 19
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 20
 }).addTo(map);
 
 const hotelIcon = L.divIcon({
@@ -665,11 +666,17 @@ geojson.features.forEach(f => {
   hotelData.push({ id: p.id, name: p.name, stars: p.stars, lat, lng, address: p.address, city: p.city, price: parseFloat(p.price) || 0, dist: null });
   const marker = L.marker([lat, lng], { icon: hotelIcon }).addTo(map);
   marker.bindPopup(`
-    <div style="min-width:180px;font-family:'Jost',sans-serif;">
+    <div style="min-width:200px;font-family:'Jost',sans-serif;">
       <strong style="font-size:13px;">${p.name}</strong>
       <div style="font-size:11px;color:#aaa;margin:3px 0;">📍 ${p.city}</div>
       <div style="font-size:12px;color:#C9A84C;font-weight:700;">${p.price ? parseInt(p.price).toLocaleString('vi-VN') + ' ₫' : '—'}/đêm</div>
-      <a href="${p.url}" style="display:block;margin-top:8px;background:#C9A84C;color:#0D0D0D;text-align:center;padding:5px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;">Xem chi tiết →</a>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <a href="${p.url}" style="flex:1;background:#C9A84C;color:#0D0D0D;text-align:center;padding:5px;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;">Xem →</a>
+        <button onclick="getDirections(${lat},${lng},'${p.name.replace(/'/g, "\\'")}')"
+          style="flex:1;background:#1d4ed8;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;padding:5px;">
+          🗺 Chỉ đường
+        </button>
+      </div>
     </div>
   `);
   marker.on('click', () => {
@@ -872,6 +879,18 @@ function sortHotels(mode) {
     return 0;
   });
   sorted.forEach(c => container.appendChild(c.parentElement));
+}
+
+// ════════════════════════════════════════════════════════
+// DIRECTIONS FROM POPUP
+// ════════════════════════════════════════════════════════
+function getDirections(destLat, destLng, hotelName) {
+  if (userLat && userLng) {
+    map.closePopup();
+    drawRoute(userLat, userLng, destLat, destLng);
+  } else {
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`, '_blank');
+  }
 }
 
 // ════════════════════════════════════════════════════════

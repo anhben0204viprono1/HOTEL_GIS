@@ -1,0 +1,78 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Dịch vụ — {{ hotel.name }}{% endblock %}
+{% block page_title %}Dịch vụ: {{ hotel.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <a href="{% url 'dashboard:hotel_list' %}" style="font-size:12px;color:#aaa;text-decoration:none;">← Khách sạn</a>
+    <h4 class="mt-1">🛎 Dịch vụ — {{ hotel.name }}</h4>
+  </div>
+  <a href="{% url 'dashboard:hotel_service_create' hotel.pk %}" class="btn btn-gold btn-sm px-4">
+    + Thêm dịch vụ
+  </a>
+</div>
+
+{% if not services %}
+<div class="text-center py-5" style="background:#fff;border-radius:12px;border:1px solid #e8e9ec;">
+  <div style="font-size:3rem;">🛎</div>
+  <p class="mt-3 text-muted">Chưa có dịch vụ nào. Thêm dịch vụ để khách có thể gọi từ phòng.</p>
+  <a href="{% url 'dashboard:hotel_service_create' hotel.pk %}" class="btn btn-gold btn-sm mt-2">+ Thêm dịch vụ đầu tiên</a>
+</div>
+{% else %}
+
+{% regroup services by get_category_display as by_cat %}
+{% for cat in by_cat %}
+<div class="dash-table mb-4">
+  <div style="padding:14px 16px;background:#f8f9fb;border-bottom:1px solid #e8e9ec;">
+    <strong style="font-size:13px;">{{ cat.grouper }}</strong>
+    <span style="font-size:11px;color:#aaa;margin-left:8px;">{{ cat.list|length }} dịch vụ</span>
+  </div>
+  <table class="table mb-0">
+    <thead>
+      <tr>
+        <th>Dịch vụ</th>
+        <th>Mô tả</th>
+        <th>Giá</th>
+        <th>ETA</th>
+        <th>Trạng thái</th>
+        <th style="width:140px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in cat.list %}
+      <tr>
+        <td>
+          <span style="font-size:18px;">{{ s.icon }}</span>
+          <strong style="margin-left:6px;font-size:13px;">{{ s.name }}</strong>
+        </td>
+        <td style="font-size:12px;color:#888;max-width:200px;">{{ s.description|truncatechars:60|default:"—" }}</td>
+        <td style="font-size:13px;font-weight:600;color:#C9A84C;">{{ s.price_display }}</td>
+        <td style="font-size:12px;color:#888;">{% if s.eta_minutes %}~{{ s.eta_minutes }} phút{% else %}—{% endif %}</td>
+        <td>
+          <form method="post" action="{% url 'dashboard:hotel_service_toggle' hotel.pk s.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit"
+              class="badge-status {% if s.is_available %}bs-confirmed{% else %}bs-cancelled{% endif %}"
+              style="border:none;cursor:pointer;font-size:11px;">
+              {% if s.is_available %}✅ Bật{% else %}⛔ Tắt{% endif %}
+            </button>
+          </form>
+        </td>
+        <td class="text-end">
+          <a href="{% url 'dashboard:hotel_service_edit' hotel.pk s.pk %}"
+             class="btn btn-icon btn-outline-secondary btn-sm me-1" title="Sửa">✏️</a>
+          <form method="post" action="{% url 'dashboard:hotel_service_delete' hotel.pk s.pk %}" style="display:inline;"
+                onsubmit="return confirm('Xóa dịch vụ &quot;{{ s.name }}&quot;?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-icon btn-outline-danger btn-sm" title="Xóa">🗑</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}

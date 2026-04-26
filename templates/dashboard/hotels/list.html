@@ -89,6 +89,10 @@
                  class="btn btn-sm btn-gold"
                  style="font-size:11px;padding:4px 10px;"
                  title="Quản lý phòng">🛏 Phòng</a>
+            <a href="{% url 'dashboard:hotel_service_list' h.pk %}"
+                 class="btn btn-sm btn-outline-secondary"
+                 style="font-size:11px;padding:4px 10px;"
+                 title="Quản lý dịch vụ">🛎 Dịch vụ</a>
             <form method="post" action="{% url 'dashboard:hotel_toggle' h.pk %}" style="display:inline;">
               {% csrf_token %}
               <button type="submit" class="btn btn-icon btn-outline-warning btn-sm"
