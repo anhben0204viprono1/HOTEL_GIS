@@ -11,6 +11,7 @@ from datetime import datetime
 from hotels.models import RoomType, Room, HotelService, ServiceRequest, Amenity
 from .models import Booking, Payment, Review, AmenityUsage
 from .forms import BookingForm, ReviewForm
+from .email_utils import send_booking_confirmation, send_booking_cancellation
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -178,6 +179,9 @@ def confirm_payment(request, pk):
         booking.status = 'confirmed'
         booking.save()
 
+    # Gửi email xác nhận qua Mailtrap
+    send_booking_confirmation(booking)
+
     messages.success(request,
         f'🎉 Đặt phòng #{booking.id} đã được xác nhận!')
     return redirect('bookings:payment_result', pk=pk)
@@ -218,6 +222,8 @@ def cancel_booking(request, pk):
             booking.cancelled_at  = timezone.now()
             booking.cancel_reason = request.POST.get('reason', '').strip()
             booking.save()
+            # Gửi email thông báo hủy
+            send_booking_cancellation(booking)
             messages.warning(request, f'Đặt phòng #{booking.id} đã được hủy.')
         else:
             messages.error(request, 'Không thể hủy đặt phòng ở trạng thái này.')

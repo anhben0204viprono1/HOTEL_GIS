@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Xác nhận email — Hotel GIS{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:460px;">
+  <div class="bg-white rounded-3 shadow-sm p-5 text-center">
+
+    <div style="font-size:3rem;margin-bottom:12px;">📧</div>
+    <h2 style="font-family:'Cormorant Garamond',serif;" class="mb-2">Xác nhận email</h2>
+    <p style="font-size:13px;color:#888;" class="mb-4">
+      Chúng tôi đã gửi mã 6 chữ số tới<br>
+      <strong style="color:#0D0D0D;">{{ email }}</strong>
+    </p>
+
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="alert alert-{% if msg.tags == 'error' %}danger{% elif msg.tags == 'success' %}success{% else %}info{% endif %} py-2" style="font-size:13px;">
+          {{ msg }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-4">
+        <input
+          type="text"
+          name="otp"
+          maxlength="6"
+          inputmode="numeric"
+          pattern="[0-9]{6}"
+          autofocus
+          autocomplete="one-time-code"
+          placeholder="_ _ _ _ _ _"
+          class="form-control text-center fw-bold"
+          style="font-size:2rem;letter-spacing:12px;padding:14px;border:2px solid #e0dcd4;border-radius:12px;"
+          required
+        >
+        <div style="font-size:11px;color:#aaa;margin-top:6px;">Nhập đúng 6 chữ số trong email</div>
+      </div>
+
+      <button type="submit" class="btn btn-gold w-100 py-2 fw-bold" style="font-size:15px;">
+        ✅ Xác nhận
+      </button>
+    </form>
+
+    <div class="mt-4" style="font-size:13px;color:#888;">
+      Không nhận được email?
+      <a href="{% url 'accounts:resend_otp' %}" style="color:#C9A84C;font-weight:600;">Gửi lại mã</a>
+    </div>
+    <div class="mt-2" style="font-size:12px;">
+      <a href="{% url 'accounts:register' %}" style="color:#aaa;">← Quay lại đăng ký</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}

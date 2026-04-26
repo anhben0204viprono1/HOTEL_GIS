@@ -160,9 +160,7 @@
       <a href="{% url 'bookings:detail_user' booking.pk %}" class="btn btn-outline-primary px-4">
         🛎 Gọi dịch vụ
       </a>
-      <a href="{% url 'bookings:amenity_usage' booking.pk %}" class="btn btn-outline-success px-4">
-        ✨ Tiện nghi
-      </a>
+
     {% endif %}
     {% if booking.status == 'checked_out' %}
       {% if booking.can_review %}

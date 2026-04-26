@@ -78,12 +78,16 @@ def dashboard_home(request):
         .order_by('-booking_count')[:5]
     )
 
+    current_year  = timezone.localdate().year
+    export_years  = list(range(current_year, current_year - 5, -1))
+
     return render(request, 'dashboard/home.html', {
         'stats':           stats,
         'chart_labels':    json.dumps(chart_labels),
         'chart_data':      json.dumps(chart_data),
         'recent_bookings': recent_bookings,
         'top_hotels':      top_hotels,
+        'export_years':    export_years,
         'page': 'dashboard',
     })
 
@@ -426,57 +430,161 @@ def revenue_export_excel(request):
     if openpyxl is None:
         return redirect('dashboard:home')
 
+    today = timezone.localdate()
     try:
-        year = int(request.GET.get('year') or timezone.localdate().year)
-    except Exception:
-        year = timezone.localdate().year
+        year = int(request.GET.get('year') or today.year)
+    except (ValueError, TypeError):
+        year = today.year
 
-    qs = (
-        Payment.objects
-        .filter(status='paid', paid_at__isnull=False, paid_at__year=year)
-        .annotate(month=TruncMonth('paid_at'))
-        .values('month')
-        .annotate(
-            total=Sum('amount'),
-            payment_count=Count('id'),
-            booking_count=Count('booking', distinct=True),
-        )
-        .order_by('month')
-    )
-
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = f"Revenue {year}"
-    ws.append(["Tháng", "Doanh thu (VNĐ)", "Số giao dịch", "Số booking"])
-
-    total_year = Decimal("0")
-    for row in qs:
-        month = row["month"]
-        total = row["total"] or 0
-        total_year += Decimal(str(total))
-        ws.append([
-            month.strftime("%m/%Y") if month else "",
-            float(total),
-            int(row["payment_count"] or 0),
-            int(row["booking_count"] or 0),
-        ])
-
-    ws.append([])
-    ws.append(["Tổng năm", float(total_year), "", ""])
-
-    for cell in ws["B"][1:]:
-        cell.number_format = '#,##0'
+    month_raw = request.GET.get('month', '')
+    try:
+        month = int(month_raw) if month_raw else None
+        if month and not (1 <= month <= 12):
+            month = None
+    except (ValueError, TypeError):
+        month = None
 
     from io import BytesIO
+    import calendar as cal_mod
+    from django.db.models.functions import TruncDay
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+
+    wb = openpyxl.Workbook()
+
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    header_fill = PatternFill('solid', fgColor='1A1A2E')
+    total_fill  = PatternFill('solid', fgColor='C9A84C')
+    total_font  = Font(bold=True, color='FFFFFF', size=11)
+    center      = Alignment(horizontal='center', vertical='center')
+    right       = Alignment(horizontal='right',  vertical='center')
+    thin_side   = Side(style='thin', color='D0D0D0')
+    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    num_fmt     = '#,##0'
+
+    def style_header(ws, cols):
+        for col in cols:
+            c = ws.cell(row=2, column=col)
+            c.font = header_font; c.fill = header_fill
+            c.alignment = center; c.border = thin_border
+
+    def style_data_row(ws, row_num, num_cols, alt=False):
+        fill = PatternFill('solid', fgColor='F8F6F2' if alt else 'FFFFFF')
+        for col in range(1, num_cols + 1):
+            c = ws.cell(row=row_num, column=col)
+            c.fill = fill; c.border = thin_border
+            c.alignment = right if col > 1 else center
+
+    def style_total_row(ws, row_num, num_cols):
+        for col in range(1, num_cols + 1):
+            c = ws.cell(row=row_num, column=col)
+            c.font = total_font; c.fill = total_fill
+            c.alignment = right if col > 1 else center; c.border = thin_border
+
+    if month:
+        ws = wb.active
+        ws.title = f"T{month:02d}-{year}"
+        ws.merge_cells('A1:E1')
+        tc = ws['A1']
+        tc.value = f"BÁO CÁO DOANH THU THÁNG {month:02d}/{year}"
+        tc.font = Font(bold=True, size=14, color='1A1A2E')
+        tc.alignment = Alignment(horizontal='center', vertical='center')
+        ws.row_dimensions[1].height = 30
+        ws.append(["Ngày", "Doanh thu (VNĐ)", "Số giao dịch", "Số booking", "P.thức TT chính"])
+        style_header(ws, range(1, 6))
+
+        qs = (
+            Payment.objects
+            .filter(status='paid', paid_at__isnull=False, paid_at__year=year, paid_at__month=month)
+            .annotate(day=TruncDay('paid_at'))
+            .values('day')
+            .annotate(total=Sum('amount'), payment_count=Count('id'), booking_count=Count('booking', distinct=True))
+            .order_by('day')
+        )
+        data_map = {r['day'].date(): r for r in qs if r['day']}
+        total_month = Decimal('0')
+        days_in_month = cal_mod.monthrange(year, month)[1]
+
+        for d in range(1, days_in_month + 1):
+            from datetime import date as date_cls
+            day_date = date_cls(year, month, d)
+            r = data_map.get(day_date)
+            row_num = d + 2
+            total = Decimal(str(r['total'])) if r else Decimal('0')
+            total_month += total
+            ws.append([
+                day_date.strftime('%d/%m/%Y'),
+                float(total),
+                int(r['payment_count'] or 0) if r else 0,
+                int(r['booking_count'] or 0) if r else 0,
+                '—',
+            ])
+            style_data_row(ws, row_num, 5, alt=(d % 2 == 0))
+            ws.cell(row=row_num, column=2).number_format = num_fmt
+
+        tr = days_in_month + 3
+        ws.append(['TỔNG THÁNG', float(total_month), '', '', ''])
+        style_total_row(ws, tr, 5)
+        ws.cell(row=tr, column=2).number_format = num_fmt
+        for col, w in zip('ABCDE', [14, 22, 16, 14, 20]):
+            ws.column_dimensions[col].width = w
+        filename = f"revenue_{year}_thang{month:02d}.xlsx"
+
+    else:
+        ws = wb.active
+        ws.title = f"Revenue {year}"
+        ws.merge_cells('A1:E1')
+        tc = ws['A1']
+        tc.value = f"BÁO CÁO DOANH THU NĂM {year}"
+        tc.font = Font(bold=True, size=14, color='1A1A2E')
+        tc.alignment = Alignment(horizontal='center', vertical='center')
+        ws.row_dimensions[1].height = 30
+        ws.append(["Tháng", "Doanh thu (VNĐ)", "Số giao dịch", "Số booking", "So tháng trước"])
+        style_header(ws, range(1, 6))
+
+        qs = (
+            Payment.objects
+            .filter(status='paid', paid_at__isnull=False, paid_at__year=year)
+            .annotate(month=TruncMonth('paid_at'))
+            .values('month')
+            .annotate(total=Sum('amount'), payment_count=Count('id'), booking_count=Count('booking', distinct=True))
+            .order_by('month')
+        )
+        data_by_month = {r['month'].month: r for r in qs if r['month']}
+        total_year = Decimal('0')
+        prev_total = None
+
+        for m in range(1, 13):
+            r = data_by_month.get(m)
+            total = Decimal(str(r['total'])) if r else Decimal('0')
+            total_year += total
+            if prev_total is not None and prev_total > 0:
+                change = ((total - prev_total) / prev_total * 100)
+                change_str = f"+{change:.1f}%" if change >= 0 else f"{change:.1f}%"
+            else:
+                change_str = '—'
+            ws.append([
+                f"Tháng {m:02d}/{year}", float(total),
+                int(r['payment_count'] or 0) if r else 0,
+                int(r['booking_count'] or 0) if r else 0,
+                change_str,
+            ])
+            style_data_row(ws, m + 2, 5, alt=(m % 2 == 0))
+            ws.cell(row=m + 2, column=2).number_format = num_fmt
+            prev_total = total
+
+        ws.append(['TỔNG NĂM', float(total_year), '', '', ''])
+        style_total_row(ws, 15, 5)
+        ws.cell(row=15, column=2).number_format = num_fmt
+        for col, w in zip('ABCDE', [18, 22, 16, 14, 16]):
+            ws.column_dimensions[col].width = w
+        filename = f"revenue_{year}.xlsx"
+
     buf = BytesIO()
     wb.save(buf)
     buf.seek(0)
-
-    resp = HttpResponse(
-        buf.getvalue(),
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    resp["Content-Disposition"] = f'attachment; filename="revenue_{year}.xlsx"'
+    resp = HttpResponse(buf.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    resp["Content-Disposition"] = f'attachment; filename="{filename}"'
     return resp
 
 
@@ -1064,7 +1172,7 @@ def _save_staff(request, staff_profile):
         user = User.objects.create_user(
             username=username, email=email,
             first_name=first_name, last_name=last_name,
-            password=password, is_active=is_active, is_staff=True,
+            password=password, is_active=True, is_staff=True,
         )
         # Thêm vào group Employee
         employee_group, _ = Group.objects.get_or_create(name='Employee')
@@ -1156,14 +1264,13 @@ def homepage_editor(request):
     })
 
 
-# ═══════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 # HOTEL SERVICES — Quản lý dịch vụ khách sạn
-# ═══════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════
 
 @login_required
 @staff_required
 def hotel_service_list(request, hotel_pk):
-    """Danh sách dịch vụ của một khách sạn."""
     hotel    = get_object_or_404(Hotel, pk=hotel_pk)
     services = hotel.services.order_by('category', 'order', 'name')
     return render(request, 'dashboard/services/list.html', {
@@ -1192,8 +1299,7 @@ def hotel_service_edit(request, hotel_pk, pk):
         return _save_service(request, hotel, service)
     return render(request, 'dashboard/services/form.html', {
         'hotel': hotel, 'service': service, 'page': 'hotels',
-        'action': 'Sửa dịch vụ',
-        'categories': HotelService.CATEGORY_CHOICES,
+        'action': 'Sửa dịch vụ', 'categories': HotelService.CATEGORY_CHOICES,
     })
 
 
@@ -1223,37 +1329,30 @@ def hotel_service_toggle(request, hotel_pk, pk):
 
 
 def _save_service(request, hotel, service):
-    data = request.POST
-    name = data.get('name', '').strip()
+    name = request.POST.get('name', '').strip()
     if not name:
         messages.error(request, 'Tên dịch vụ không được để trống.')
         return redirect('dashboard:hotel_service_list', hotel_pk=hotel.pk)
-
-    price_raw = data.get('price', '').strip()
+    price_raw = request.POST.get('price', '').strip()
     try:
         price = float(price_raw) if price_raw else None
     except ValueError:
         price = None
-
-    eta_raw = data.get('eta_minutes', '').strip()
+    eta_raw = request.POST.get('eta_minutes', '').strip()
     try:
         eta = int(eta_raw) if eta_raw else None
     except ValueError:
         eta = None
-
     fields = {
-        'hotel':         hotel,
-        'name':          name,
-        'category':      data.get('category', 'other'),
-        'icon':          data.get('icon', '✨').strip() or '✨',
-        'description':   data.get('description', '').strip(),
-        'price':         price,
-        'eta_minutes':   eta,
-        'order':         int(data.get('order', 0) or 0),
-        'is_available':  'is_available' in data,
-        'requires_note': 'requires_note' in data,
+        'hotel': hotel, 'name': name,
+        'category':      request.POST.get('category', 'other'),
+        'icon':          request.POST.get('icon', '✨').strip() or '✨',
+        'description':   request.POST.get('description', '').strip(),
+        'price': price, 'eta_minutes': eta,
+        'order':         int(request.POST.get('order', 0) or 0),
+        'is_available':  'is_available' in request.POST,
+        'requires_note': 'requires_note' in request.POST,
     }
-
     if service:
         for k, v in fields.items():
             setattr(service, k, v)
@@ -1262,5 +1361,4 @@ def _save_service(request, hotel, service):
     else:
         HotelService.objects.create(**fields)
         messages.success(request, f'✅ Đã thêm dịch vụ "{name}".')
-
     return redirect('dashboard:hotel_service_list', hotel_pk=hotel.pk)

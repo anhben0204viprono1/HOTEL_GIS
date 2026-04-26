@@ -65,10 +65,38 @@
 </div>
 
 {% now "Y" as current_year %}
-<div class="d-flex justify-content-end mb-4">
-  <a class="btn btn-outline-secondary" href="{% url 'dashboard:revenue_export_excel' %}?year={{ current_year }}">
-    ⬇ Xuất doanh thu (Excel)
-  </a>
+<div class="d-flex justify-content-end align-items-center gap-2 mb-4">
+  <form method="get" action="{% url 'dashboard:revenue_export_excel' %}"
+        class="d-flex align-items-center gap-2" id="exportForm">
+
+    <!-- Chọn năm -->
+    <select name="year" class="form-select form-select-sm" style="width:90px;">
+      {% for y in export_years %}
+        <option value="{{ y }}" {% if y == current_year|add:"0" %}selected{% endif %}>{{ y }}</option>
+      {% endfor %}
+    </select>
+
+    <!-- Chọn tháng (0 = cả năm) -->
+    <select name="month" class="form-select form-select-sm" style="width:130px;">
+      <option value="">Cả năm</option>
+      <option value="1">Tháng 01</option>
+      <option value="2">Tháng 02</option>
+      <option value="3">Tháng 03</option>
+      <option value="4">Tháng 04</option>
+      <option value="5">Tháng 05</option>
+      <option value="6">Tháng 06</option>
+      <option value="7">Tháng 07</option>
+      <option value="8">Tháng 08</option>
+      <option value="9">Tháng 09</option>
+      <option value="10">Tháng 10</option>
+      <option value="11">Tháng 11</option>
+      <option value="12">Tháng 12</option>
+    </select>
+
+    <button type="submit" class="btn btn-outline-secondary btn-sm px-3">
+      ⬇ Xuất Excel
+    </button>
+  </form>
 </div>
 
 <!-- ── Chart + Top hotels ── -->

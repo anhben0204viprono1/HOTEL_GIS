@@ -114,3 +114,99 @@ Hotel GIS
     except Exception as e:
         logger.error(f'❌ Failed to send cancellation email for Booking #{booking.id}: {e}')
         return False
+
+def send_password_changed(user):
+    """
+    Gửi email thông báo đổi mật khẩu thành công.
+    Gọi sau khi user đổi mật khẩu thành công.
+    """
+    if not user.email:
+        return False
+
+    from django.utils import timezone
+    changed_at = timezone.localtime().strftime('%H:%M — %d/%m/%Y')
+
+    subject = '🔐 Mật khẩu tài khoản Hotel GIS đã được thay đổi'
+
+    text_content = f"""
+Xin chào {user.get_full_name() or user.username},
+
+Mật khẩu tài khoản của bạn tại Hotel GIS vừa được thay đổi thành công lúc {changed_at}.
+
+Nếu bạn KHÔNG thực hiện thao tác này, vui lòng liên hệ ngay với chúng tôi hoặc đặt lại mật khẩu tại:
+  http://127.0.0.1:8000/accounts/password-reset/
+
+Trân trọng,
+Hotel GIS
+    """.strip()
+
+    html_content = f"""
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#f5f3ef;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08);">
+
+    <!-- Header -->
+    <div style="background:#1A1A2E;padding:28px 32px;text-align:center;">
+      <span style="font-size:28px;">🔐</span>
+      <h1 style="color:#C9A84C;font-size:20px;margin:8px 0 0;letter-spacing:1px;">MẬT KHẨU ĐÃ ĐƯỢC THAY ĐỔI</h1>
+      <p style="color:#aaa;font-size:12px;margin:4px 0 0;">Hotel GIS — Bảo mật tài khoản</p>
+    </div>
+
+    <!-- Body -->
+    <div style="padding:32px;">
+      <p style="font-size:15px;color:#333;margin:0 0 16px;">
+        Xin chào <strong>{user.get_full_name() or user.username}</strong>,
+      </p>
+      <p style="font-size:14px;color:#555;line-height:1.7;margin:0 0 20px;">
+        Mật khẩu tài khoản của bạn tại <strong>Hotel GIS</strong> vừa được thay đổi thành công lúc
+        <strong style="color:#1A1A2E;">{changed_at}</strong>.
+      </p>
+
+      <!-- Warning box -->
+      <div style="background:#fff8e6;border-left:4px solid #C9A84C;border-radius:6px;padding:16px 20px;margin-bottom:24px;">
+        <p style="margin:0;font-size:13px;color:#7a5c00;line-height:1.6;">
+          ⚠️ <strong>Không phải bạn?</strong> Nếu bạn không thực hiện thao tác này, tài khoản của bạn có thể đã bị xâm phạm.
+          Hãy đặt lại mật khẩu ngay.
+        </p>
+      </div>
+
+      <div style="text-align:center;margin-bottom:24px;">
+        <a href="http://127.0.0.1:8000/accounts/password-reset/"
+           style="display:inline-block;background:#C9A84C;color:#1A1A2E;text-decoration:none;
+                  padding:12px 32px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:.5px;">
+          Đặt lại mật khẩu ngay
+        </a>
+      </div>
+
+      <p style="font-size:13px;color:#999;text-align:center;margin:0;">
+        Nếu bạn đã thực hiện thay đổi này, bạn có thể bỏ qua email này.
+      </p>
+    </div>
+
+    <!-- Footer -->
+    <div style="background:#f8f6f2;padding:16px 32px;text-align:center;border-top:1px solid #eee;">
+      <p style="margin:0;font-size:11px;color:#aaa;">
+        © 2026 Hotel GIS · TP. Hồ Chí Minh · Không trả lời email này
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    """.strip()
+
+    try:
+        msg = EmailMultiAlternatives(
+            subject    = subject,
+            body       = text_content,
+            from_email = settings.DEFAULT_FROM_EMAIL,
+            to         = [user.email],
+        )
+        msg.attach_alternative(html_content, 'text/html')
+        msg.send(fail_silently=False)
+        logger.info(f'✅ Password-changed email sent → {user.email}')
+        return True
+    except Exception as e:
+        logger.error(f'❌ Failed to send password-changed email to {user.email}: {e}')
+        return False
