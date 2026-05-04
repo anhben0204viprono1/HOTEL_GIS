@@ -54,11 +54,11 @@ DATABASES = {
             'ENGINE': 'django.db.backends.postgresql',
             'NAME': os.environ.get('POSTGRES_DB', 'qlks'),
             'USER': os.environ.get('POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', '123456'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'vu2005'),
             'HOST': os.environ.get('POSTGRES_HOST', 'localhost'),
             'PORT': os.environ.get('POSTGRES_PORT', '5432'),
         }
-    }
+}
 
 
 # Cache (dùng cho token reset mật khẩu — LocMemCache, không cần migrate) 

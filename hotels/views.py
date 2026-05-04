@@ -78,6 +78,16 @@ def hotel_list(request):
     context['homepage_config'] = HomepageConfig.get()
     return render(request, 'hotels/hotel_list.html', context)
 
+def about_us(request):
+    from bookings.models import Booking
+
+    stats = {
+        'total_hotels':   Hotel.objects.filter(is_active=True).count(),
+        'total_cities':   Hotel.objects.filter(is_active=True).values('city').distinct().count(),
+        'total_bookings': Booking.objects.filter(status__in=['confirmed', 'checked_in', 'checked_out']).count(),
+    }
+    return render(request, 'hotels/about_us.html', {'stats': stats})
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TRANG CHI TIẾT KHÁCH SẠN

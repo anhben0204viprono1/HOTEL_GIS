@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% block title %}About Us — Hotel GIS{% endblock %}
+
+{% block extra_css %}
+<style>
+  .about-hero {
+    background:
+      radial-gradient(900px circle at 20% 20%, rgba(201,168,76,.20), transparent 55%),
+      radial-gradient(700px circle at 90% 10%, rgba(255,255,255,.06), transparent 50%),
+      linear-gradient(135deg, #0D0D0D 0%, #141422 55%, #0D0D0D 100%);
+    color: #fff;
+    border-bottom: 1px solid rgba(201,168,76,.18);
+  }
+  .about-hero .kicker { color: rgba(255,255,255,.65); letter-spacing: 2px; text-transform: uppercase; font-size: 12px; }
+  .about-hero h1 { font-family: 'Cormorant Garamond', serif; letter-spacing: 1px; }
+  .glass-card {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.10);
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+  }
+  .stat {
+    border-right: 1px solid rgba(255,255,255,.10);
+  }
+  .stat:last-child { border-right: none; }
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    letter-spacing: 1px;
+  }
+  .value-card {
+    border: 0;
+    border-radius: 16px;
+    background: #fff;
+  }
+  .value-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: rgba(201,168,76,.14);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--dark);
+    font-size: 20px;
+  }
+  .timeline {
+    position: relative;
+    padding-left: 22px;
+  }
+  .timeline:before {
+    content:"";
+    position:absolute; left:8px; top:4px; bottom:4px;
+    width:2px; background: rgba(201,168,76,.35);
+  }
+  .timeline-item {
+    position: relative;
+    padding: 0 0 18px 0;
+  }
+  .timeline-item:before {
+    content:"";
+    position:absolute; left:-18px; top:2px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 4px rgba(201,168,76,.18);
+  }
+  .cta-banner {
+    background: linear-gradient(135deg, #fff9ec 0%, #ffffff 55%, #fffdf5 100%);
+    border: 1px solid rgba(201,168,76,.45);
+    border-radius: 18px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="about-hero py-5">
+  <div class="container py-4">
+    <div class="row g-4 align-items-center">
+      <div class="col-lg-7">
+        <div class="kicker mb-2">Hotel GIS · About us</div>
+        <h1 class="display-5 mb-3">Trải nghiệm đặt phòng mượt — minh bạch — đúng nhu cầu</h1>
+        <p class="mb-4" style="color:rgba(255,255,255,.72);max-width:56ch;">
+          Hotel GIS kết hợp tìm kiếm khách sạn trực quan trên bản đồ với quy trình đặt phòng nhanh gọn,
+          giúp bạn chọn đúng nơi ở phù hợp nhất cho từng chuyến đi.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+          <a class="btn btn-gold px-4" href="{% url 'hotels:list' %}">Khám phá khách sạn</a>
+          <a class="btn btn-outline-light px-4" href="#values">Giá trị cốt lõi</a>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        <div class="glass-card p-4 shadow-sm">
+          <div class="row text-center g-0">
+            <div class="col-4 stat py-2">
+              <div style="font-size:22px;font-weight:700;color:var(--gold);">
+                {{ stats.total_hotels|default:"0" }}
+              </div>
+              <div style="font-size:12px;color:rgba(255,255,255,.65);letter-spacing:1px;">Khách sạn</div>
+            </div>
+            <div class="col-4 stat py-2">
+              <div style="font-size:22px;font-weight:700;color:var(--gold);">
+                {{ stats.total_cities|default:"0" }}
+              </div>
+              <div style="font-size:12px;color:rgba(255,255,255,.65);letter-spacing:1px;">Thành phố</div>
+            </div>
+            <div class="col-4 py-2">
+              <div style="font-size:22px;font-weight:700;color:var(--gold);">
+                {{ stats.total_bookings|default:"0" }}
+              </div>
+              <div style="font-size:12px;color:rgba(255,255,255,.65);letter-spacing:1px;">Lượt đặt</div>
+            </div>
+          </div>
+          <hr style="border-color:rgba(255,255,255,.12);">
+          <div style="font-size:13px;color:rgba(255,255,255,.72);line-height:1.7;">
+            Tập trung vào 3 điểm: <strong style="color:#fff;">tốc độ</strong>, <strong style="color:#fff;">độ tin cậy</strong>,
+            và <strong style="color:#fff;">trải nghiệm nhất quán</strong> từ tìm kiếm đến thanh toán.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4 align-items-start">
+      <div class="col-lg-5">
+        <h2 class="section-title mb-2">Chúng tôi làm gì?</h2>
+        <p class="text-muted" style="max-width:60ch;">
+          Hotel GIS giúp bạn tìm khách sạn theo vị trí, giá, hạng sao và xem nhanh thông tin phòng trống.
+          Dù đặt theo <strong>ngày</strong> hay <strong>giờ</strong>, mọi bước đều được tối ưu để bạn hoàn tất chỉ trong vài phút.
+        </p>
+      </div>
+      <div class="col-lg-7">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="bg-white rounded-4 p-4 shadow-sm h-100">
+              <div class="value-icon mb-3">🗺️</div>
+              <div class="fw-semibold mb-1">Tìm nhanh trên bản đồ</div>
+              <div class="text-muted" style="font-size:13px;line-height:1.7;">
+                Trực quan hóa khách sạn theo vị trí để chọn đúng khu vực bạn cần.
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="bg-white rounded-4 p-4 shadow-sm h-100">
+              <div class="value-icon mb-3">⚡</div>
+              <div class="fw-semibold mb-1">Đặt phòng siêu nhanh</div>
+              <div class="text-muted" style="font-size:13px;line-height:1.7;">
+                Form gọn, xác nhận rõ ràng, hạn chế tối đa thao tác dư thừa.
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="bg-white rounded-4 p-4 shadow-sm h-100">
+              <div class="value-icon mb-3">🧾</div>
+              <div class="fw-semibold mb-1">Minh bạch chi phí</div>
+              <div class="text-muted" style="font-size:13px;line-height:1.7;">
+                Hiển thị breakdown theo ngày/giờ và tổng tiền trước khi xác nhận.
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="bg-white rounded-4 p-4 shadow-sm h-100">
+              <div class="value-icon mb-3">🛡️</div>
+              <div class="fw-semibold mb-1">Bảo mật tài khoản</div>
+              <div class="text-muted" style="font-size:13px;line-height:1.7;">
+                Quy trình đăng nhập/đổi mật khẩu tuân thủ nguyên tắc không hiển thị thông tin nhạy cảm.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="values" class="py-5" style="background:#fff;">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-end flex-wrap gap-2 mb-3">
+      <div>
+        <h2 class="section-title mb-1">Giá trị cốt lõi</h2>
+        <p class="text-muted mb-0" style="font-size:13px;">Những nguyên tắc giữ trải nghiệm “nét” và ổn định.</p>
+      </div>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-4">
+        <div class="value-card p-4 shadow-sm h-100">
+          <div class="fw-semibold mb-1">Khách hàng là trung tâm</div>
+          <div class="text-muted" style="font-size:13px;line-height:1.7;">
+            Mọi thay đổi đều ưu tiên giảm thời gian thao tác và tăng độ rõ ràng khi quyết định.
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="value-card p-4 shadow-sm h-100">
+          <div class="fw-semibold mb-1">Độ tin cậy</div>
+          <div class="text-muted" style="font-size:13px;line-height:1.7;">
+            Dữ liệu phòng và trạng thái booking luôn nhất quán, tránh “hụt” ở bước thanh toán.
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="value-card p-4 shadow-sm h-100">
+          <div class="fw-semibold mb-1">Tối ưu hiệu năng</div>
+          <div class="text-muted" style="font-size:13px;line-height:1.7;">
+            Tải trang nhanh, tìm kiếm mượt, và trải nghiệm đồng đều trên nhiều thiết bị.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="py-5">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-lg-6">
+        <h2 class="section-title mb-2">Hành trình phát triển</h2>
+        <p class="text-muted" style="font-size:13px;line-height:1.7;">
+          Chúng tôi xây dựng Hotel GIS theo từng mốc tính năng — luôn ưu tiên độ ổn định trước khi mở rộng.
+        </p>
+        <div class="timeline mt-3">
+          <div class="timeline-item">
+            <div class="fw-semibold">Nền tảng tìm kiếm & bản đồ</div>
+            <div class="text-muted" style="font-size:13px;">Danh sách khách sạn, lọc theo thành phố/hạng sao, hiển thị trên map.</div>
+          </div>
+          <div class="timeline-item">
+            <div class="fw-semibold">Đặt phòng theo ngày</div>
+            <div class="text-muted" style="font-size:13px;">Tính số đêm, tổng tiền và cập nhật trạng thái booking.</div>
+          </div>
+          <div class="timeline-item">
+            <div class="fw-semibold">Đặt phòng theo giờ</div>
+            <div class="text-muted" style="font-size:13px;">Chọn giờ nhận/trả, tự tính số giờ và giá phù hợp.</div>
+          </div>
+          <div class="timeline-item">
+            <div class="fw-semibold">Thanh toán & email thông báo</div>
+            <div class="text-muted" style="font-size:13px;">Xác nhận thanh toán, gửi email tóm tắt booking.</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="cta-banner p-4 p-md-5 shadow-sm h-100">
+          <h3 class="section-title mb-2">Sẵn sàng bắt đầu?</h3>
+          <p class="text-muted mb-4" style="font-size:13px;line-height:1.7;max-width:60ch;">
+            Khám phá khách sạn phù hợp ngay bây giờ — hoặc đăng ký tài khoản để quản lý booking và nhận thông báo tự động.
+          </p>
+          <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-gold px-4" href="{% url 'hotels:list' %}">Tìm khách sạn</a>
+            {% if user.is_authenticated %}
+              <a class="btn btn-outline-dark px-4" href="{% url 'accounts:profile' %}">Xem tài khoản</a>
+            {% else %}
+              <a class="btn btn-outline-dark px-4" href="{% url 'accounts:register' %}">Tạo tài khoản</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+

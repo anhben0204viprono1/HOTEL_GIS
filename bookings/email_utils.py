@@ -9,6 +9,29 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+def _format_checkin_checkout(booking):
+    """
+    Trả về tuple (checkin_str, checkout_str, duration_str) cho cả daily/hourly.
+    - Daily: dd/mm/YYYY + "<n> đêm"
+    - Hourly: dd/mm/YYYY HH:MM + "<n> giờ"
+    """
+    if getattr(booking, 'booking_type', None) == 'hourly':
+        check_in  = getattr(booking, 'check_in_dt', None)
+        check_out = getattr(booking, 'check_out_dt', None)
+        fmt = '%d/%m/%Y %H:%M'
+        checkin_str  = check_in.strftime(fmt) if check_in else '—'
+        checkout_str = check_out.strftime(fmt) if check_out else '—'
+        duration_str = f'{booking.hours()} giờ'
+        return checkin_str, checkout_str, duration_str
+
+    check_in  = getattr(booking, 'check_in', None)
+    check_out = getattr(booking, 'check_out', None)
+    fmt = '%d/%m/%Y'
+    checkin_str  = check_in.strftime(fmt) if check_in else '—'
+    checkout_str = check_out.strftime(fmt) if check_out else '—'
+    duration_str = f'{booking.nights()} đêm'
+    return checkin_str, checkout_str, duration_str
+
 
 def send_booking_confirmation(booking):
     """
@@ -28,6 +51,8 @@ def send_booking_confirmation(booking):
     # Render HTML template
     html_content = render_to_string('emails/booking_confirmation.html', context)
 
+    checkin_str, checkout_str, duration_str = _format_checkin_checkout(booking)
+
     # Plain text fallback
     text_content = f"""
 Xin chào {user.get_full_name() or user.username},
@@ -38,9 +63,9 @@ MÃ ĐẶT PHÒNG: #{booking.id}
 Khách sạn   : {hotel.name}
 Loại phòng  : {booking.room.room_type.name}
 Số phòng    : {booking.room.room_number}
-Check-in    : {booking.check_in.strftime('%d/%m/%Y')}
-Check-out   : {booking.check_out.strftime('%d/%m/%Y')}
-Số đêm      : {booking.nights()} đêm
+Check-in    : {checkin_str}
+Check-out   : {checkout_str}
+Thời lượng  : {duration_str}
 Số khách    : {booking.num_guests} người
 Tổng tiền   : {booking.total_price:,.0f} VNĐ
 Trạng thái  : {booking.get_status_display()}
@@ -83,13 +108,16 @@ def send_booking_cancellation(booking):
 
     html_content = render_to_string('emails/booking_cancellation.html', context)
 
+    checkin_str, checkout_str, duration_str = _format_checkin_checkout(booking)
+
     text_content = f"""
 Xin chào {user.get_full_name() or user.username},
 
 Đặt phòng #{booking.id} của bạn tại {hotel.name} đã được hủy thành công.
 
-Check-in  : {booking.check_in.strftime('%d/%m/%Y')}
-Check-out : {booking.check_out.strftime('%d/%m/%Y')}
+Check-in  : {checkin_str}
+Check-out : {checkout_str}
+Thời lượng: {duration_str}
 Tổng tiền : {booking.total_price:,.0f} VNĐ
 {f"Lý do    : {booking.cancel_reason}" if booking.cancel_reason else ""}
 

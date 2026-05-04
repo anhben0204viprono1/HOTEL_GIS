@@ -6,6 +6,7 @@ app_name = 'hotels'
 urlpatterns = [
     # ── Danh sách & chi tiết khách sạn ──────────────────────────────────────
     path('', views.hotel_list, name='list'),
+    path('about-us/', views.about_us, name='about_us'),
     path('hotels/<str:slug>/', views.hotel_detail, name='detail'),
 
     # ── Chi tiết loại phòng + lịch trống/bận ────────────────────────────────

@@ -70,8 +70,15 @@
       <tr><td>Mã đặt phòng</td><td><strong>#{{ booking.id }}</strong></td></tr>
       <tr><td>Khách sạn</td><td>{{ booking.room.hotel.name }}</td></tr>
       <tr><td>Loại phòng</td><td>{{ booking.room.room_type.name }}</td></tr>
-      <tr><td>Check-in</td><td>{{ booking.check_in|date:"d/m/Y" }}</td></tr>
-      <tr><td>Check-out</td><td>{{ booking.check_out|date:"d/m/Y" }}</td></tr>
+      {% if booking.booking_type == "hourly" %}
+        <tr><td>Check-in</td><td>{{ booking.check_in_dt|date:"d/m/Y H:i" }}</td></tr>
+        <tr><td>Check-out</td><td>{{ booking.check_out_dt|date:"d/m/Y H:i" }}</td></tr>
+        <tr><td>Thời lượng</td><td>{{ booking.hours }} giờ</td></tr>
+      {% else %}
+        <tr><td>Check-in</td><td>{{ booking.check_in|date:"d/m/Y" }}</td></tr>
+        <tr><td>Check-out</td><td>{{ booking.check_out|date:"d/m/Y" }}</td></tr>
+        <tr><td>Số đêm</td><td>{{ booking.nights }} đêm</td></tr>
+      {% endif %}
       <tr><td>Tổng tiền</td><td><strong>{{ booking.total_price|floatformat:0 }} ₫</strong></td></tr>
       {% if booking.cancelled_at %}
       <tr><td>Hủy lúc</td><td>{{ booking.cancelled_at|date:"H:i d/m/Y" }}</td></tr>
